@@ -3,6 +3,7 @@ CardioLab · Eco pediátrico — copia pública
 Herramienta docente. No es un ecógrafo, no está validada clínicamente y no sustituye la práctica supervisada.
 
 Licencias y fuentes
+- Código de CardioLab: licencia MIT (ver LICENSE). No se aplica a los archivos de assets/.
 - Anatomía: Z-Anatomy (CC BY-SA 4.0), derivado de BodyParts3D / DBCLS (CC BY-SA 2.1 Japan). Ver assets/LICENSE-anatomy.txt.
   Los volúmenes acústicos (assets/tissue-*) derivan de esas mallas y se comparten bajo la misma licencia (CC BY-SA).
 - three.js: licencia MIT (node_modules/three/LICENSE).

@@ -1,12 +1,12 @@
 {
- "files": 90,
- "bytes": 73103074,
+ "files": 91,
+ "bytes": 73104836,
  "largest": [
   "assets/anatomy.bin",
   6189936
  ],
  "sha256": {
-  "app.mjs": "5f055317116bcb69eed7be24eca370d71eb97ff4901779d3e405f52ad66b09fd",
+  "app.mjs": "159dd4a35801a23092ce1151781aaf4437909f46e51af3cf94f444c43abdf297",
   "beam-map.mjs": "ed991ddc0c85494d3b300c9906886542d5736dc025570ccf543c298f9a5a34bc",
   "bmode-worker.mjs": "d75a8e4b121ec67d6f7d0d356191c5fcac39774d68a41bd54e494a645206731a",
   "bmode.mjs": "1e6ba020ef7528456cd54004eea870ebed843342235fc90aee04a5f58fa3a29f",
@@ -20,7 +20,7 @@
   "echo4d.mjs": "3a20a77c8d319e5714239fc6108cf7bb5312dada34d60579995ae8bae332e2c0",
   "flow.mjs": "4ec8a8a02bf6f8de4abe0f9a90a049bd9bb6ba62d425f722a7bf7266d93abf51",
   "geometry.mjs": "dcdf4aecd3456f34fee43c14a93080b86d976ec1f67f9bbe06a91c4942f2f341",
-  "index.html": "d3ad100736bbbadfa9e49869be364771b35ac16603ecdd6388e3207cae3e4a97",
+  "index.html": "45c692ec4b88bb141ca8abe3b33966f08cec3d92bb7121a19d151dda6305fa16",
   "instrument.mjs": "ce53ba0c53059c77fce0287460a039d995230166affa721485ad32276320cd6c",
   "patient.mjs": "884f39f225136b1e06d419fc216b4e87ffef0e588c7e32d5ad1c1ad229678ff1",
   "recording-format.mjs": "e03a0601bb72f773c6acb6983c10c848431554c7dab9c60af7e953b2e29a7ebc",

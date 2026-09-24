@@ -347,6 +347,7 @@ const SOURCES=`<p><b>Qué es y qué no es.</b> CardioLab es una herramienta doce
 <p><b>Vistas del entrenador.</b> Se calculan a partir de reparos anatómicos del atlas (ápex, válvulas, septos, arco aórtico), buscando una ventana libre de costillas y pulmón. Son vistas de referencia del modelo, no posiciones universales en pacientes.</p>
 <p><b>Cardiopatías.</b> Cada lesión es una edición reversible del volumen acústico (por ejemplo, un defecto esférico en el septo o un derrame de 9 mm). Muestran dónde buscar y qué vista usar; no reproducen la morfología completa ni la hemodinámica.</p>
 <p><b>Clips reales.</b> Vídeos aportados por el usuario, sin registro al atlas. No publicar sin anonimización y autorización.</p>
+<p><b>Código.</b> Código abierto bajo <a href="LICENSE" target="_blank">licencia MIT</a>. La licencia MIT no cubre los datos anatómicos (CC BY-SA) ni el volumen 4D, que conservan sus licencias.</p>
 <p><b>Curso.</b> Actividades originales con referencias a la <a href="https://www.asecho.org/wp-content/uploads/2024/02/2024-Peds-TTE_PIIS0894731723006223.pdf" target="_blank" rel="noopener">guía ASE de ecocardiografía pediátrica 2024</a>; terminología de maniobras según <a href="https://www.asecho.org/wp-content/uploads/2019/01/2019_Comprehensive-TTE.pdf" target="_blank" rel="noopener">ASE 2019</a>. Las guías no validan esta herramienta.</p>`;
 $('sources').onclick=()=>openInfo('Alcance y fuentes',SOURCES);
 // public build (no user clips): hide the real-clip entry points

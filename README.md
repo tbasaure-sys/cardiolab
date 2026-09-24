@@ -70,4 +70,4 @@ Los volúmenes `assets/tissue-*` se generaron a partir de las mallas del atlas c
 - Anatomía y volúmenes derivados: Z-Anatomy (CC BY-SA 4.0), derivado de BodyParts3D / DBCLS (CC BY-SA 2.1 Japan). Ver `assets/LICENSE-anatomy.txt` y `LICENCIAS.txt`.
 - three.js: MIT (`node_modules/three/LICENSE`).
 - Volumen mitral 4D: datos de prueba públicos de [SlicerHeart](https://github.com/SlicerHeart/SlicerHeart/releases/tag/TestingData).
-- Código de CardioLab: licencia pendiente de definir.
+- Código de CardioLab: [MIT](LICENSE). La licencia MIT cubre el código; los archivos de `assets/` conservan sus propias licencias.
