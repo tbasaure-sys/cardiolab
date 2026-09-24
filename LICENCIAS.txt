@@ -7,6 +7,8 @@ Licencias y fuentes
 - Anatomía: Z-Anatomy (CC BY-SA 4.0), derivado de BodyParts3D / DBCLS (CC BY-SA 2.1 Japan). Ver assets/LICENSE-anatomy.txt.
   Los volúmenes acústicos (assets/tissue-*) derivan de esas mallas y se comparten bajo la misma licencia (CC BY-SA).
 - three.js: licencia MIT (node_modules/three/LICENSE).
+- PeerJS 1.5.5 (emparejamiento WebRTC de la sonda-teléfono): MIT (node_modules/peerjs/LICENSE).
+- qrcode-generator 2.0.4 (código QR de emparejamiento): MIT, (c) Kazuhiko Arase (node_modules/qrcode-generator/LICENSE).
 - Volumen mitral 4D (si está incluido): datos de prueba públicos de SlicerHeart
   (https://github.com/SlicerHeart/SlicerHeart/releases/tag/TestingData).
 - No incluye clips de pacientes.

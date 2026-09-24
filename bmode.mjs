@@ -27,21 +27,23 @@ export function tgcAmplitude(tgc,f){const x=Math.max(0,Math.min(1,f))*(tgc.lengt
 export function createBMode(){
  let re,im,trans,env,ovb,cvb,cap=0;
  function ensure(n){if(n>cap){cap=n;re=new Float32Array(n);im=new Float32Array(n);trans=new Float32Array(n);env=new Float32Array(n)}}
- // opts: {pose, lines, samples, freq (MHz), gain, tgc[8], dynamicRange (dB), focus (0..1 of depth), motion, contraction, overlays:[{segments,strength}], clutter, bodyScale}
+ // opts: {pose, lines, samples, freq (MHz), gain, tgc[8], dynamicRange (dB), focus (0..1 of depth), motion, contraction, overlays:[{segments,strength}], clutter, bodyScale, harmonic}
+ // harmonic (THI, default): the image is formed at 2f, so less chest-wall clutter and side-lobe haze, a narrower
+ // beam and weak signal close to the probe (the harmonic builds up with depth), at the cost of penetration.
  // Positions along the ray (r, dr) are in atlas units, like the anatomy; bodyScale (K) converts them to physical
  // metres for everything acoustic (attenuation, wavelength, speckle size, beam width, reverberations).
  function render(tissue,opts){
-  const {pose,lines=176,freq=4,gain=1,tgc=[50,50,50,50,50,50,50,50],dynamicRange=52,focus=.55,motion=null,contraction=0,overlays=[],color=null}=opts,K=opts.bodyScale||1;
+  const {pose,lines=176,freq=4,gain=1,tgc=[50,50,50,50,50,50,50,50],dynamicRange=52,focus=.55,motion=null,contraction=0,overlays=[],color=null}=opts,K=opts.bodyScale||1,H=opts.harmonic!==false;
   const depth=pose.depth,samples=opts.samples||Math.min(960,Math.round(depth*K/.00025)),dr=depth/samples,drp=dr*K,N=lines*samples;ensure(N);re.fill(0,0,N);im.fill(0,0,N);
   const sector=pose.sector*Math.PI/180,o=pose.origin,u=pose.u,d=pose.d;
   const alphaNp=(db)=>db*freq*.1151*100; // per metre (one-way), from dB/cm/MHz
-  const cell=.00016*(4/freq)/K; // speckle cell ~ scales with wavelength (physical), expressed in atlas units
+  const cell=.00016*(4/freq)/K*(H?1:1.25); // speckle cell ~ scales with wavelength (physical), expressed in atlas units
   const p=[0,0,0],q=[0,0,0],wv=[0,0,0];let meanLungDepth=0,lungHits=0;
   // colour Doppler box (angles in degrees relative to the beam axis, radii as fractions of depth)
   let cj0=1,cj1=0,ck0=1,ck1=0,cv=null;const vel=[0,0,0];
   if(color&&color.flow){const r=color.roi;cj0=Math.max(0,Math.floor(((r.center-r.half)*Math.PI/180+sector/2)/sector*lines));cj1=Math.min(lines-1,Math.ceil(((r.center+r.half)*Math.PI/180+sector/2)/sector*lines));
    ck0=Math.max(0,Math.floor(r.r0*samples));ck1=Math.min(samples-1,Math.ceil(r.r1*samples));if(!cvb||cvb.length<N)cvb=new Float32Array(N);cv=cvb;cv.fill(NaN,0,N)}
-  const stepAtt=new Float32Array(256);for(let l=0;l<256;l++)stepAtt[l]=Math.exp(-2*alphaNp(PROPS[l*3+2])*drp);
+  const stepAtt=new Float32Array(256);for(let l=0;l<256;l++)stepAtt[l]=Math.exp(-2*alphaNp(PROPS[l*3+2])*drp*(H?1.12:1));
   const icell=1/cell,JIT=new Float32Array(1024);for(let i=0;i<1024;i++)JIT[i]=(hash3(i,5,7)-.5)*.0008;
   for(let j=0;j<lines;j++){
    const th=-sector/2+sector*(j+.5)/lines,s=Math.sin(th),c=Math.cos(th);
@@ -90,7 +92,8 @@ export function createBMode(){
     }
     // near-field clutter / reverberation haze from the chest wall (first ~2 cm)
     // (in atlas units: reverberations come from the chest wall, whose thickness scales with the patient)
-    if(r<.03){const g=hidx(j,k,31),f=.0016*Math.exp(-r/.009)*directivity;a+=f*GRE[g];b+=f*GIM[g]}
+    if(H){const bu=1-.3*Math.exp(-r*K/.01);a*=bu;b*=bu}
+    if(r<.03){const g=hidx(j,k,31),f=.0016*(H?1:2.6)*Math.exp(-r/.009)*directivity;a+=f*GRE[g];b+=f*GIM[g]}
     re[base+k]+=a*directivity;im[base+k]+=b*directivity;trans[base+k]=I;
     if(cv&&j>=cj0&&j<=cj1&&k>=ck0&&k<=ck1&&I>2e-4&&color.flow.velocity(x,y,z,color.phase,vel))cv[base+k]=-(vel[0]*bx+vel[1]*by+vel[2]*bz);
     I*=stepAtt[lab];
@@ -123,12 +126,12 @@ export function createBMode(){
   const lambda=.00154/freq,sigA=Math.max(.8,(1.15*lambda)/drp),focusR=focus*depth*K;
   convolveAxial(re,lines,samples,sigA);convolveAxial(im,lines,samples,sigA);
   const dth=sector/lines,apert=.012;
-  const sigL=new Float32Array(samples);for(let k=0;k<samples;k++){const r=(k+.5)*drp,w0=Math.max(.0004,lambda*focusR/apert*.45),zr=Math.PI*w0*w0/lambda*2.2,w=w0*Math.sqrt(1+((r-focusR)/zr)**2)+.00025;sigL[k]=Math.max(.35,.5*w/(Math.max(r,.004)*dth))}
+  const sigL=new Float32Array(samples);for(let k=0;k<samples;k++){const r=(k+.5)*drp,w0=Math.max(.0004,lambda*focusR/apert*.45),zr=Math.PI*w0*w0/lambda*2.2,w=w0*Math.sqrt(1+((r-focusR)/zr)**2)+.00025;sigL[k]=Math.max(.35,.5*w*(H?1:1.3)/(Math.max(r,.004)*dth))}
   convolveLateral(re,lines,samples,sigL,env);convolveLateral(im,lines,samples,sigL,env);
   // envelope, noise, compression
   const out=new Uint8Array(N),gainDB=20*Math.log10(Math.max(.05,gain))*1.6,floorDB=-dynamicRange;
-  const alphaSoft=.48*freq*.1151*100,COMP=new Float32Array(samples),LUT=new Uint8Array(1024),REF=1/.025;
-  for(let k=0;k<samples;k++){const r=(k+.5)*drp;COMP[k]=Math.min(1e4,Math.exp(2*alphaSoft*r))*tgcAmplitude(tgc,r/depth)}
+  const alphaSoft=.48*freq*.1151*100*(H?1.06:1),COMP=new Float32Array(samples),LUT=new Uint8Array(1024),REF=1/.025;
+  for(let k=0;k<samples;k++){const r=(k+.5)*drp;COMP[k]=Math.min(1e4,Math.exp(2*alphaSoft*r))*tgcAmplitude(tgc,r/depth)*(1+.3*Math.exp(-(((r-focusR)/(.22*depth*K))**2)))} // transmit focus: a slightly brighter focal zone
   // grey map: reject the lowest levels, then a gentle S curve (harmonic-imaging look: black cavities, crisp tissue)
   for(let i=0;i<1024;i++){const x=Math.max(0,(i/1023-.1)/.9),y=x<.5?.5*(2*x)**1.55:1-.5*(2-2*x)**1.1;LUT[i]=Math.round(255*Math.min(1,y))}
   // side lobes: a faint, wide lateral copy of the envelope (fills cavities next to bright walls with haze)
@@ -143,7 +146,7 @@ export function createBMode(){
   for(let j=0;j<lines;j++)for(let k=0;k<samples;k++){
    const i=j*samples+k;
    // machine default: compensate soft-tissue attenuation, then user TGC; receiver noise is amplified too
-   const e=(E[i]+.045*SL[i]+3e-9*HET[(i*7)&(GN-1)])*COMP[k]+4e-6*HET[(i*13+5)&(GN-1)];
+   const e=(E[i]+(H?.045:.11)*SL[i]+3e-9*HET[(i*7)&(GN-1)])*COMP[k]+4e-6*HET[(i*13+5)&(GN-1)];
    const db=8.685889638*Math.log(e*REF)+gainDB,v=(db-floorDB)/dynamicRange;
    out[i]=v<=0?0:v>=1?255:LUT[(v*1023)|0];
   }

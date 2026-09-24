@@ -4,7 +4,7 @@ export const CINE_PHASES=20;
 
 export function createSimEngine({workers=Math.max(1,Math.min(3,(navigator.hardwareConcurrency||2)-1))}={}){
  const pool=[],queue=[],listeners=new Set(),pending=new Map();let isReady=false,seq=0,key='',frames=new Map(),ready,landmarks=null,variantSeq=0,lastFrame=null,failed=null;
- const params={bodyScale:1,freq:4,gain:1,tgc:Array(8).fill(50),dynamicRange:52,focus:.55,beating:true,valves:true,color:{on:false,nyquist:.7,roi:{center:0,half:20,r0:.25,r1:.8}}};
+ const params={bodyScale:1,harmonic:true,freq:4,gain:1,tgc:Array(8).fill(50),dynamicRange:52,focus:.55,beating:true,valves:true,color:{on:false,nyquist:.7,roi:{center:0,half:20,r0:.25,r1:.8}}};
  ready=new Promise((resolve,reject)=>{let n=0;
   for(let i=0;i<workers;i++){const w=new Worker('bmode-worker.mjs',{type:'module'});w.busy=false;
    w.onmessage=e=>onMessage(w,e.data,()=>{if(++n===workers){isReady=true;resolve(landmarks);pump()}});w.onerror=e=>{failed=e.message||'Error del simulador';reject(Error(failed))};w.postMessage({type:'init'});pool.push(w)}
@@ -27,7 +27,7 @@ export function createSimEngine({workers=Math.max(1,Math.min(3,(navigator.hardwa
    w.busy=true;const id=++seq;if(job.resolve)pending.set(id,job);else pending.set(id,{});
    w.postMessage({type:'render',id,key:job.key,phaseIndex:job.phaseIndex,pose:job.pose,params:job.params});}
  }
- function viewKey(pose,p){return JSON.stringify([pose.origin,pose.u,pose.d,pose.depth,pose.sector,p.bodyScale,p.freq,p.gain,p.tgc,p.dynamicRange,p.focus,p.beating,p.valves,p.color.on?p.color:0,variantSeq])}
+ function viewKey(pose,p){return JSON.stringify([pose.origin,pose.u,pose.d,pose.depth,pose.sector,p.bodyScale,p.freq,p.gain,p.tgc,p.dynamicRange,p.focus,p.harmonic,p.beating,p.valves,p.color.on?p.color:0,variantSeq])}
  // Show `pose`. `phase` = current cardiac phase (0..1); `quick` = lower resolution while dragging.
  function show(pose,phase=0,{quick=false}={}){
   const p={...params,lines:quick?112:168,samples:quick?Math.round(pose.depth*params.bodyScale/.00036):undefined};

@@ -1,0 +1,18 @@
+body.sonda{min-height:100vh;overscroll-behavior:none}
+.sonda main{max-width:520px;margin:0 auto;padding:16px}
+.sonda h1{font-size:22px;font-weight:600;margin:6px 0 10px}
+.sonda p{font-size:14px;line-height:1.5}
+.sonda .big{width:100%;font-size:17px;padding:14px;margin:10px 0}
+.sonda .primary{background:#1d4a44;border-color:#4fa89a;color:#d8fff7;font-weight:600}
+.code-field{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted);margin:14px 0 4px}
+.code-field input{font:600 28px Consolas,monospace;letter-spacing:8px;text-transform:lowercase;text-align:center;padding:10px;background:#0f1a21;color:var(--ink);border:1px solid #2f414b;border-radius:8px}
+.status-line{min-height:1.5em;color:#ffcf9a}
+.info{font:14px Consolas,monospace;background:#0f1a21;border:1px solid #2f414b;border-radius:8px;padding:10px;color:#bafcef}
+.howto{font-size:13px;color:#b9c7cf}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--accent);vertical-align:middle}
+.windows{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 0 12px}
+.windows button{padding:10px 4px;font-size:13px}
+.pad{height:190px;border:1px dashed #458e83;border-radius:12px;display:grid;place-items:center;text-align:center;color:var(--muted);font-size:13px;touch-action:none;user-select:none;background:repeating-linear-gradient(0deg,transparent 0 23px,#12222a 23px 24px),repeating-linear-gradient(90deg,transparent 0 23px,#12222a 23px 24px)}
+.pad.active{border-style:solid;background-color:#0f2a2a}
+.row{display:flex;gap:8px;margin-top:12px}.row button{flex:1;padding:12px}
+.marker-edge{position:fixed;right:0;top:50%;width:8px;height:64px;margin-top:-32px;border-radius:8px 0 0 8px;background:var(--accent);box-shadow:0 0 12px var(--accent)}
