@@ -27,7 +27,7 @@ self.onmessage=async e=>{
   if(m.type==='render'){
    const t0=performance.now(),p=m.params,phase=p.phase??0,s=p.beating?ventricularContraction(phase):0;
    const leaflets=p.valves===false?[]:sliceValves(valves,m.pose,p.beating?phase:0,motion,s).map(v=>({segments:v.segments,strength:.012}));
-   const frame=engine.render(tissue,{pose:m.pose,lines:p.lines,samples:p.samples,bodyScale:p.bodyScale,freq:p.freq,gain:p.gain,tgc:p.tgc,dynamicRange:p.dynamicRange,focus:p.focus,motion,contraction:s,overlays:leaflets,color:p.color&&p.color.on?{flow,phase,roi:p.color.roi,nyquist:p.color.nyquist}:null});
+   const frame=engine.render(tissue,{pose:m.pose,lines:p.lines,samples:p.samples,bodyScale:p.bodyScale,freq:p.freq,gain:p.gain,tgc:p.tgc,dynamicRange:p.dynamicRange,focus:p.focus,harmonic:p.harmonic,motion,contraction:s,overlays:leaflets,color:p.color&&p.color.on?{flow,phase,roi:p.color.roi,nyquist:p.color.nyquist}:null});
    const data=frame.data.slice(),color=frame.color;
    self.postMessage({type:'frame',id:m.id,key:m.key,phaseIndex:m.phaseIndex,frame:{lines:frame.lines,samples:frame.samples,depth:frame.depth,sector:frame.sector,data,color},ms:performance.now()-t0},color?[data.buffer,color.buffer]:[data.buffer]);
    return;

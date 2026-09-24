@@ -48,9 +48,9 @@ export function poseFromState(s){
   const p=PRESETS[s.preset],base=surface(p.x,p.z),origin=surface(s.x,s.z);
   let d=unit(sub(p.target,base)),u=unit(sub(p.up,mul(d,dot(p.up,d))));
   let n=unit(cross(u,d));
-  // Tilt changes planes about the lateral axis; rock remains in the plane.
+  // Tilt changes planes about the lateral axis; rock remains in the plane (+ = beam toward the marker, image right).
   d=rotate(d,u,rad(s.tilt));n=unit(cross(u,d));
-  d=rotate(d,n,rad(s.rock));u=rotate(u,n,rad(s.rock));
+  d=rotate(d,n,-rad(s.rock));u=rotate(u,n,-rad(s.rock));
   u=rotate(u,d,rad(s.rotation));u=unit(u);d=unit(d);n=unit(cross(u,d));
   return {origin,u,d,n,depth:s.depth/BODY.k,sector:s.sector}; // depth in atlas units (s.depth is physical)
 }

@@ -5,8 +5,8 @@ const KEY='cardiolab.layout.v1';
 const $=id=>document.getElementById(id);
 
 export const SHORTCUTS=[
- ['Sonda',[['← →','Desplazar lateral'],['↑ ↓','Desplazar vertical'],['Q / E','Rotar (antihorario / horario)'],['W / S','Inclinar · tilt'],['A / D','Bascular · rock'],['Mayús + tecla','Paso fino'],['R','Restablecer ventana'],['B','Barrido']]],
- ['Imagen',[['Espacio','Congelar / descongelar'],['+ / −','Profundidad'],[', / .','Ganancia − / +'],['F','Frecuencia (2,5 → 12 MHz)'],['C','Doppler color'],['P / K','Doppler PW / CW'],['Rueda sobre la eco','Profundidad (con Mayús: ganancia)'],['?','Mostrar u ocultar esta ayuda']]]
+ ['Sonda',[['← →','Desplazar lateral'],['↑ ↓','Desplazar vertical'],['Q / E','Rotar (antihorario / horario)'],['W / S','Inclinar (tilt): barre el plano; la imagen indica hacia dónde'],['A / D','Bascular: haz a la izquierda / derecha de la imagen (D = hacia el marcador)'],['Mayús + tecla','Paso fino'],['R','Restablecer ventana'],['B','Barrido']]],
+ ['Imagen',[['Espacio','Congelar / descongelar'],['+ / −','Profundidad'],[', / .','Ganancia − / +'],['F','Frecuencia (2,5 → 12 MHz)'],['[ / ]','Foco más superficial / más profundo'],['H','Armónico (THI) sí / no'],['← → congelado','Recorrer el cine cuadro a cuadro'],['C','Doppler color'],['P / K','Doppler PW / CW'],['Rueda sobre la eco','Profundidad (con Mayús: ganancia)'],['?','Mostrar u ocultar esta ayuda']]]
 ];
 
 export function mountCabina(api){
@@ -45,6 +45,7 @@ export function mountCabina(api){
   if(t.closest?.('input,select,textarea,[role=slider],.trackball,dialog,[contenteditable]'))return;
   const fine=e.shiftKey,k=e.key.length===1?e.key.toLowerCase():e.key;let done=true;
   const mm=fine?.001:.003,deg=fine?1:4;
+  if(api.frozen?.()&&(k==='ArrowLeft'||k==='ArrowRight')){api.cine?.(k==='ArrowLeft'?-1:1);e.preventDefault();return}
   switch(k){
    case 'ArrowLeft':api.nudge('x',-mm);break;case 'ArrowRight':api.nudge('x',mm);break;
    case 'ArrowUp':api.nudge('z',mm);break;case 'ArrowDown':api.nudge('z',-mm);break;
@@ -56,6 +57,7 @@ export function mountCabina(api){
    case '+':case '=':api.set('depth',api.value('depth')+(fine?.005:.01));break;case '-':case '_':api.set('depth',api.value('depth')-(fine?.005:.01));break;
    case ',':api.set('gain',api.value('gain')-.1);break;case '.':api.set('gain',api.value('gain')+.1);break;
    case 'f':{const F=[2.5,3,4,5,6,7,8,10,12],i=F.findIndex(f=>f>api.value('freq')+1e-6);api.set('freq',F[i<0?0:i]);break}
+   case '[':api.set('focus',api.value('focus')-.05);break;case ']':api.set('focus',api.value('focus')+.05);break;case 'h':api.click('console-thi');break;
    case 'c':api.click('console-color');break;case 'p':api.click('console-pw');break;case 'k':api.click('console-cw');break;
    case '?':toggleHelp();break;case 'Escape':if(!help.hidden)help.hidden=true;else done=false;break;
    default:done=false}
