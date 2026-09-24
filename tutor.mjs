@@ -42,11 +42,11 @@ export function mountTutor(api){
   if(record){evidence.angles.add(angle);refresh()}
  }
  $('lesson-picker').replaceChildren(...LESSONS.map((l,i)=>{const o=document.createElement('option');o.value=i;o.textContent=`${i+1}. ${l.title}`;return o}));
- $('course-toggle').onclick=()=>{opened=!opened;panel.hidden=!opened;$('practice-shell').classList.toggle('with-tutor',opened);$('course-toggle').setAttribute('aria-expanded',String(opened));$('course-toggle').textContent=opened?'Exploración libre':'Aprender desde cero';if(opened)enter(index)};
+ $('course-toggle').onclick=()=>{opened=!opened;panel.hidden=!opened;$('practice-shell').classList.toggle('with-tutor',opened);$('course-toggle').setAttribute('aria-expanded',String(opened));if(opened)enter(index)};
  $('lesson-picker').onchange=e=>enter(Number(e.target.value));$('lesson-prev').onclick=()=>enter(index-1);$('lesson-next').onclick=()=>enter(index+1);$('lesson-restart').onclick=()=>enter(index);
  $('lesson-complete').onclick=()=>{const checks=practiceSteps(lesson(),evidence);if(waiting||answer!==lesson().quiz.answer||!checks.every(s=>s[1]))return;progress[lesson().id]={completedAt:new Date().toISOString(),quizCorrect:true,practice:checks.map(s=>s[0]),kind:checks.length?'simulator-exercise':'concept-check'};save();$('lesson-completion').textContent=index===LESSONS.length-1?`Recorrido revisado: ${Object.keys(progress).length} / ${LESSONS.length} lecciones completadas. Continúa el aprendizaje con supervisión.`:'Lección completada. Pulsa Siguiente para continuar.';$('lesson-complete').disabled=true;};
  $('doppler-angle').oninput=e=>renderDoppler(Number(e.target.value));document.querySelectorAll('[data-angle]').forEach(b=>b.onclick=()=>{$('doppler-angle').value=b.dataset.angle;renderDoppler(Number(b.dataset.angle))});
  $('course-export').onclick=()=>{const data={application:'CardioLab Echo',courseVersion:COURSE_VERSION,createdAt:new Date().toISOString(),source:GUIDE,completed:progress,totalLessons:LESSONS.length,clinicalCompetency:false,patientStudy:false};const a=document.createElement('a'),url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));a.href=url;a.download='CardioLab_aprendizaje.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
- $('course-source').href=GUIDE.url;$('course-source').title=GUIDE.localFileStatus;
+ $('course-source').href=GUIDE.url;$('course-source').title=GUIDE.title;
  render();return {observe};
 }

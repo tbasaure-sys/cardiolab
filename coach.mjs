@@ -58,7 +58,7 @@ export function mountCoach(api){
  }
  function complete(){
   done=true;const t=(performance.now()-started)/1000;$('coach-verdict').textContent=`¡Vista lograda! ${fmt(t)}${hints?` · ${hints} pista${hints>1?'s':''}`:' · sin pistas'}`;host.querySelector('.coach-meter').dataset.tone='done';
-  const prev=best[current.id];if(!prev||t<prev.time||(!exam&&false)){best[current.id]={time:t,hints,exam,date:new Date().toISOString()};try{localStorage.setItem(KEY,JSON.stringify(best))}catch{}}
+  const prev=best[current.id];if(!prev||hints<prev.hints||(hints===prev.hints&&t<prev.time)){best[current.id]={time:t,hints,exam,date:new Date().toISOString()};try{localStorage.setItem(KEY,JSON.stringify(best))}catch{}}
   renderBest();api.status(`${current.info.short} lograda en ${fmt(t)}`);
   $('coach-hint-text').innerHTML=`<b>Qué mirar ahora:</b> ${esc(current.info.checks.join(' · '))}. <button id="coach-next">Siguiente vista →</button>`;
   $('coach-next').onclick=()=>{const opts=[...$('coach-view').options],i=opts.findIndex(o=>o.value===current.id);$('coach-view').value=opts[(i+1)%opts.length].value;start()};

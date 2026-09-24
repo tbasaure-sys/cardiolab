@@ -35,7 +35,7 @@ export function createSimEngine({workers=Math.max(1,Math.min(3,(navigator.hardwa
   if(k!==key){key=k;frames=new Map();queue.length=0}
   const want=p.beating?[...Array(CINE_PHASES).keys()].map(i=>(idx+1+i)%CINE_PHASES):[0];
   const queued=new Set(queue.map(j=>j.phaseIndex));
-  for(const i of want){if(frames.has(i)||queued.has(i)||[...pending.values()].some(()=>false))continue;if(quick&&i!==idx&&p.beating)continue;queue.push({key:k,phaseIndex:i,pose,params:{...p,phase:(i+.5)/CINE_PHASES}})}
+  for(const i of want){if(frames.has(i)||queued.has(i))continue;if(quick&&i!==idx&&p.beating)continue;queue.push({key:k,phaseIndex:i,pose,params:{...p,phase:(i+.5)/CINE_PHASES}})}
   // current phase first
   queue.sort((a,b)=>((a.phaseIndex-idx+CINE_PHASES)%CINE_PHASES)-((b.phaseIndex-idx+CINE_PHASES)%CINE_PHASES));
   pump();

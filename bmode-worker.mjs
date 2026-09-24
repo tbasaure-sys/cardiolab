@@ -26,14 +26,14 @@ self.onmessage=async e=>{
   if(m.type==='variant'){tissue.reset();variant=m.spec||{id:'normal'};const info=applyVariant(tissue,variant);flow.jets=lesionJets(tissue,variant);info.jets=flow.jets.length;self.postMessage({type:'variant',id:m.id,info});return}
   if(m.type==='render'){
    const t0=performance.now(),p=m.params,phase=p.phase??0,s=p.beating?ventricularContraction(phase):0;
-   const leaflets=p.valves===false?[]:sliceValves(valves,m.pose,p.beating?phase:0,motion,s,variant).map(v=>({segments:v.segments,strength:.012}));
+   const leaflets=p.valves===false?[]:sliceValves(valves,m.pose,p.beating?phase:0,motion,s).map(v=>({segments:v.segments,strength:.012}));
    const frame=engine.render(tissue,{pose:m.pose,lines:p.lines,samples:p.samples,freq:p.freq,gain:p.gain,tgc:p.tgc,dynamicRange:p.dynamicRange,focus:p.focus,motion,contraction:s,overlays:leaflets,color:p.color&&p.color.on?{flow,phase,roi:p.color.roi,nyquist:p.color.nyquist}:null});
    const data=frame.data.slice(),color=frame.color;
    self.postMessage({type:'frame',id:m.id,key:m.key,phaseIndex:m.phaseIndex,frame:{lines:frame.lines,samples:frame.samples,depth:frame.depth,sector:frame.sector,data,color},ms:performance.now()-t0},color?[data.buffer,color.buffer]:[data.buffer]);
    return;
   }
   if(m.type==='spectrum'){const spec={...m.spec};if(spec.optimize){spec.theta=optimizeAim(tissue,flow,motion,spec,spec.optimize);delete spec.optimize}const sp=renderSpectrum(tissue,flow,motion,spec);self.postMessage({type:'spectrum',id:m.id,spectrum:sp},[sp.data.buffer]);return}
-  if(m.type==='views'){const saved=tissue.edits.length;const views=buildViews(tissue.landmarks,fanObstruction(tissue,LABEL.LUNG,LABEL.BONE));self.postMessage({type:'views',id:m.id,views});return}
+  if(m.type==='views'){const views=buildViews(tissue.landmarks,fanObstruction(tissue,LABEL.LUNG,LABEL.BONE));self.postMessage({type:'views',id:m.id,views});return}
   if(m.type==='probe'){ // label under a point (for teaching: "what am I looking at?")
    const l=tissue.tissueAt(...m.point);self.postMessage({type:'probe',id:m.id,label:l});return;
   }
