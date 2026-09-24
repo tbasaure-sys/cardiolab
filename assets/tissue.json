@@ -1,0 +1,167 @@
+{
+ "format": 1,
+ "units": "metres",
+ "coordinateSystem": {
+  "x": "atlas left",
+  "y": "atlas posterior",
+  "z": "atlas superior"
+ },
+ "fine": {
+  "origin": [
+   -0.085,
+   -0.085,
+   -0.085
+  ],
+  "spacing": 0.001,
+  "dims": [
+   181,
+   176,
+   214
+  ],
+  "channels": [
+   "label",
+   "distanceToHeart_0.25mm"
+  ],
+  "file": "tissue-fine.bin.gz",
+  "sha256": "7c5c007038a19dc1265f6b4d73e6377a3760cdd6aad24f2eb41a080999c5a141",
+  "layout": "x fastest, then y, then z; 2 bytes per voxel"
+ },
+ "coarse": {
+  "origin": [
+   -0.175,
+   -0.12,
+   -0.23
+  ],
+  "spacing": 0.0025,
+  "dims": [
+   123,
+   117,
+   185
+  ],
+  "channels": [
+   "label"
+  ],
+  "file": "tissue-coarse.bin.gz",
+  "sha256": "060be559745b4aea742188b4ff0909271166168b8444472e2e9895006d9b087d",
+  "layout": "x fastest, then y, then z"
+ },
+ "labels": {
+  "AIR": 0,
+  "SOFT": 1,
+  "LUNG": 2,
+  "BONE": 3,
+  "LIVER": 4,
+  "FAT": 5,
+  "CARTILAGE": 6,
+  "LV_MYO": 10,
+  "RV_MYO": 11,
+  "LA_WALL": 12,
+  "RA_WALL": 13,
+  "PAPILLARY": 14,
+  "LV_BLOOD": 20,
+  "RV_BLOOD": 21,
+  "LA_BLOOD": 22,
+  "RA_BLOOD": 23,
+  "AO_BLOOD": 24,
+  "PA_BLOOD": 25,
+  "CAVA_BLOOD": 26,
+  "PV_BLOOD": 27,
+  "CORONARY": 28,
+  "CS_BLOOD": 29,
+  "VESSEL_WALL": 30,
+  "MITRAL": 40,
+  "TRICUSPID": 41,
+  "AORTIC_VALVE": 42,
+  "PULMONARY_VALVE": 43
+ },
+ "landmarks": {
+  "aorticValve": [
+   -0.00402,
+   -0.00168,
+   0.02455
+  ],
+  "pulmonaryValve": [
+   0.01387,
+   -0.01848,
+   0.02764
+  ],
+  "mitralValve": [
+   0.00122,
+   0.02237,
+   0.0059
+  ],
+  "tricuspidValve": [
+   -0.02398,
+   -0.01675,
+   -0.00077
+  ],
+  "lvApex": [
+   0.05882,
+   -0.02165,
+   -0.04071
+  ],
+  "lvApexCavity": [
+   0.046,
+   -0.023,
+   -0.04
+  ],
+  "rvApex": [
+   0.047,
+   -0.015,
+   -0.049
+  ],
+  "archTop": [
+   -0.01184,
+   0.02307,
+   0.10587
+  ],
+  "vsdPerimembranous": [
+   0.003,
+   -0.008,
+   0.019
+  ],
+  "vsdMuscular": [
+   0.023,
+   -0.006,
+   -0.019
+  ],
+  "asdSecundum": [
+   -0.032,
+   0.015,
+   0.009
+  ],
+  "asdPrimum": [
+   -0.019,
+   0.003,
+   0.009
+  ],
+  "ivcJunction": [
+   -0.03608,
+   0.00318,
+   -0.06958
+  ],
+  "ivcLow": [
+   -0.03208,
+   0.00918,
+   -0.13958
+  ],
+  "ductAortic": [
+   -0.02471,
+   0.06366,
+   0.07449
+  ],
+  "ductPulmonary": [
+   -0.00526,
+   0.05233,
+   0.05874
+  ],
+  "heartCenter": [
+   -0.00236,
+   0.00387,
+   0.00736
+  ]
+ },
+ "geometrySHA256": "17cc241fbf6a9ebe7f92a805dbd9e162ae33bae38638134f7695ec7e8de808ef",
+ "derivation": "Generalized winding number of atlas meshes (walls, vessels, papillary muscles, bones); cavities = enclosed space; valve leaflets = 0.9 mm around the source surfaces. Lungs, liver and diaphragm are procedural. Derived from Z-Anatomy / BodyParts3D (CC BY-SA).",
+ "license": "Z-Anatomy CC BY-SA 4.0; BodyParts3D CC BY-SA 2.1 Japan"
+}

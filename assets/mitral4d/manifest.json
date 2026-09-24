@@ -1,0 +1,248 @@
+{
+  "id": "slicerheart-mitral",
+  "name": "Mitral \u00b7 SlicerHeart",
+  "source": "https://github.com/SlicerHeart/SlicerHeart/releases/tag/TestingData",
+  "sourceFiles": {
+    "Mitral_US.seq.nrrd": "dfec24e4aa3820fc00a5303b80ea25a38784fc2ba3210a99c141a85136380042",
+    "Mitral_f06_Leaflets.seg.nrrd": "67d43571d9266e8b056e14f5bd4099e5fffdcaf871786720a9d45b601be12814"
+  },
+  "dimensions": [
+    224,
+    176,
+    208
+  ],
+  "spacingMM": [
+    0.8333192167136139,
+    1.0636169275042295,
+    0.7255769371986386
+  ],
+  "originRAS": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "space": "RAS",
+  "timesSeconds": [
+    0.0,
+    0.048,
+    0.096,
+    0.144,
+    0.191,
+    0.239,
+    0.287,
+    0.335,
+    0.383,
+    0.431,
+    0.478,
+    0.526,
+    0.574,
+    0.622,
+    0.67,
+    0.718,
+    0.765,
+    0.813,
+    0.861,
+    0.909,
+    0.957,
+    1.005,
+    1.052,
+    1.1,
+    1.148,
+    1.196,
+    1.244,
+    1.292,
+    1.339,
+    1.387,
+    1.435,
+    1.483,
+    1.531,
+    1.579,
+    1.626
+  ],
+  "frames": [
+    {
+      "file": "frame-00.bin.gz",
+      "sha256": "fa751c8dda99fb4f0ee23ad7c8fff526d52e43b157ff30102e613b46846f8235",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-01.bin.gz",
+      "sha256": "cb6e8e35b35fb5ceffe8a6a23c59e05eced8e703e07196d4cd3a5b13a8a02e66",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-02.bin.gz",
+      "sha256": "d761c7147776cc54047a421852a257340d3a43ef07aae156004ece65a6e27cdb",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-03.bin.gz",
+      "sha256": "253d361584d0d693218362acd1fedd46dcec92f4156c665b757dab8f9b0329cc",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-04.bin.gz",
+      "sha256": "3955bd765de822ff04d604c7bb61b65298b50d58ff527608c3641f54b78146f0",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-05.bin.gz",
+      "sha256": "492b9474e4b9d398195fc221211926ddaa03edbe5546250f1404fc7dc6e0013d",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-06.bin.gz",
+      "sha256": "193743d73e6d4af5a3b3a55decd03a4d66cc2763d9d50f5411ed5b1d6caebf3e",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-07.bin.gz",
+      "sha256": "9affa2f39ce782c3803bd2da2375b7444801bdd4a1a552030e57759aeb189b07",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-08.bin.gz",
+      "sha256": "e591e7e50cdc60ca5b3e20b337774262a1435d752b62ad546d784c57caf4a732",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-09.bin.gz",
+      "sha256": "ed062e253b1f02ff2230c299426a4f96fdaaffc13a33a59b1b5099c62a7c30f2",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-10.bin.gz",
+      "sha256": "0b15481bec16ee91fd2dab5b1538cddde0b6ab4d7557d4f24e7de14db7760058",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-11.bin.gz",
+      "sha256": "db7c1d10ebe0863da4790c0c81eac9677942f6c6cae8f30145fb9da70b91a2a1",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-12.bin.gz",
+      "sha256": "6499bf203672ec3033cde5a9959bd6ee90935dbc2607cf02dbba041433d1688d",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-13.bin.gz",
+      "sha256": "6fdefdc7cb0c69a498561aa8e6bb65dd4cca3fb5363da82a898f0a40416a1514",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-14.bin.gz",
+      "sha256": "6aca7f1e5d15558a860c6336a61a62c4207290c3df1807427151b55552fe7d86",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-15.bin.gz",
+      "sha256": "1b8a638ad58327d7e52b46b4933d9687e83501e915ea7f3333b0f3f922c4fad2",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-16.bin.gz",
+      "sha256": "5fec732f00bb9c41c7395775adbe01ab91d89d7a9ac9cc6c76a4b17d1cee1e21",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-17.bin.gz",
+      "sha256": "2736cf199ea7c2c82709ebf1d71fb72189edcbd16688ce8a2aad1aef5c528bfa",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-18.bin.gz",
+      "sha256": "5773b79f04d261f24f465ff7a55df728d0b2dc1d4cc5432adfe8889927b506e1",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-19.bin.gz",
+      "sha256": "9b16d3699cec79a49cde14390a9a9ad348a625e17a8aa92a79a77f0e09c2f9b1",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-20.bin.gz",
+      "sha256": "ccaa28a67aa65f1ecb797046b07de5031e8e66a93e378613c186be49b4c02205",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-21.bin.gz",
+      "sha256": "b8cd5c04f2da53e22e3d387ef7491ef9e852a56ec319562fc70f68bf9043c1b9",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-22.bin.gz",
+      "sha256": "0f6343b9fc881beb0aa685bfc84dd1c1295628d6539673ae65481dcfe1d9bd4a",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-23.bin.gz",
+      "sha256": "ae16ef2551f8d2f8465a323ad742367444f337ed5f1888c00c87f007c964dac5",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-24.bin.gz",
+      "sha256": "2835eafcd08d77f0fc580402d3efc4c534156a61cefaddc8623825badf26e2d6",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-25.bin.gz",
+      "sha256": "386b6f565150d51ec429222bf08716f770925fdbc22bbfed6486cccfdca5a73d",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-26.bin.gz",
+      "sha256": "48e4a1e37ba61f08c9b75f21d4fd5bda18e60ec91b8869b604cb0f2c93686fb5",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-27.bin.gz",
+      "sha256": "ddd0f75f74d4c965830f3b773c01daf0d064a8e9e70d8a032ffdb839de07e7c3",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-28.bin.gz",
+      "sha256": "98ccc81aaa133437894070a044dc25ca2636e7767e472157c747eb9d651d6e55",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-29.bin.gz",
+      "sha256": "79694542d205f5c6340537f3b30f5a95a523d6ce2272ccd3037ee4697963d259",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-30.bin.gz",
+      "sha256": "4bcd6fa81b5ef4022c8c9da73083c8f2b2519c879649442096ed74b6692460b4",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-31.bin.gz",
+      "sha256": "66bf1adfea1d6d9efb36933f693627db2bed9c4e8112e7c0bf3a15299143757f",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-32.bin.gz",
+      "sha256": "42dad954bb3e622317a48c63a89e1bc5449fe4a1966321d1b57fd789bbe8d1b1",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-33.bin.gz",
+      "sha256": "e286efeccf54c8fb74ab96a526681dd0225728b94e479f3ecb58cea477563d18",
+      "bytes": 8200192
+    },
+    {
+      "file": "frame-34.bin.gz",
+      "sha256": "da771fc64e2652b4beadbb8fd9d28de8f4e40cddaf517cda44773b9622ab1e9a",
+      "bytes": 8200192
+    }
+  ],
+  "leaflets": "leaflets.json",
+  "leafletFrameIndex": 6,
+  "targetRAS": [
+    103.37061164077681,
+    89.20493406831086,
+    94.47445449071834
+  ],
+  "processing": "Lossless uint8 frames transposed from NRRD time-fastest to x-fastest. No resampling or generated anatomy.",
+  "scope": "Acquired echo volume; arbitrary reslicing is not a new acoustic acquisition. No registration to torso or previous atlas. Sample annotations are in progress and only supplied at f06."
+}
