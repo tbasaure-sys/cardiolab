@@ -51,7 +51,7 @@ node --test tests/*.test.mjs
 | `coach.mjs`, `tutor.mjs`, `course-data.mjs` | Entrenador de vistas y curso guiado |
 | `drills.mjs` | Preguntas de lectura de imagen con repaso espaciado |
 | `patient.mjs`, `zscores.mjs` | Tamaño del paciente y puntuaciones Z (PHN) |
-| `probe-motion.mjs`, `phone-probe.mjs`, `sonda.*` | Teléfono como sonda: orientación → maniobras, emparejamiento y página del teléfono |
+| `probe-motion.mjs`, `phone-probe.mjs`, `relay.mjs`, `sonda.*` | Teléfono como sonda: orientación → maniobras, emparejamiento y página del teléfono |
 | `chd-data.mjs`, `chd-panel.mjs` | Cardiopatías |
 | `beam-map.mjs`, `instrument.mjs`, `cabina.mjs` | Mapa del haz, consola y diseño cabina |
 | `echo4d.*`, `volume-*.mjs` | Página del volumen 4D |
@@ -65,7 +65,7 @@ Los volúmenes `assets/tissue-*` se generaron a partir de las mallas del atlas c
 - El corazón es un atlas **adulto** (BodyParts3D) escalado de forma uniforme al tamaño del paciente elegido: no reproduce las proporciones ni la orientación propias del lactante.
 - Las puntuaciones Z solo incluyen por ahora los coeficientes PHN verificados (anillo mitral).
 - No hay insuficiencias ni estenosis valvulares ni modo M.
-- El teléfono solo aporta la orientación (no su posición sobre el tórax) y el emparejamiento usa el servidor público de PeerJS.
+- El teléfono solo aporta la orientación (no su posición sobre el tórax). La conexión directa (WebRTC, emparejada por el servidor público de PeerJS) falla en muchas redes de hospital o universidad; entonces los mensajes pasan por brókers MQTT públicos (HiveMQ, EMQX) por WebSocket seguro. Con `?relay=wss://tu-broker/mqtt` en la URL se usa un bróker propio.
 - El latido, las velocidades y las lesiones son esquemáticos: sirven para aprender orientación y conceptos, no para medir.
 
 ## Licencias
