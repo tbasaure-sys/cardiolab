@@ -12,7 +12,8 @@ Simulador docente de ecocardiografía transtorácica que funciona en el navegado
 - **Imagen eco simulada** trazada rayo a rayo sobre un volumen de tejidos: atenuación dependiente de la frecuencia, reflexión especular, speckle ligado a la anatomía, sombra de costillas y pulmón, latido esquemático y válvulas móviles.
 - **Doppler color, PW y CW** sobre un campo de flujo docente, con límite de Nyquist, aliasing y Bernoulli simplificada.
 - **Tamaño del paciente**: de recién nacido a adolescente (y adulto). La anatomía se escala con √(superficie corporal); la acústica sigue siendo física, así que cambian la profundidad y la frecuencia adecuadas. Frecuencia cardíaca típica por edad.
-- **Consola** con ganancia, TGC, profundidad, sector, frecuencia, zoom, contraste, cáliper y grabación; atajos de teclado.
+- **Consola** con ganancia, TGC, profundidad, sector, frecuencia, foco, rango dinámico, armónico (THI), persistencia, zoom, contraste, cáliper y grabación; atajos de teclado. La pantalla imita un equipo: sonda y preset, frecuencia de cuadros calculada, regla de profundidad con el foco, cine al congelar. Cada maniobra se anuncia sobre la imagen con las mismas palabras que las pistas.
+- **Tu teléfono como sonda**: empareja un teléfono por QR (WebRTC) y gíralo, inclínalo y bascúlalo como un transductor sobre un muñeco o una almohada; el deslizamiento se hace con un panel táctil. En un teléfono o tableta, el propio dispositivo puede ser la sonda.
 - **Entrenador de vistas**: 11 vistas estándar calculadas a partir de la anatomía. *Practicar* con el corazón visible, medidor y pistas; *Ponerme a prueba* con el corazón oculto, guiándose solo por la imagen, y evaluación al terminar.
 - **Leer la imagen**: preguntas generadas por el simulador (vista, estructura, maniobra, ajuste) respondidas solo con la imagen eco, con repaso espaciado de los fallos.
 - **Cardiopatías**: CIA, CIV, canal AV, ductus, coartación, derrame e hipertrofias editadas en el volumen acústico; modo de caso incógnito.
@@ -50,11 +51,12 @@ node --test tests/*.test.mjs
 | `coach.mjs`, `tutor.mjs`, `course-data.mjs` | Entrenador de vistas y curso guiado |
 | `drills.mjs` | Preguntas de lectura de imagen con repaso espaciado |
 | `patient.mjs`, `zscores.mjs` | Tamaño del paciente y puntuaciones Z (PHN) |
+| `probe-motion.mjs`, `phone-probe.mjs`, `sonda.*` | Teléfono como sonda: orientación → maniobras, emparejamiento y página del teléfono |
 | `chd-data.mjs`, `chd-panel.mjs` | Cardiopatías |
 | `beam-map.mjs`, `instrument.mjs`, `cabina.mjs` | Mapa del haz, consola y diseño cabina |
 | `echo4d.*`, `volume-*.mjs` | Página del volumen 4D |
 | `assets/` | Atlas, volúmenes de tejido y volumen mitral 4D |
-| `node_modules/three/` | Copia de three.js (MIT) usada directamente por el navegador |
+| `node_modules/` | Copias de three.js, PeerJS y qrcode-generator (MIT) usadas directamente por el navegador |
 
 Los volúmenes `assets/tissue-*` se generaron a partir de las mallas del atlas con un script que no forma parte de este repositorio.
 
@@ -63,11 +65,12 @@ Los volúmenes `assets/tissue-*` se generaron a partir de las mallas del atlas c
 - El corazón es un atlas **adulto** (BodyParts3D) escalado de forma uniforme al tamaño del paciente elegido: no reproduce las proporciones ni la orientación propias del lactante.
 - Las puntuaciones Z solo incluyen por ahora los coeficientes PHN verificados (anillo mitral).
 - No hay insuficiencias ni estenosis valvulares ni modo M.
+- El teléfono solo aporta la orientación (no su posición sobre el tórax) y el emparejamiento usa el servidor público de PeerJS.
 - El latido, las velocidades y las lesiones son esquemáticos: sirven para aprender orientación y conceptos, no para medir.
 
 ## Licencias
 
 - Anatomía y volúmenes derivados: Z-Anatomy (CC BY-SA 4.0), derivado de BodyParts3D / DBCLS (CC BY-SA 2.1 Japan). Ver `assets/LICENSE-anatomy.txt` y `LICENCIAS.txt`.
-- three.js: MIT (`node_modules/three/LICENSE`).
+- three.js: MIT (`node_modules/three/LICENSE`). PeerJS: MIT (`node_modules/peerjs/LICENSE`). qrcode-generator: MIT (`node_modules/qrcode-generator/LICENSE`).
 - Volumen mitral 4D: datos de prueba públicos de [SlicerHeart](https://github.com/SlicerHeart/SlicerHeart/releases/tag/TestingData).
 - Código de CardioLab: [MIT](LICENSE). La licencia MIT cubre el código; los archivos de `assets/` conservan sus propias licencias.

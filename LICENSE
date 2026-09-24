@@ -24,4 +24,5 @@ SOFTWARE.
 This license covers the CardioLab source code (the .mjs, .html and .css files
 and tests). It does not cover the files in assets/, which keep their own
 licences (see LICENCIAS.txt and assets/LICENSE-anatomy.txt), nor the bundled
-three.js copy in node_modules/three (MIT, see its own LICENSE).
+third-party libraries in node_modules/ (three.js, PeerJS, qrcode-generator; each MIT,
+see their own licence files).

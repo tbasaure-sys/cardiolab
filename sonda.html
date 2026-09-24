@@ -1,0 +1,19 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>CardioLab · Sonda</title><link rel="icon" href="data:,"><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="sonda.css"></head>
+<body class="sonda"><header><div class="brand">CARDIO<span>LAB</span><span class="divider">/</span><small>SONDA</small></div></header>
+<main>
+<section id="pair"><h1>Tu teléfono es la sonda</h1><p>En el ordenador, abre CardioLab y pulsa <b>Sonda: teléfono</b>. Escanea el código QR o escribe aquí el código de 6 letras.</p>
+ <label class="code-field">Código <input id="code" maxlength="6" autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="text"></label>
+ <button id="connect" class="primary big">Conectar</button><p id="status" class="status-line" role="status"></p>
+ <p class="micro">Solo se envía la orientación del teléfono y los toques del panel, directamente al ordenador (WebRTC). El servidor público de PeerJS solo presenta ambos dispositivos.</p></section>
+<section id="probe" hidden>
+ <p id="info" class="info" aria-live="polite">Conectado</p>
+ <p class="howto">Sujeta el teléfono como una sonda: <b>pantalla hacia ti</b>, <b>borde inferior</b> apoyado en el tórax (o en un muñeco) y el <b>borde derecho</b> como marcador <span class="dot"></span>. Colócalo en la ventana y pulsa Calibrar.</p>
+ <button id="calibrate" class="primary big">Calibrar en esta posición</button>
+ <div class="windows" role="group" aria-label="Ventana">
+  <button data-win="plax">PLAX</button><button data-win="psax">PSAX</button><button data-win="apical">Apical</button><button data-win="subcostal">Subcostal</button><button data-win="ssn">Supraesternal</button></div>
+ <div id="pad" class="pad" aria-label="Panel para deslizar la sonda"><span>Arrastra para deslizar la sonda<br><small>↑ cabeza · ↓ pies · → izquierda del paciente</small></span></div>
+ <div class="row"><button id="freeze">Congelar</button><button id="disconnect">Desconectar</button></div>
+ <p id="angles" class="micro"></p>
+</section>
+</main><span class="marker-edge" aria-hidden="true"></span>
+<script src="node_modules/peerjs/dist/peerjs.min.js"></script><script type="module" src="sonda.mjs"></script></body></html>
