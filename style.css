@@ -18,3 +18,7 @@
 #video-controls{padding:0 12px 6px;background:#101b22}#video-controls[hidden]{display:none}#echo-clip{width:100%;font-size:11px;padding:4px}.echo-transport{display:flex;gap:5px;margin-top:5px}.echo-transport button,.echo-transport select{font-size:10px;padding:4px 7px}.echo-transport #echo-play{margin-right:auto}.echo-timeline{display:flex;align-items:center;gap:8px;margin-top:4px}.echo-timeline input{flex:1;min-width:20px;accent-color:var(--accent)}#echo-time{font:9px Consolas;white-space:nowrap;color:var(--muted)}.scan:has(#video-controls:not([hidden])){min-height:400px}.workspace:has(#video-controls:not([hidden])){min-height:440px}.trackball[aria-disabled=true]{opacity:.4;cursor:default}
 
 .volume-entry{font-size:11px;text-decoration:none;border:1px solid #458e83;border-radius:4px;padding:6px 9px;color:#bafcef;white-space:nowrap}.display-setting{flex-wrap:wrap}
+.patient-info{font-size:11px;color:var(--muted);margin-right:10px}
+.measure-kind{display:flex;align-items:center;gap:6px;margin:4px 0}
+.measure-kind select{font-size:11px;max-width:150px}
+.display-setting .patient-info{margin-left:0;font-size:11px}

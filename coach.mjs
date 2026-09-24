@@ -2,7 +2,7 @@
 // Two modes: practice (heart visible, live meter, hints) and test (only the echo image; graded when the student
 // submits, then the heart and the ideal plane are revealed).
 import {VIEW_INFO,planeAgreement,suggestManeuver,solveState,markerClock} from './views.mjs';
-import {poseFromState,defaultState} from './geometry.mjs';
+import {poseFromState,defaultState,physical,BODY} from './geometry.mjs';
 import {scanConvert} from './bmode.mjs';
 
 const KEY='cardiolab.echo.coach.v1';
@@ -50,7 +50,7 @@ export function mountCoach(api){
   $('coach-hint-text').textContent='';$('coach-ghost-fig').hidden=true;ghostFor=null;$('coach-result').hidden=true;$('coach-test').hidden=!exam;
   // start from the window preset with a random perturbation: the student must correct it
   const base=defaultState(PRESET_OF[info.window]||'plax'),rnd=(a)=>(Math.random()*2-1)*a;
-  const same=['plax','a4c','sc4c','ssn','psaxPM'].includes(id);api.apply({...base,rotation:Math.round(rnd(same?38:22)),tilt:Math.round(rnd(same?16:10)),rock:Math.round(rnd(12)),x:base.x+rnd(.01),z:base.z+rnd(.01),depth:current.target.depth,mode:'echo'},{animate:false});
+  const same=['plax','a4c','sc4c','ssn','psaxPM'].includes(id);api.apply({...base,rotation:Math.round(rnd(same?38:22)),tilt:Math.round(rnd(same?16:10)),rock:Math.round(rnd(12)),x:base.x+rnd(.01),z:base.z+rnd(.01),depth:physical(current.target.depth),mode:'echo'},{animate:false});
   api.imageOnly?.(exam);api.setTarget(exam?null:current.target);clearInterval(timer);timer=setInterval(tick,250);evaluate();
   $('coach-start').textContent='Reiniciar reto';
  }
@@ -59,8 +59,8 @@ export function mountCoach(api){
  function showMeter(a,pose){
   $('coach-score').textContent=a.score;const arc=$('coach-arc'),L=2*Math.PI*50;arc.style.strokeDasharray=`${L*a.score/100} ${L}`;
   const tone=a.score>=85?'good':a.score>=60?'near':a.score>=30?'mid':'far';host.querySelector('.coach-meter').dataset.tone=tone;
-  $('coach-angle').textContent=`${a.angle.toFixed(0)}°`;$('coach-offset').textContent=`${a.offset.toFixed(0)} mm`;$('coach-marker').textContent=a.flipped?'invertido':`${Math.round(markerClock(pose.u))||12} h`;
-  $('coach-landmarks').innerHTML=a.visible.map(v=>`<li class="${v.ok?'ok':''}">${v.ok?'✓':'○'} ${esc(v.name)}${v.ok?'':v.inSector?` <small>${v.off.toFixed(0)} mm fuera del plano</small>`:' <small>fuera del sector</small>'}</li>`).join('');
+  $('coach-angle').textContent=`${a.angle.toFixed(0)}°`;$('coach-offset').textContent=`${(a.offset*BODY.k).toFixed(0)} mm`;$('coach-marker').textContent=a.flipped?'invertido':`${Math.round(markerClock(pose.u))||12} h`;
+  $('coach-landmarks').innerHTML=a.visible.map(v=>`<li class="${v.ok?'ok':''}">${v.ok?'✓':'○'} ${esc(v.name)}${v.ok?'':v.inSector?` <small>${(v.off*BODY.k).toFixed(0)} mm fuera del plano</small>`:' <small>fuera del sector</small>'}</li>`).join('');
  }
  function evaluate(){
   if(!current)return;const s=api.state(),pose=poseFromState(s),a=planeAgreement(pose,current.target);lastEval=a;
@@ -85,7 +85,7 @@ export function mountCoach(api){
   api.imageOnly?.(false);api.setTarget(current.target);card.classList.remove('testing');$('coach-test').hidden=true;showMeter(a,pose);
   const ok=a.score>=85,near=a.score>=60;host.querySelector('.coach-meter').dataset.tone=ok?'done':near?'near':'far';
   $('coach-verdict').textContent=ok?`¡Vista lograda sin ver el corazón! ${fmt(t)}`:near?`Cerca · ${fmt(t)}`:`Todavía lejos · ${fmt(t)}`;
-  const issues=[];if(a.flipped)issues.push('El marcador apunta al lado contrario: la imagen sale en espejo.');if(a.angle>=12)issues.push(`El plano está girado ${a.angle.toFixed(0)}° respecto del ideal: corrige rotación o inclinación.`);if(a.offset>=8)issues.push(`El plano pasa a ${a.offset.toFixed(0)} mm del centro de la vista: desliza o inclina hacia él.`);
+  const issues=[];if(a.flipped)issues.push('El marcador apunta al lado contrario: la imagen sale en espejo.');if(a.angle>=12)issues.push(`El plano está girado ${a.angle.toFixed(0)}° respecto del ideal: corrige rotación o inclinación.`);if(a.offset>=8)issues.push(`El plano pasa a ${(a.offset*BODY.k).toFixed(0)} mm del centro de la vista: desliza o inclina hacia él.`);
   const missing=a.visible.filter(v=>!v.ok).map(v=>v.name);if(missing.length)issues.push(`No quedaron en el corte: ${missing.join(', ')}.`);
   $('coach-result').hidden=false;$('coach-result').innerHTML=`<p>${ok?'Reconociste la vista con la imagen sola.':'Compara ahora tu plano (verde) con el ideal (naranja discontinuo) en el corazón.'}</p>${issues.length?`<ul>${issues.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}<div class="coach-next-row"><button id="coach-retry" class="primary">Reintentar</button><button id="coach-show">Ver la solución</button><button id="coach-next2">Siguiente vista →</button></div>`;
   $('coach-retry').onclick=start;$('coach-next2').onclick=next;$('coach-show').onclick=()=>{api.apply({...solveState(current.target,s.preset,s).state,mode:'echo'},{animate:true})};

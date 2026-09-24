@@ -2,7 +2,7 @@
 // Four kinds: which view is it, which structure is under the cross, which maneuver fixes the image, which
 // setting improves it. Mistakes come back sooner (Leitner boxes kept in this browser).
 import {VIEW_INFO,solveState,describeManeuver} from './views.mjs';
-import {poseFromState,toWorld} from './geometry.mjs';
+import {poseFromState,toWorld,physical} from './geometry.mjs';
 import {scanConvert} from './bmode.mjs';
 import {LABEL,LABEL_NAMES} from './tissue.mjs';
 
@@ -17,7 +17,7 @@ export const STRUCTURES=[LABEL.LV_BLOOD,LABEL.RV_BLOOD,LABEL.LA_BLOOD,LABEL.RA_B
 export const KNOBS=[
  {id:'gainLow',fix:'Sube la ganancia',params:{gain:.42},why:'Toda la imagen está oscura por igual, cerca y lejos: falta amplificación global.'},
  {id:'gainHigh',fix:'Baja la ganancia',params:{gain:2.3},why:'Las cavidades se llenan de ecos y los bordes pierden contraste en toda la imagen: sobra amplificación global.'},
- {id:'deep',fix:'Reduce la profundidad',depth:d=>Math.min(.24,d+.07),why:'El corazón queda pequeño en la parte alta del sector y sobra campo vacío: menos profundidad lo agranda y mejora la resolución temporal.'},
+ {id:'deep',fix:'Reduce la profundidad',depth:d=>Math.min(.24,d*1.6),why:'El corazón queda pequeño en la parte alta del sector y sobra campo vacío: menos profundidad lo agranda y mejora la resolución temporal.'},
  {id:'shallow',fix:'Aumenta la profundidad',depth:d=>d*.55,why:'El sector corta las estructuras profundas: falta campo.'},
  {id:'farDark',fix:'Sube el TGC de las bandas lejanas',params:{tgc:[50,50,50,50,24,14,8,6]},why:'Solo el campo lejano está oscuro: se compensa por profundidad (TGC), no con la ganancia global, que saturaría el campo cercano.'},
  {id:'nearBright',fix:'Baja el TGC de las bandas cercanas',params:{tgc:[94,88,76,50,50,50,50,50]},why:'Solo el campo cercano está saturado: se corrige por profundidad (TGC); bajar la ganancia global oscurecería el resto.'}
@@ -70,7 +70,8 @@ export function mountDrills(api){
   const weak=Object.entries(stats.items).filter(([,it])=>it.box===0&&it.seen>it.correct).sort((a,b)=>b[1].last-a[1].last).slice(0,5);
   $('drill-weak').innerHTML=weak.length?weak.map(([k])=>`<li>${esc(itemName(k))}</li>`).join(''):'<li class="empty">Nada pendiente.</li>';
  }
- function idealState(id){if(!ideal.has(id)){const t=api.views[id],sol=solveState(t,PRESET_OF[VIEW_INFO[id].window]);ideal.set(id,{...sol.state,depth:t.depth,sector:80,mode:'echo'})}return {...ideal.get(id)}}
+ // ideal control state per view (cached without depth: depth is physical and follows the current patient)
+ function idealState(id){const t=api.views[id];if(!ideal.has(id)){const sol=solveState(t,PRESET_OF[VIEW_INFO[id].window]);ideal.set(id,{...sol.state,sector:80,mode:'echo'})}return {...ideal.get(id),depth:physical(t.depth)}}
  const jitter=(s,k=1)=>({...s,rotation:s.rotation+sign()*Math.random()*6*k,tilt:s.tilt+sign()*Math.random()*4*k,rock:s.rock+sign()*Math.random()*4*k});
  const standard={gain:1,tgc:Array(8).fill(50),freq:4,beating:false,lines:176};
  function render(frame,canvas,pose,ySign,cross){

@@ -1,6 +1,6 @@
 // Standard pediatric TTE views defined from atlas landmarks (not from hand-placed poses),
 // plus plane-agreement scoring and maneuver hints for the acquisition coach.
-import {surface,poseFromState,defaultState,PRESETS,CHEST_X,CHEST_Y} from './geometry.mjs';
+import {surface,poseFromState,defaultState,PRESETS,CHEST_X,CHEST_Y,BODY} from './geometry.mjs';
 
 const add=(a,b)=>a.map((v,i)=>v+b[i]),sub=(a,b)=>a.map((v,i)=>v-b[i]),mul=(a,k)=>a.map(v=>v*k);
 const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],norm=a=>Math.hypot(...a),unit=a=>mul(a,1/(norm(a)||1));
@@ -148,7 +148,7 @@ function beamDirectionWords(delta){
  axes.sort((a,b)=>b[0]-a[0]);return axes[0][1];
 }
 // One maneuver in clinical language (slide / rotate / tilt / rock): `state` changing `key` by `delta`.
-export function describeManeuver(state,key,delta){const next={...state,[key]:state[key]+delta},p0=poseFromState(state),p1=poseFromState(next);const a=Math.abs(delta);const amt=key==='x'||key==='z'?`${Math.max(3,Math.round(a*1000))} mm`:`${Math.round(a)}°`;
+export function describeManeuver(state,key,delta){const next={...state,[key]:state[key]+delta},p0=poseFromState(state),p1=poseFromState(next);const a=Math.abs(delta);const amt=key==='x'||key==='z'?`${Math.max(2,Math.round(a*1000*BODY.k))} mm`:`${Math.round(a)}°`;
   if(key==='x')return `desliza la sonda ${WORDS.x[delta>0?1:0]} (~${amt})`;
   if(key==='z'){const n=Math.round(a/.018);return `desliza la sonda ${WORDS.z[delta>0?1:0]} (~${amt}${n>=1?`, ${n===1?'un espacio intercostal':`unos ${n} espacios intercostales`}`:''})`}
   if(key==='rotation')return `rota la sonda en sentido ${delta>0?'horario':'antihorario'} (~${amt})`;

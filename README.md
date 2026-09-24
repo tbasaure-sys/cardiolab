@@ -11,6 +11,7 @@ Simulador docente de ecocardiografía transtorácica que funciona en el navegado
 - **Tres vistas sincronizadas**: la sonda sobre el tórax, el plano de corte en el corazón 3D (con mapa del haz) y la imagen eco del mismo plano.
 - **Imagen eco simulada** trazada rayo a rayo sobre un volumen de tejidos: atenuación dependiente de la frecuencia, reflexión especular, speckle ligado a la anatomía, sombra de costillas y pulmón, latido esquemático y válvulas móviles.
 - **Doppler color, PW y CW** sobre un campo de flujo docente, con límite de Nyquist, aliasing y Bernoulli simplificada.
+- **Tamaño del paciente**: de recién nacido a adolescente (y adulto). La anatomía se escala con √(superficie corporal); la acústica sigue siendo física, así que cambian la profundidad y la frecuencia adecuadas. Frecuencia cardíaca típica por edad.
 - **Consola** con ganancia, TGC, profundidad, sector, frecuencia, zoom, contraste, cáliper y grabación; atajos de teclado.
 - **Entrenador de vistas**: 11 vistas estándar calculadas a partir de la anatomía. *Practicar* con el corazón visible, medidor y pistas; *Ponerme a prueba* con el corazón oculto, guiándose solo por la imagen, y evaluación al terminar.
 - **Leer la imagen**: preguntas generadas por el simulador (vista, estructura, maniobra, ajuste) respondidas solo con la imagen eco, con repaso espaciado de los fallos.
@@ -48,6 +49,7 @@ node --test tests/*.test.mjs
 | `views.mjs` | Vistas estándar, puntuación y pistas de maniobra |
 | `coach.mjs`, `tutor.mjs`, `course-data.mjs` | Entrenador de vistas y curso guiado |
 | `drills.mjs` | Preguntas de lectura de imagen con repaso espaciado |
+| `patient.mjs`, `zscores.mjs` | Tamaño del paciente y puntuaciones Z (PHN) |
 | `chd-data.mjs`, `chd-panel.mjs` | Cardiopatías |
 | `beam-map.mjs`, `instrument.mjs`, `cabina.mjs` | Mapa del haz, consola y diseño cabina |
 | `echo4d.*`, `volume-*.mjs` | Página del volumen 4D |
@@ -58,8 +60,9 @@ Los volúmenes `assets/tissue-*` se generaron a partir de las mallas del atlas c
 
 ## Limitaciones conocidas
 
-- El corazón y el tórax son **adultos** (atlas BodyParts3D); la frecuencia cardíaca es fija.
-- No hay insuficiencias ni estenosis valvulares, modo M ni puntuaciones Z.
+- El corazón es un atlas **adulto** (BodyParts3D) escalado de forma uniforme al tamaño del paciente elegido: no reproduce las proporciones ni la orientación propias del lactante.
+- Las puntuaciones Z solo incluyen por ahora los coeficientes PHN verificados (anillo mitral).
+- No hay insuficiencias ni estenosis valvulares ni modo M.
 - El latido, las velocidades y las lesiones son esquemáticos: sirven para aprender orientación y conceptos, no para medir.
 
 ## Licencias

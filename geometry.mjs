@@ -7,6 +7,12 @@ export const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1
 export const norm=a=>Math.sqrt(dot(a,a));
 export const unit=a=>{const l=norm(a);if(l<1e-10)throw Error('Eje degenerado');return mul(a,1/l)};
 export const rad=d=>d*Math.PI/180;
+// Patient size. The atlas is an adult; a smaller patient is the same anatomy scaled by k (linear factor).
+// Anatomy, poses and the 3D views stay in atlas units; the probe controls (depth) and the acoustics are physical:
+// physical length = k × atlas length.
+export const BODY={k:1};
+export function setBodyScale(k){BODY.k=Math.max(.2,Math.min(1.2,k))}
+export const physical=atlasLength=>atlasLength*BODY.k;
 export const rotate=(v,axis,angle)=>add(add(mul(v,Math.cos(angle)),mul(cross(axis,v),Math.sin(angle))),mul(axis,dot(axis,v)*(1-Math.cos(angle))));
 function profile(z,points){for(let i=1;i<points.length;i++)if(z<=points[i][0]){const [a,va]=points[i-1],[b,vb]=points[i],t=Math.max(0,(z-a)/(b-a)),smooth=t*t*(3-2*t);return va+(vb-va)*smooth}return points.at(-1)[1]}
 export function chestRadius(z){return profile(z,[[-.205,.134],[-.12,.153],[.035,.185],[.15,.205],[.235,.072],[.285,.055]])}
@@ -37,7 +43,7 @@ const RAW_PRESETS={
 export const PRESETS=Object.fromEntries(Object.entries(RAW_PRESETS).map(([k,p])=>[k,{...p,target:heartPoint(p.target),up:heartDir(p.up)}]));
 // Suprasternal notch (defined directly in placed coordinates): beam down and back toward the aortic arch.
 PRESETS.ssn={name:'Supraesternal · arco aórtico',x:CHEST_X,z:.13,target:[-.012,.024,.094],up:[.35,0,.94],goal:'Buscar el arco aórtico, los vasos del cuello y la aorta descendente.'};
-export function defaultState(preset='plax') {const p=PRESETS[preset];return {preset,x:p.x,z:p.z,tilt:0,rock:0,rotation:0,depth:{apical:.17,subcostal:.19,ssn:.16,plax:.15,psax:.14}[preset]??.16,sector:90,gain:1,mode:'anatomy'}}
+export function defaultState(preset='plax') {const p=PRESETS[preset];return {preset,x:p.x,z:p.z,tilt:0,rock:0,rotation:0,depth:physical({apical:.17,subcostal:.19,ssn:.16,plax:.15,psax:.14}[preset]??.16),sector:90,gain:1,mode:'anatomy'}}
 export function poseFromState(s){
   const p=PRESETS[s.preset],base=surface(p.x,p.z),origin=surface(s.x,s.z);
   let d=unit(sub(p.target,base)),u=unit(sub(p.up,mul(d,dot(p.up,d))));
@@ -46,7 +52,7 @@ export function poseFromState(s){
   d=rotate(d,u,rad(s.tilt));n=unit(cross(u,d));
   d=rotate(d,n,rad(s.rock));u=rotate(u,n,rad(s.rock));
   u=rotate(u,d,rad(s.rotation));u=unit(u);d=unit(d);n=unit(cross(u,d));
-  return {origin,u,d,n,depth:s.depth,sector:s.sector};
+  return {origin,u,d,n,depth:s.depth/BODY.k,sector:s.sector}; // depth in atlas units (s.depth is physical)
 }
 export function toWorld(p,x,y){return add(p.origin,add(mul(p.u,x),mul(p.d,y)))}
 export function toPlane(p,v){const q=sub(v,p.origin);return [dot(q,p.u),dot(q,p.d),dot(q,p.n)]}

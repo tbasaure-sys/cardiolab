@@ -11,7 +11,7 @@ const q=(prompt,options,answer,explanation)=>({prompt,options,answer,explanation
 export const LESSONS=[
  {id:'prepare',title:'Antes de apoyar la sonda',group:'Preparación',page:5,section:'General principles · p. 123',preset:'plax',
   intro:'Primero formula qué necesitas conocer del corazón. Después decide cómo obtener imágenes que permitan responderlo.',
-  points:['En la práctica clínica: confirmar identidad e indicación, explicar el examen y atender comodidad, posición y estabilidad.','Aquí trabajarás con un corazón adulto de referencia y una imagen eco simulada. Practicas orientación y conceptos; no examinas a un niño ni acreditas competencia clínica.'],
+  points:['En la práctica clínica: confirmar identidad e indicación, explicar el examen y atender comodidad, posición y estabilidad.','Aquí trabajarás con un corazón de referencia escalado al tamaño del paciente que elijas y una imagen eco simulada. Practicas orientación y conceptos; no examinas a un niño ni acreditas competencia clínica.'],
   task:'Observa las tres vistas. El contacto está a la izquierda, el plano anatómico en el centro y su sección a la derecha.',
   quiz:q('¿Qué acredita terminar este recorrido?',['Que puedes excluir una cardiopatía','Que has practicado sus actividades docentes','Que la ventana obtenida es diagnóstica'],1,'El progreso registra aprendizaje dentro de la aplicación. La adquisición e interpretación clínicas se aprenden y evalúan con supervisión.')},
  {id:'orientation',title:'Sonda, plano e imagen',group:'Primeros movimientos',page:6,section:'Orientación de imagen · p. 124',preset:'apical',rule:'orientation',
@@ -66,7 +66,7 @@ export const LESSONS=[
   quiz:q('Con un ángulo de 60° y velocidad ilustrativa de 1 m/s, la proyección es…',['2 m/s','1 m/s','0,5 m/s'],2,'cos(60°) = 0,5. Una mala alineación puede subestimar la magnitud de la velocidad. No es una medición ni una corrección clínica.')},
  {id:'measure',title:'Antes de colocar un cáliper',group:'Más allá del corte',page:9,section:'Z scores · pp. 127–128',preset:'apical',
   intro:'Una cifra necesita una definición: estructura, plano, fase cardíaca, bordes y unidades.',
-  points:['Una medición pediátrica se interpreta con referencias apropiadas; al comparar Z scores en el tiempo se debe conservar el modelo de referencia.','El ECG de la imagen marca la fase: la telediástole coincide con el QRS. El latido del simulador es esquemático y no tiene superficie corporal: no sirve para calcular FE ni Z scores.'],
+  points:['Una medición pediátrica se interpreta con referencias apropiadas; al comparar Z scores en el tiempo se debe conservar el modelo de referencia.','El ECG de la imagen marca la fase: la telediástole coincide con el QRS. El latido del simulador es esquemático: no sirve para calcular FE. El cáliper puede dar una puntuación Z para la superficie corporal del paciente elegido, pero sobre una anatomía de referencia escalada, no sobre un niño real.'],
   task:'Congela la imagen justo en el QRS del ECG y compara con un cuadro en sístole. Explica por qué la fase importa antes de medir.',
   quiz:q('¿Podemos calcular una fracción de eyección válida en este simulador?',['No: el movimiento es esquemático, no medido en un paciente','Sí, con una captura','Sí, aumentando la ganancia'],0,'El latido es un modelo docente. Una cifra calculada aquí daría una precisión que los datos no sostienen.')},
  {id:'artifacts',title:'No confundir ausencia y defecto',group:'Integración',page:7,section:'Septos y orientación · p. 125',preset:'subcostal',

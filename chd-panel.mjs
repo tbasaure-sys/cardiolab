@@ -1,6 +1,7 @@
 // Congenital heart disease mode: explore a lesion with guided views, or scan a blinded case and commit a diagnosis.
 import {VARIANTS,VARIANT_BY_ID} from './chd-data.mjs';
 import {VIEW_INFO,solveState} from './views.mjs';
+import {physical} from './geometry.mjs';
 
 const KEY='cardiolab.echo.cases.v1';
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -29,7 +30,7 @@ export function mountCHD(api){
  async function settle(){while(busy)await busy}
  async function go(viewId){const target=api.views[viewId];if(!target)return;api.status('Llevando la sonda a '+VIEW_INFO[viewId].short+'…');await new Promise(r=>setTimeout(r,20));
   const s=api.state(),preset={plax:'plax',psax:'psax',apical:'apical',subcostal:'subcostal',ssn:'ssn'}[VIEW_INFO[viewId].window];
-  const sol=solveState(target,preset);api.apply({...sol.state,depth:target.depth,mode:'echo'},{animate:true});}
+  const sol=solveState(target,preset);api.apply({...sol.state,depth:physical(target.depth),mode:'echo'},{animate:true});}
  async function load(v,{reveal=true,scale=1}={}){
   // a request made while another variant is loading is kept (the latest wins), never dropped
   if(busy){queued=[v,{reveal,scale}];return busy}

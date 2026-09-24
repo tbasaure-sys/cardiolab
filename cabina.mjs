@@ -6,7 +6,7 @@ const $=id=>document.getElementById(id);
 
 export const SHORTCUTS=[
  ['Sonda',[['← →','Desplazar lateral'],['↑ ↓','Desplazar vertical'],['Q / E','Rotar (antihorario / horario)'],['W / S','Inclinar · tilt'],['A / D','Bascular · rock'],['Mayús + tecla','Paso fino'],['R','Restablecer ventana'],['B','Barrido']]],
- ['Imagen',[['Espacio','Congelar / descongelar'],['+ / −','Profundidad'],[', / .','Ganancia − / +'],['F','Frecuencia (2,5 → 8 MHz)'],['C','Doppler color'],['P / K','Doppler PW / CW'],['Rueda sobre la eco','Profundidad (con Mayús: ganancia)'],['?','Mostrar u ocultar esta ayuda']]]
+ ['Imagen',[['Espacio','Congelar / descongelar'],['+ / −','Profundidad'],[', / .','Ganancia − / +'],['F','Frecuencia (2,5 → 12 MHz)'],['C','Doppler color'],['P / K','Doppler PW / CW'],['Rueda sobre la eco','Profundidad (con Mayús: ganancia)'],['?','Mostrar u ocultar esta ayuda']]]
 ];
 
 export function mountCabina(api){
@@ -55,7 +55,7 @@ export function mountCabina(api){
    case ' ':api.click('freeze');break;
    case '+':case '=':api.set('depth',api.value('depth')+(fine?.005:.01));break;case '-':case '_':api.set('depth',api.value('depth')-(fine?.005:.01));break;
    case ',':api.set('gain',api.value('gain')-.1);break;case '.':api.set('gain',api.value('gain')+.1);break;
-   case 'f':{const F=[2.5,3,4,5,6,7,8],i=F.findIndex(f=>f>api.value('freq')+1e-6);api.set('freq',F[i<0?0:i]);break}
+   case 'f':{const F=[2.5,3,4,5,6,7,8,10,12],i=F.findIndex(f=>f>api.value('freq')+1e-6);api.set('freq',F[i<0?0:i]);break}
    case 'c':api.click('console-color');break;case 'p':api.click('console-pw');break;case 'k':api.click('console-cw');break;
    case '?':toggleHelp();break;case 'Escape':if(!help.hidden)help.hidden=true;else done=false;break;
    default:done=false}
