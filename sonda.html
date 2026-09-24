@@ -4,9 +4,9 @@
 <section id="pair"><h1>Tu teléfono es la sonda</h1><p>En el ordenador, abre CardioLab y pulsa <b>Sonda: teléfono</b>. Escanea el código QR o escribe aquí el código de 6 letras.</p>
  <label class="code-field">Código <input id="code" maxlength="6" autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="text"></label>
  <button id="connect" class="primary big">Conectar</button><p id="status" class="status-line" role="status"></p>
- <p class="micro">Solo se envía la orientación del teléfono y los toques del panel, directamente al ordenador (WebRTC). El servidor público de PeerJS solo presenta ambos dispositivos.</p></section>
+ <p class="micro">Solo se envían la orientación del teléfono y los toques del panel. Si la red lo permite van directos al ordenador (WebRTC); si no, pasan por un relé público (MQTT) identificados solo por el código.</p></section>
 <section id="probe" hidden>
- <p id="info" class="info" aria-live="polite">Conectado</p>
+ <p id="info" class="info" aria-live="polite">Conectado</p><p id="via" class="micro"></p>
  <p class="howto">Sujeta el teléfono como una sonda: <b>pantalla hacia ti</b>, <b>borde inferior</b> apoyado en el tórax (o en un muñeco) y el <b>borde derecho</b> como marcador <span class="dot"></span>. Colócalo en la ventana y pulsa Calibrar.</p>
  <button id="calibrate" class="primary big">Calibrar en esta posición</button>
  <div class="windows" role="group" aria-label="Ventana">
