@@ -145,3 +145,35 @@ body.cabina .machine-console:not(.full) .console-knobs{padding-right:365px}
 @media(max-width:999px){#layout-toggle{display:none}.deck>*{min-width:0}body.cabina #pose-controls{grid-template-columns:1fr}body.cabina .machine-console:not(.full) .console-knobs{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:650px){.header-right .status{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
 @media(max-width:650px){.header-right #sources-top{font-size:10px;padding:5px 7px}.header-right .status{max-width:80px}.brand{font-size:16px}}
+/* image-only practice: the heart is hidden, only the echo image guides the probe */
+body.image-only .view.anatomy .viewport>*,body.image-only .view.anatomy .heading-checks,body.image-only .view.anatomy .view-foot>*,body.image-only .learning>div:nth-child(2){visibility:hidden}
+body.image-only .view.anatomy .viewport::after{content:'Corazón oculto · guíate solo por la imagen eco';position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:#8aa1ae;font-size:13px;background:repeating-linear-gradient(135deg,#0a1016 0 12px,#0c141b 12px 24px)}
+.coach-card.testing .meter-ring,.coach-card.testing .coach-metrics,.coach-card.testing .coach-landmarks,.coach-card.testing .coach-help,.coach-card.testing .hint,.coach-card.testing #coach-ghost-fig{display:none}
+.coach-card.testing .coach-meter{grid-template-columns:1fr}
+.coach-test,.coach-result{border-top:1px solid var(--line);margin-top:12px;padding-top:10px;font-size:12px;line-height:1.5}
+.coach-result ul{padding-left:17px;margin:6px 0}
+.coach-next-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+/* image-reading drills */
+@media(min-width:1101px){.practice-shell.with-tutor.with-drills{grid-template-columns:minmax(0,1fr) 420px}}
+.drill-kinds{border:0;padding:0;margin:4px 0 12px;display:flex;flex-wrap:wrap;gap:4px 14px}
+.drill-kinds legend{padding:0;margin-bottom:4px}
+.drill-card{border:1px solid var(--line);border-radius:10px;padding:14px;background:#111b22;margin:14px 0 16px}
+.drill-card h2{font-size:14px;line-height:1.4;margin:4px 0 10px}
+.drill-figure{margin:0 0 8px}
+.drill-figure canvas{display:block;width:100%;background:#05080b;border-radius:6px}
+.drill-target canvas{width:62%}
+.drill-figure figcaption{font-size:11px;color:var(--muted);margin-top:4px}
+.drill-options{display:grid;gap:6px;margin:10px 0}
+.drill-options button{text-align:left;font-size:13px;padding:8px 10px;line-height:1.35}
+.drill-options kbd{font:11px Consolas,monospace;color:var(--muted);margin-right:6px}
+.drill-options button.correct{background:#173b2d;border-color:#3f9b6f;color:#d9ffe9}
+.drill-options button.wrong{background:#3b1d1d;border-color:#a35151;color:#ffdede}
+.drill-options button:disabled{opacity:1}
+.drill-options button:disabled:not(.correct):not(.wrong){opacity:.55}
+.drill-feedback p{font-size:12px;line-height:1.55;margin:6px 0}
+.drill-feedback .ok b{color:#7ff0b4}.drill-feedback .bad b{color:#ff9c8a}
+.drill-after{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.drill-by-kind,.drill-weak{list-style:none;padding:0;margin:6px 0;display:grid;gap:4px;font-size:12px}
+.drill-by-kind li{display:grid;grid-template-columns:1fr auto 36px;gap:8px}
+.drill-by-kind small{color:var(--muted);text-align:right}
+.drill-weak li{color:#ffcf9a}.drill-weak li.empty{color:var(--muted)}

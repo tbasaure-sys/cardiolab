@@ -1,6 +1,6 @@
 // Standard pediatric TTE views defined from atlas landmarks (not from hand-placed poses),
 // plus plane-agreement scoring and maneuver hints for the acquisition coach.
-import {surface,poseFromState,defaultState,PRESETS,CHEST_X,CHEST_Y} from './geometry.mjs';
+import {surface,poseFromState,defaultState,PRESETS,CHEST_X,CHEST_Y,BODY} from './geometry.mjs';
 
 const add=(a,b)=>a.map((v,i)=>v+b[i]),sub=(a,b)=>a.map((v,i)=>v-b[i]),mul=(a,k)=>a.map(v=>v*k);
 const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],norm=a=>Math.hypot(...a),unit=a=>mul(a,1/(norm(a)||1));
@@ -117,7 +117,7 @@ export const VIEW_INFO={
  plax:{name:'Paraesternal eje largo',short:'PLAX',window:'plax',clock:'10–11',goal:'VI, septo, raíz aórtica, válvula mitral y AI en un mismo corte; ápex a la izquierda de la pantalla y aorta a la derecha.',checks:['Septo y pared posterior casi horizontales y paralelos','Válvula aórtica y mitral visibles a la vez','El ápex no se ve (es normal)'],pitfall:'Si el VI se ve redondo o el septo muy inclinado, estás oblicuo: rota o inclina, no te conformes.'},
  psaxAV:{name:'Paraesternal eje corto · válvula aórtica',short:'PSAX-VA',window:'psax',clock:'1–2',goal:'La válvula aórtica en corte transversal (la «Y» de Mercedes) rodeada por AD, VD, tracto de salida y arteria pulmonar.',checks:['Tres velos aórticos visibles','Tricúspide a la izquierda y pulmonar a la derecha de la pantalla'],pitfall:'Una aorta ovalada indica que el plano está oblicuo al anillo.'},
  psaxMV:{name:'Paraesternal eje corto · mitral',short:'PSAX-VM',window:'psax',clock:'1–2',goal:'La «boca de pez» mitral dentro de un VI circular.',checks:['VI circular','Ambos velos mitrales'],pitfall:'Un VI elíptico sugiere un corte oblicuo: corrige la rotación.'},
- psaxPM:{name:'Paraesternal eje corto · papilares',short:'PSAX-PM',window:'psax',clock:'1–2',goal:'VI circular con los dos músculos papilares; nivel habitual para valorar motilidad regional y la forma del septo.',checks:['VI circular','Septo convexo hacia el VD'],pitfall:'El septo aplanado solo es interpretable si el corte es realmente transversal.'},
+ psaxPM:{name:'Paraesternal eje corto · papilares',short:'PSAX-PM',window:'psax',clock:'1–2',goal:'VI circular a la altura de los músculos papilares; nivel habitual para valorar motilidad regional y la forma del septo. En el paciente se ven dos papilares; el atlas solo incluye el posteromedial.',checks:['VI circular','Septo convexo hacia el VD'],pitfall:'El septo aplanado solo es interpretable si el corte es realmente transversal.'},
  a4c:{name:'Apical cuatro cámaras',short:'A4C',window:'apical',clock:'3',goal:'Las cuatro cámaras, ambas válvulas AV y los dos septos, con el ápex real del VI.',checks:['Ápex del VI en el vértice del sector','Septo interventricular vertical','Tricúspide algo más apical que la mitral'],pitfall:'Un VI corto y redondeado es un corte «acortado» (foreshortening): desliza la sonda hacia el ápex verdadero.'},
  a5c:{name:'Apical cinco cámaras',short:'A5C',window:'apical',clock:'3',goal:'Desde la cuatro cámaras, inclina hacia anterior hasta ver el tracto de salida del VI y la válvula aórtica.',checks:['Tracto de salida y válvula aórtica visibles'],pitfall:'Es la vista típica para alinear el Doppler del tracto de salida.'},
  a2c:{name:'Apical dos cámaras',short:'A2C',window:'apical',clock:'12–1',goal:'Solo VI y AI: el VD sale del plano al rotar ~60° en sentido antihorario.',checks:['No aparece VD','Paredes anterior e inferior del VI'],pitfall:'Si todavía ves VD, falta rotación.'},
@@ -147,6 +147,13 @@ function beamDirectionWords(delta){
  const axes=[[Math.abs(delta[2]),delta[2]>0?'hacia la cabeza':'hacia los pies'],[Math.abs(delta[0]),delta[0]>0?'hacia la izquierda del paciente':'hacia la derecha del paciente'],[Math.abs(delta[1]),delta[1]>0?'hacia la espalda':'hacia anterior']];
  axes.sort((a,b)=>b[0]-a[0]);return axes[0][1];
 }
+// One maneuver in clinical language (slide / rotate / tilt / rock): `state` changing `key` by `delta`.
+export function describeManeuver(state,key,delta){const next={...state,[key]:state[key]+delta},p0=poseFromState(state),p1=poseFromState(next);const a=Math.abs(delta);const amt=key==='x'||key==='z'?`${Math.max(2,Math.round(a*1000*BODY.k))} mm`:`${Math.round(a)}°`;
+  if(key==='x')return `desliza la sonda ${WORDS.x[delta>0?1:0]} (~${amt})`;
+  if(key==='z'){const n=Math.round(a/.018);return `desliza la sonda ${WORDS.z[delta>0?1:0]} (~${amt}${n>=1?`, ${n===1?'un espacio intercostal':`unos ${n} espacios intercostales`}`:''})`}
+  if(key==='rotation')return `rota la sonda en sentido ${delta>0?'horario':'antihorario'} (~${amt})`;
+  if(key==='tilt')return `inclina la sonda para dirigir el haz ${beamDirectionWords(sub(p1.d,p0.d))} (~${amt})`;
+  return `bascula (rock) ${dot(sub(p1.d,p0.d),p0.u)>0?'hacia el marcador':'alejándote del marcador'} (~${amt})`}
 // Greedy one-maneuver hint: which single control change improves agreement the most.
 // Hint: solve the whole maneuver from the current state, then name the one or two largest corrections in
 // clinical language (slide / rotate / tilt / rock).
@@ -156,12 +163,7 @@ export function suggestManeuver(state,target){
  const scale={x:.005,z:.005,rotation:8,tilt:6,rock:6};const wrap=d=>((d+540)%360)-180;
  const diffs=Object.keys(scale).map(k=>{const d=k==='rotation'?wrap(sol[k]-state[k]):sol[k]-state[k];return {key:k,delta:d,weight:Math.abs(d)/scale[k]}}).filter(m=>m.weight>=1).sort((a,b)=>b.weight-a.weight);
  if(!diffs.length)return {base:base.score,text:null};
- const say=m=>{const next={...state,[m.key]:state[m.key]+m.delta},p0=poseFromState(state),p1=poseFromState(next);const a=Math.abs(m.delta);const amt=m.key==='x'||m.key==='z'?`${Math.max(3,Math.round(a*1000))} mm`:`${Math.round(a)}°`;
-  if(m.key==='x')return `desliza la sonda ${WORDS.x[m.delta>0?1:0]} (~${amt})`;
-  if(m.key==='z'){const n=Math.round(a/.018);return `desliza la sonda ${WORDS.z[m.delta>0?1:0]} (~${amt}${n>=1?`, ${n===1?'un espacio intercostal':`unos ${n} espacios intercostales`}`:''})`}
-  if(m.key==='rotation')return `rota la sonda en sentido ${m.delta>0?'horario':'antihorario'} (~${amt})`;
-  if(m.key==='tilt')return `inclina la sonda para dirigir el haz ${beamDirectionWords(sub(p1.d,p0.d))} (~${amt})`;
-  return `bascula (rock) ${dot(sub(p1.d,p0.d),p0.u)>0?'hacia el marcador':'alejándote del marcador'} (~${amt})`};
+ const say=m=>describeManeuver(state,m.key,m.delta);
  const [a,b]=diffs;const text=b?`Primero ${say(a)}; después ${say(b)}`:say(a).replace(/^./,c=>c.toUpperCase());
  return {base:base.score,text,move:{next:{...state,[a.key]:state[a.key]+a.delta}},solution:sol};
 }

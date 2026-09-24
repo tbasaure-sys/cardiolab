@@ -1,6 +1,6 @@
 // Original teaching activities; references point to the official guideline, not a copied protocol.
 export const COURSE_VERSION=1;
-export const GUIDE={title:'ASE · Ecocardiografía pediátrica completa · 2024',url:'https://www.asecho.org/wp-content/uploads/2024/02/2024-Peds-TTE_PIIS0894731723006223.pdf',doi:'10.1016/j.echo.2023.11.015',localFileStatus:'La copia local indicada tenía 0 bytes. Se consultó la edición oficial de ASE; pendiente de confirmar que corresponde al documento solicitado.'};
+export const GUIDE={title:'ASE · Ecocardiografía pediátrica completa · 2024',url:'https://www.asecho.org/wp-content/uploads/2024/02/2024-Peds-TTE_PIIS0894731723006223.pdf',doi:'10.1016/j.echo.2023.11.015'};
 export const WINDOW_GUIDANCE={
  subcostal:{position:'Paciente en decúbito supino; en niños mayores, flexionar las rodillas puede facilitar el acceso. Apoya la sonda bajo el xifoides.',marker:'Para el plano coronal, referencia de marcador a las 3: hacia la izquierda del paciente.',look:'Empieza reconociendo la referencia y explora con barridos cortos. El estudio de situs necesita además referencias abdominales ausentes de este atlas.'},
  plax:{position:'Habitualmente decúbito lateral izquierdo, con el brazo izquierdo elevado. Busca el acceso junto al borde esternal izquierdo.',marker:'Referencia a las 10: hacia el hombro derecho del paciente.',look:'Busca el eje largo del VI y la continuidad hacia la raíz aórtica. Ajusta contacto y angulación hasta reconocer la referencia; no fijes una profundidad universal.'},
@@ -11,7 +11,7 @@ const q=(prompt,options,answer,explanation)=>({prompt,options,answer,explanation
 export const LESSONS=[
  {id:'prepare',title:'Antes de apoyar la sonda',group:'Preparación',page:5,section:'General principles · p. 123',preset:'plax',
   intro:'Primero formula qué necesitas conocer del corazón. Después decide cómo obtener imágenes que permitan responderlo.',
-  points:['En la práctica clínica: confirmar identidad e indicación, explicar el examen y atender comodidad, posición y estabilidad.','Aquí trabajarás con un corazón adulto de referencia y una imagen eco simulada. Practicas orientación y conceptos; no examinas a un niño ni acreditas competencia clínica.'],
+  points:['En la práctica clínica: confirmar identidad e indicación, explicar el examen y atender comodidad, posición y estabilidad.','Aquí trabajarás con un corazón de referencia escalado al tamaño del paciente que elijas y una imagen eco simulada. Practicas orientación y conceptos; no examinas a un niño ni acreditas competencia clínica.'],
   task:'Observa las tres vistas. El contacto está a la izquierda, el plano anatómico en el centro y su sección a la derecha.',
   quiz:q('¿Qué acredita terminar este recorrido?',['Que puedes excluir una cardiopatía','Que has practicado sus actividades docentes','Que la ventana obtenida es diagnóstica'],1,'El progreso registra aprendizaje dentro de la aplicación. La adquisición e interpretación clínicas se aprenden y evalúan con supervisión.')},
  {id:'orientation',title:'Sonda, plano e imagen',group:'Primeros movimientos',page:6,section:'Orientación de imagen · p. 124',preset:'apical',rule:'orientation',
@@ -51,22 +51,22 @@ export const LESSONS=[
   quiz:q('¿Qué hace el botón «Barrido»?',['Acelera el latido','Calcula el flujo coronario','Oscila la inclinación de la sonda y recorre planos'],2,'El barrido mueve el plano de corte; el latido es independiente y puede pausarse.')},
  {id:'apical',title:'Apical: relacionar las cámaras',group:'Ventanas',page:14,section:'Tabla 9 · p. 132',preset:'apical',rule:'apical',
   intro:'Observa los ventrículos y su relación con las aurículas desde el acceso apical aproximado.',
-  points:['En el ecógrafo hay que reconocer el ápex real y evitar un plano que acorte artificialmente el ventrículo.','Las vistas de dos y tres cámaras requieren ajustes adicionales. Este modelo no ofrece aún referencias adjudicadas para esas ventanas.'],
+  points:['En el ecógrafo hay que reconocer el ápex real y evitar un plano que acorte artificialmente el ventrículo.','Las vistas de cinco, dos y tres cámaras salen de esta misma ventana con ajustes adicionales. Practícalas en el Entrenador de vistas, que compara tu plano con referencias calculadas sobre la anatomía del modelo.'],
   task:'Selecciona «Ventrículo izquierdo» y «Ventrículo derecho». Alterna la presentación vertical para comprobar que siguen siendo las mismas estructuras.',
   quiz:q('Un ventrículo aparentemente corto puede indicar…',['Un plano que no pasa por el ápex real','Siempre un ventrículo pequeño','Una medición válida sin más comprobaciones'],0,'La geometría del plano puede cambiar la longitud aparente. Es necesario revisar la adquisición antes de medir.')},
- {id:'suprasternal',title:'Lo que falta en cuatro ventanas',group:'Ventanas',page:17,section:'Tabla 9 · pp. 134–135',preset:'plax',
+ {id:'suprasternal',title:'Supraesternal: el arco y lo que aún falta',group:'Ventanas',page:17,section:'Tabla 9 · pp. 134–135',preset:'ssn',rule:'ssn',
   intro:'Aprender un examen completo también significa reconocer qué no has adquirido.',
-  points:['La ventana supraesternal y el acceso paraesternal alto aportan información adicional sobre grandes vasos.','Este simulador no tiene todavía una ventana supraesternal calibrada, un estudio completo de venas pulmonares ni coronarias. Ver la aorta en 3D no equivale a haberla evaluado.'],
-  task:'Abre la referencia y revisa la posición de la sonda de la tabla 9. Esta lección es conceptual; no se registra como una adquisición.',
+  points:['La ventana supraesternal y el acceso paraesternal alto aportan información sobre grandes vasos: arco aórtico, istmo, ductus y ramas pulmonares.','Este simulador incluye una ventana supraesternal aproximada del arco, pero no el acceso paraesternal alto ni un estudio completo de venas pulmonares o coronarias. Ver la aorta en 3D no equivale a haberla evaluado.'],
+  task:'Desde la ventana supraesternal, selecciona «Arco aórtico» (por su etiqueta o su contorno). Después revisa en la guía qué otras vistas de la tabla 9 no están en el simulador.',
   quiz:q('¿Cuatro botones de ventanas equivalen a un examen pediátrico completo?',['Sí','No','Solo si el modelo se ve bien'],1,'El estudio completo exige cobertura anatómica, modalidades y documentación que van más allá de esta demostración.')},
  {id:'doppler',title:'Doppler: dirección y alineación',group:'Más allá del corte',page:6,section:'Doppler · p. 124',preset:'apical',rule:'doppler',
   intro:'La imagen bidimensional describe anatomía. Doppler aporta información sobre movimiento a lo largo del haz.',
-  points:['Ejemplo matemático: v proyectada = v × cos(θ). Mantén v = 1 m/s y cambia el ángulo: la proyección disminuye hacia 90°.','PW localiza una muestra y puede presentar aliasing; CW registra a lo largo del haz. El color expresa dirección según el mapa, no oxigenación. Este laboratorio no mide flujo del corazón 3D.'],
+  points:['Ejemplo matemático: v proyectada = v × cos(θ). Mantén v = 1 m/s y cambia el ángulo: la proyección disminuye hacia 90°.','PW localiza una muestra y puede presentar aliasing; CW registra a lo largo del haz. El color expresa dirección según el mapa, no oxigenación. Este laboratorio usa un vector aislado; para ver el efecto sobre el flujo del modelo, usa las teclas Color, PW y CW de la consola.'],
   task:'Prueba 0°, 60° y 90° en el control de abajo. Los resultados pertenecen a un vector inventado, no a un paciente.',
   quiz:q('Con un ángulo de 60° y velocidad ilustrativa de 1 m/s, la proyección es…',['2 m/s','1 m/s','0,5 m/s'],2,'cos(60°) = 0,5. Una mala alineación puede subestimar la magnitud de la velocidad. No es una medición ni una corrección clínica.')},
  {id:'measure',title:'Antes de colocar un cáliper',group:'Más allá del corte',page:9,section:'Z scores · pp. 127–128',preset:'apical',
   intro:'Una cifra necesita una definición: estructura, plano, fase cardíaca, bordes y unidades.',
-  points:['Una medición pediátrica se interpreta con referencias apropiadas; al comparar Z scores en el tiempo se debe conservar el modelo de referencia.','El ECG de la imagen marca la fase: la telediástole coincide con el QRS. El latido del simulador es esquemático y no tiene superficie corporal: no sirve para calcular FE ni Z scores.'],
+  points:['Una medición pediátrica se interpreta con referencias apropiadas; al comparar Z scores en el tiempo se debe conservar el modelo de referencia.','El ECG de la imagen marca la fase: la telediástole coincide con el QRS. El latido del simulador es esquemático: no sirve para calcular FE. El cáliper puede dar una puntuación Z para la superficie corporal del paciente elegido, pero sobre una anatomía de referencia escalada, no sobre un niño real.'],
   task:'Congela la imagen justo en el QRS del ECG y compara con un cuadro en sístole. Explica por qué la fase importa antes de medir.',
   quiz:q('¿Podemos calcular una fracción de eyección válida en este simulador?',['No: el movimiento es esquemático, no medido en un paciente','Sí, con una captura','Sí, aumentando la ganancia'],0,'El latido es un modelo docente. Una cifra calculada aquí daría una precisión que los datos no sostienen.')},
  {id:'artifacts',title:'No confundir ausencia y defecto',group:'Integración',page:7,section:'Septos y orientación · p. 125',preset:'subcostal',
@@ -96,6 +96,7 @@ export function practiceSteps(lesson,e){
   quality:[['Sector ≤70°, profundidad ≤16 cm y anatomía visible',e.quality]],
   tilt:[['Inclinar ≥8° desde el inicio',e.tilt>=8]],
   plax:[['Seleccionar ventrículo izquierdo',e.selected.has('Left ventricle')],['Seleccionar aorta ascendente',e.selected.has('Ascending aorta')]],
+  ssn:[['Seleccionar arco aórtico',e.selected.has('Aortic arch')]],
   apical:[['Seleccionar ventrículo izquierdo',e.selected.has('Left ventricle')],['Seleccionar ventrículo derecho',e.selected.has('Right ventricle')]],
   doppler:[['Comparar 0°, 60° y 90°', [0,60,90].every(a=>e.angles.has(a))]],
   review:REVIEW_ITEMS.map((label,i)=>[label,e.review.has(i)])

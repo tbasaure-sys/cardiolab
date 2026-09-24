@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import {LineSegments2} from 'three/addons/lines/LineSegments2.js';
 import {LineSegmentsGeometry} from 'three/addons/lines/LineSegmentsGeometry.js';
 import {LineMaterial} from 'three/addons/lines/LineMaterial.js';
-import {toWorld,inSector} from './geometry.mjs';
+import {toWorld,inSector,BODY} from './geometry.mjs';
 
 // short labels (paediatric cardiology usage in Spanish); the full name stays in the tooltip
 const SHORT={'Aurícula derecha':'AD','Aurícula izquierda':'AI','Ventrículo derecho':'VD','Ventrículo izquierdo':'VI','Aorta ascendente':'Ao ascendente','Arco aórtico':'Arco aórtico','Aorta torácica':'Ao descendente','Tronco braquiocefálico':'T. braquiocefálico','Arteria carótida común izquierda':'Carótida izq.','Arteria subclavia izquierda':'Subclavia izq.','Tronco pulmonar':'Tronco pulmonar','Bifurcación pulmonar':'Bifurcación AP','Arteria pulmonar derecha':'APD','Arteria pulmonar izquierda':'API','Vena cava superior':'VCS','Vena cava inferior · porción torácica':'VCI','Vena pulmonar superior derecha':'VP sup. der.','Vena pulmonar inferior derecha':'VP inf. der.','Vena pulmonar superior izquierda':'VP sup. izq.','Vena pulmonar inferior izquierda':'VP inf. izq.','Músculo papilar inferior · VD':'Papilar VD','Músculo papilar anterior · VD':'Papilar VD','Músculo papilar septal · VD':'Papilar VD','Músculo papilar inferior · VI':'Papilar VI','Arteria coronaria derecha':'CD','Arteria coronaria izquierda':'TCI','Arteria interventricular anterior':'DA','Arteria circunfleja':'Cx','Seno coronario':'Seno coronario'};
@@ -76,7 +76,7 @@ export function mountBeamMap({view,byId,colorFor,onSelect}){
  // what the central scan line crosses, in depth order
  function centralPath(p){const hits=[];
   for(const e of inBeam.values()){let best=null;for(const [x,y] of e.pts)if(Math.abs(x)<.0025&&(best==null||y<best))best=y;if(best!=null)hits.push([best,e.short])}
-  hits.sort((a,b)=>a[0]-b[0]);return hits.map(([y,s])=>`${s} ${(y*100).toFixed(1).replace('.',',')}`).join(' → ')}
+  hits.sort((a,b)=>a[0]-b[0]);return hits.map(([y,s])=>`${s} ${(y*BODY.k*100).toFixed(1).replace('.',',')}`).join(' → ')}
 
  function meshIdsInBeam(){const s=new Set();for(const e of inBeam.values())for(const id of e.ids)s.add(id);return s}
  // material state of the heart view: structures in the beam solid, the rest ghosted

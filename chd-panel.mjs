@@ -1,6 +1,7 @@
 // Congenital heart disease mode: explore a lesion with guided views, or scan a blinded case and commit a diagnosis.
 import {VARIANTS,VARIANT_BY_ID} from './chd-data.mjs';
 import {VIEW_INFO,solveState} from './views.mjs';
+import {physical} from './geometry.mjs';
 
 const KEY='cardiolab.echo.cases.v1';
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -8,7 +9,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 export function mountCHD(api){
  // api: {host, views, engine, state(), apply(state,{animate}), status(text), onVariant(spec, reveal)}
  const host=api.host;let stats={seen:0,correct:0};try{stats={...stats,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{}
- let mode='explore',active=VARIANT_BY_ID.normal,caseVariant=null,answered=false,busy=false,queued=null;
+ let mode='explore',active=VARIANT_BY_ID.normal,caseVariant=null,caseScale=1,answered=false,busy=false,queued=null;
  const groups=[...new Set(VARIANTS.map(v=>v.group))];
  host.innerHTML=`<span class="eyebrow">CARDIOPATÍAS</span><h1>Lesiones en el mismo corazón</h1>
  <p class="lead">Las lesiones se modelan dentro del volumen acústico: aparecen en la imagen eco simulada, en el plano exacto donde estén. El atlas 3D sigue mostrando la anatomía normal.</p>
@@ -29,7 +30,7 @@ export function mountCHD(api){
  async function settle(){while(busy)await busy}
  async function go(viewId){const target=api.views[viewId];if(!target)return;api.status('Llevando la sonda a '+VIEW_INFO[viewId].short+'…');await new Promise(r=>setTimeout(r,20));
   const s=api.state(),preset={plax:'plax',psax:'psax',apical:'apical',subcostal:'subcostal',ssn:'ssn'}[VIEW_INFO[viewId].window];
-  const sol=solveState(target,preset);api.apply({...sol.state,depth:target.depth,mode:'echo'},{animate:true});}
+  const sol=solveState(target,preset);api.apply({...sol.state,depth:physical(target.depth),mode:'echo'},{animate:true});}
  async function load(v,{reveal=true,scale=1}={}){
   // a request made while another variant is loading is kept (the latest wins), never dropped
   if(busy){queued=[v,{reveal,scale}];return busy}
@@ -47,9 +48,9 @@ export function mountCHD(api){
  $('chd-mode-explore').onclick=()=>setMode('explore');$('chd-mode-case').onclick=()=>setMode('case');
  function updateStats(){$('chd-stats').textContent=stats.seen?`Aciertos: ${stats.correct} de ${stats.seen} casos`:''}
  $('chd-new').onclick=async()=>{const pool=VARIANTS.filter(v=>v.id!==caseVariant?.id);caseVariant=pool[Math.floor(Math.random()*pool.length)];answered=false;$('chd-feedback').innerHTML='';$('chd-answer').hidden=false;$('chd-guess').value='normal';
-  const scale=.85+Math.random()*.4;await load(caseVariant,{reveal:false,scale});$('chd-feedback').innerHTML='<p class="micro">Caso listo. Recorre al menos una vista paraesternal, una apical y la subcostal antes de responder.</p>'};
+  caseScale=.85+Math.random()*.4;await load(caseVariant,{reveal:false,scale:caseScale});$('chd-feedback').innerHTML='<p class="micro">Caso listo. Recorre al menos una vista paraesternal, una apical y la subcostal antes de responder.</p>'};
  $('chd-submit').onclick=()=>{if(!caseVariant||answered)return;answered=true;const guess=$('chd-guess').value,ok=guess===caseVariant.id;stats.seen++;if(ok)stats.correct++;try{localStorage.setItem(KEY,JSON.stringify(stats))}catch{}updateStats();
   $('chd-feedback').innerHTML=`<div class="result ${ok?'ok':'bad'}"><b>${ok?'Correcto':'No era eso'}</b> · era <b>${esc(caseVariant.name)}</b>.</div>${card(caseVariant)}`;bindGo($('chd-feedback'));api.onVariant({id:caseVariant.id},true)};
  showExplore();updateStats();
- return {enter(){if(mode==='explore')load(VARIANT_BY_ID[$('chd-variant').value]);else if(caseVariant)load(caseVariant,{reveal:answered})},leave(){api.engine.setVariant({id:'normal'});api.onVariant({id:'normal'},false)}};
+ return {enter(){if(mode==='explore')load(VARIANT_BY_ID[$('chd-variant').value]);else if(caseVariant)load(caseVariant,{reveal:answered,scale:caseScale})},leave(){api.engine.setVariant({id:'normal'});api.onVariant({id:'normal'},false)}};
 }
