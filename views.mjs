@@ -147,6 +147,13 @@ function beamDirectionWords(delta){
  const axes=[[Math.abs(delta[2]),delta[2]>0?'hacia la cabeza':'hacia los pies'],[Math.abs(delta[0]),delta[0]>0?'hacia la izquierda del paciente':'hacia la derecha del paciente'],[Math.abs(delta[1]),delta[1]>0?'hacia la espalda':'hacia anterior']];
  axes.sort((a,b)=>b[0]-a[0]);return axes[0][1];
 }
+// One maneuver in clinical language (slide / rotate / tilt / rock): `state` changing `key` by `delta`.
+export function describeManeuver(state,key,delta){const next={...state,[key]:state[key]+delta},p0=poseFromState(state),p1=poseFromState(next);const a=Math.abs(delta);const amt=key==='x'||key==='z'?`${Math.max(3,Math.round(a*1000))} mm`:`${Math.round(a)}°`;
+  if(key==='x')return `desliza la sonda ${WORDS.x[delta>0?1:0]} (~${amt})`;
+  if(key==='z'){const n=Math.round(a/.018);return `desliza la sonda ${WORDS.z[delta>0?1:0]} (~${amt}${n>=1?`, ${n===1?'un espacio intercostal':`unos ${n} espacios intercostales`}`:''})`}
+  if(key==='rotation')return `rota la sonda en sentido ${delta>0?'horario':'antihorario'} (~${amt})`;
+  if(key==='tilt')return `inclina la sonda para dirigir el haz ${beamDirectionWords(sub(p1.d,p0.d))} (~${amt})`;
+  return `bascula (rock) ${dot(sub(p1.d,p0.d),p0.u)>0?'hacia el marcador':'alejándote del marcador'} (~${amt})`}
 // Greedy one-maneuver hint: which single control change improves agreement the most.
 // Hint: solve the whole maneuver from the current state, then name the one or two largest corrections in
 // clinical language (slide / rotate / tilt / rock).
@@ -156,12 +163,7 @@ export function suggestManeuver(state,target){
  const scale={x:.005,z:.005,rotation:8,tilt:6,rock:6};const wrap=d=>((d+540)%360)-180;
  const diffs=Object.keys(scale).map(k=>{const d=k==='rotation'?wrap(sol[k]-state[k]):sol[k]-state[k];return {key:k,delta:d,weight:Math.abs(d)/scale[k]}}).filter(m=>m.weight>=1).sort((a,b)=>b.weight-a.weight);
  if(!diffs.length)return {base:base.score,text:null};
- const say=m=>{const next={...state,[m.key]:state[m.key]+m.delta},p0=poseFromState(state),p1=poseFromState(next);const a=Math.abs(m.delta);const amt=m.key==='x'||m.key==='z'?`${Math.max(3,Math.round(a*1000))} mm`:`${Math.round(a)}°`;
-  if(m.key==='x')return `desliza la sonda ${WORDS.x[m.delta>0?1:0]} (~${amt})`;
-  if(m.key==='z'){const n=Math.round(a/.018);return `desliza la sonda ${WORDS.z[m.delta>0?1:0]} (~${amt}${n>=1?`, ${n===1?'un espacio intercostal':`unos ${n} espacios intercostales`}`:''})`}
-  if(m.key==='rotation')return `rota la sonda en sentido ${m.delta>0?'horario':'antihorario'} (~${amt})`;
-  if(m.key==='tilt')return `inclina la sonda para dirigir el haz ${beamDirectionWords(sub(p1.d,p0.d))} (~${amt})`;
-  return `bascula (rock) ${dot(sub(p1.d,p0.d),p0.u)>0?'hacia el marcador':'alejándote del marcador'} (~${amt})`};
+ const say=m=>describeManeuver(state,m.key,m.delta);
  const [a,b]=diffs;const text=b?`Primero ${say(a)}; después ${say(b)}`:say(a).replace(/^./,c=>c.toUpperCase());
  return {base:base.score,text,move:{next:{...state,[a.key]:state[a.key]+a.delta}},solution:sol};
 }

@@ -34,7 +34,8 @@ self.onmessage=async e=>{
   }
   if(m.type==='spectrum'){const spec={...m.spec};if(spec.optimize){spec.theta=optimizeAim(tissue,flow,motion,spec,spec.optimize);delete spec.optimize}const sp=renderSpectrum(tissue,flow,motion,spec);self.postMessage({type:'spectrum',id:m.id,spectrum:sp},[sp.data.buffer]);return}
   if(m.type==='views'){const views=buildViews(tissue.landmarks,fanObstruction(tissue,LABEL.LUNG,LABEL.BONE));self.postMessage({type:'views',id:m.id,views});return}
-  if(m.type==='probe'){ // label under a point (for teaching: "what am I looking at?")
+  if(m.type==='probe'){ // label under one or several points (for teaching: "what am I looking at?")
+   if(m.points){self.postMessage({type:'probe',id:m.id,labels:m.points.map(p=>tissue.tissueAt(...p))});return}
    const l=tissue.tissueAt(...m.point);self.postMessage({type:'probe',id:m.id,label:l});return;
   }
  }catch(error){self.postMessage({type:'error',id:m.id,message:String(error&&error.message||error)})}
