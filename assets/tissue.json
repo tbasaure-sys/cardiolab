@@ -23,7 +23,7 @@
    "distanceToHeart_0.25mm"
   ],
   "file": "tissue-fine.bin.gz",
-  "sha256": "7c5c007038a19dc1265f6b4d73e6377a3760cdd6aad24f2eb41a080999c5a141",
+  "sha256": "d7400ff0b07806cdcdabd32482b3de824655c3411468516c24f6e05ac36cd0c5",
   "layout": "x fastest, then y, then z; 2 bytes per voxel"
  },
  "coarse": {
@@ -76,38 +76,38 @@
  },
  "landmarks": {
   "aorticValve": [
-   -0.00402,
-   -0.00168,
+   0.01188,
+   -0.01381,
    0.02455
   ],
   "pulmonaryValve": [
-   0.01387,
-   -0.01848,
+   0.02977,
+   -0.03061,
    0.02764
   ],
   "mitralValve": [
-   0.00122,
-   0.02237,
+   0.01712,
+   0.01024,
    0.0059
   ],
   "tricuspidValve": [
-   -0.02398,
-   -0.01675,
+   -0.00808,
+   -0.02888,
    -0.00077
   ],
   "lvApex": [
-   0.05882,
-   -0.02165,
+   0.07313,
+   -0.03256,
    -0.04071
   ],
   "lvApexCavity": [
-   0.046,
-   -0.023,
+   0.0619,
+   -0.03513,
    -0.04
   ],
   "rvApex": [
-   0.047,
-   -0.015,
+   0.06125,
+   -0.02587,
    -0.049
   ],
   "archTop": [
@@ -116,28 +116,28 @@
    0.10587
   ],
   "vsdPerimembranous": [
-   0.003,
-   -0.008,
+   0.0189,
+   -0.02013,
    0.019
   ],
   "vsdMuscular": [
-   0.023,
-   -0.006,
+   0.0389,
+   -0.01813,
    -0.019
   ],
   "asdSecundum": [
-   -0.032,
-   0.015,
+   -0.0161,
+   0.00287,
    0.009
   ],
   "asdPrimum": [
-   -0.019,
-   0.003,
+   -0.0031,
+   -0.00913,
    0.009
   ],
   "ivcJunction": [
-   -0.03608,
-   0.00318,
+   -0.03176,
+   -0.00012,
    -0.06958
   ],
   "ivcLow": [
@@ -146,22 +146,31 @@
    -0.13958
   ],
   "ductAortic": [
-   -0.02471,
-   0.06366,
+   -0.02027,
+   0.06027,
    0.07449
   ],
   "ductPulmonary": [
-   -0.00526,
-   0.05233,
+   0.00721,
+   0.04282,
    0.05874
   ],
   "heartCenter": [
-   -0.00236,
-   0.00387,
+   0.01354,
+   -0.00826,
    0.00736
   ]
  },
- "geometrySHA256": "17cc241fbf6a9ebe7f92a805dbd9e162ae33bae38638134f7695ec7e8de808ef",
+ "geometrySHA256": "c8b1de6e9eca5a9753462dbed12b978ae2bcc25b652b39cbcb632cef5590cf08",
  "derivation": "Generalized winding number of atlas meshes (walls, vessels, papillary muscles, bones); cavities = enclosed space; valve leaflets = 0.9 mm around the source surfaces. Lungs, liver and diaphragm are procedural. Derived from Z-Anatomy / BodyParts3D (CC BY-SA).",
- "license": "Z-Anatomy CC BY-SA 4.0; BodyParts3D CC BY-SA 2.1 Japan"
+ "license": "Z-Anatomy CC BY-SA 4.0; BodyParts3D CC BY-SA 2.1 Japan",
+ "heartShift": {
+  "mm": [
+   15.9,
+   -12.13,
+   0
+  ],
+  "falloffMM": 57,
+  "note": "Heart moved toward the chest wall (the atlas leaves a wide gap between the rib cage and the apex); surrounding tissue follows with a smooth falloff. Meshes get the same rigid shift at load (geometry.HEART_SHIFT)."
+ }
 }

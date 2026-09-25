@@ -63,7 +63,7 @@ Los volúmenes `assets/tissue-*` se generaron a partir de las mallas del atlas c
 ## Limitaciones conocidas
 
 - El corazón es un atlas **adulto** (BodyParts3D) escalado de forma uniforme al tamaño del paciente elegido: no reproduce las proporciones ni la orientación propias del lactante.
-- En la ventana apical el ápex del atlas queda más lejos de la pared torácica que en un paciente real (varios centímetros de tejido que se muestra tenue).
+- El corazón del atlas se desplazó 2 cm hacia la pared torácica (volumen, mallas y referencias con la misma deformación) para que el ápex quede cerca de la pared; la vista apical 4C sigue algo recargada porque el plano cruza los grandes músculos papilares del VD del atlas.
 - Las puntuaciones Z solo incluyen por ahora los coeficientes PHN verificados (anillo mitral).
 - No hay insuficiencias ni estenosis valvulares ni modo M.
 - El teléfono solo aporta la orientación (no su posición sobre el tórax). La conexión directa (WebRTC, emparejada por el servidor público de PeerJS) falla en muchas redes de hospital o universidad; entonces los mensajes pasan por brókers MQTT públicos (HiveMQ, EMQX) por WebSocket seguro. Con `?relay=wss://tu-broker/mqtt` en la URL se usa un bróker propio.

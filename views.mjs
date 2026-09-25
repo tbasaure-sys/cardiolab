@@ -80,7 +80,8 @@ export function buildViews(lm,obstruct=null){
  {const n4=unit(cross(sub(mv,apex),sub(tv,apex))),c4=mid(mv,tv);
   views.a4c=planePose({c:apex,n:n4,window:APEX_W,target:c4,markerToward:pLeft,depth:.17,obstruct:o,span:.03});views.a4c.meta={center:c4,landmarks:{'Ápex VI':apex,'Válvula mitral':mv,'Válvula tricúspide':tv}};
   const n5=unit(cross(sub(av,apex),sub(c4,apex)));
-  views.a5c=planePose({c:apex,n:n5,window:APEX_W,target:mid(av,mv),markerToward:pLeft,depth:.17,obstruct:o,span:.03});views.a5c.meta={center:av,landmarks:{'Ápex VI':apex,'Válvula aórtica':av,'Válvula mitral':mv}};
+  // five-chamber: from the same apical window as the four-chamber, tilted anteriorly toward the outflow tract
+  views.a5c=planePose({c:apex,n:n5,window:views.a4c.origin,target:mid(av,mv),markerToward:pLeft,depth:.17,obstruct:o,span:.012});views.a5c.meta={center:av,landmarks:{'Ápex VI':apex,'Válvula aórtica':av,'Válvula mitral':mv}};
   const axis=long;let best=null;
   for(const sgn of [1,-1]){const n2=rotate(n4,axis,sgn*rad(62));const p=planePose({c:apex,n:n2,window:APEX_W,target:mv,markerToward:head,depth:.17,obstruct:o,span:.03});const off=Math.abs(dot(sub(tv,p.origin),p.n));if(!best||off>best.off)best={p,off}}
   views.a2c=best.p;views.a2c.meta={center:mv,landmarks:{'Ápex VI':apex,'Válvula mitral':mv}};
@@ -171,7 +172,7 @@ export function suggestManeuver(state,target){
 // Solve the control state that reproduces a target view from a given window preset (for "show me").
 export function solveState(target,preset,start=null){
  let s=start?{...start}:{...defaultState(preset)};
- const f=st=>{const p=poseFromState(st),a=planeAgreement(p,target);return a.angle*1+a.offset*.8+Math.max(0,a.beam-8)*.4+(a.flipped?200:0)+Math.hypot(p.origin[0]-target.origin[0],p.origin[2]-target.origin[2])*400};
+ const f=st=>{const p=poseFromState(st),a=planeAgreement(p,target);return a.angle*1+a.offset*.8+Math.max(0,a.beam-8)*.4+(a.flipped?200:0)+Math.hypot(p.origin[0]-target.origin[0],p.origin[2]-target.origin[2])*2000}; // the probe must land on the view's own window (a few mm off can be a rib)
  // coarse search on rotation (marker side matters), then coordinate descent
  let best=s,bv=f(s);for(let r=-180;r<180;r+=15){const t={...s,rotation:r};const v=f(t);if(v<bv){bv=v;best=t}}s=best;
  const steps={x:.008,z:.008,rotation:8,tilt:8,rock:8},lim={x:[-.11,.11],z:[-.155,.13],rotation:[-180,180],tilt:[-60,60],rock:[-50,50]};
