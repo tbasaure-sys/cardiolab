@@ -16,7 +16,7 @@ Simulador docente de ecocardiografía transtorácica que funciona en el navegado
 - **Tu teléfono como sonda**: empareja un teléfono por QR (WebRTC) y gíralo, inclínalo y bascúlalo como un transductor sobre un muñeco o una almohada; el deslizamiento se hace con un panel táctil. En un teléfono o tableta, el propio dispositivo puede ser la sonda.
 - **Entrenador de vistas**: 11 vistas estándar calculadas a partir de la anatomía. *Practicar* con el corazón visible, medidor y pistas; *Ponerme a prueba* con el corazón oculto, guiándose solo por la imagen, y evaluación al terminar.
 - **Leer la imagen**: preguntas generadas por el simulador (vista, estructura, maniobra, ajuste) respondidas solo con la imagen eco, con repaso espaciado de los fallos.
-- **Cardiopatías**: CIA, CIV, canal AV, ductus, coartación, derrame e hipertrofias editadas en el volumen acústico; modo de caso incógnito.
+- **Cardiopatías**: CIA, CIV, canal AV, ductus, coartación, derrame e hipertrofias editadas en el volumen acústico, y anomalía de Ebstein (velos tricuspídeos desplazados hacia el ápex, con insuficiencia); modo de caso incógnito.
 - **Curso guiado** de 14 lecciones con referencias a la guía ASE de ecocardiografía pediátrica 2024.
 - **Volumen 4D real** (`echo4d.html`): cortes de un estudio mitral adquirido (datos de prueba de SlicerHeart).
 
@@ -67,7 +67,7 @@ Los volúmenes `assets/tissue-*` se generaron a partir de las mallas del atlas c
 - En el volumen acústico se corrigieron dos defectos del atlas: el tabique interventricular venía partido en dos capas con sangre entre ellas (ahora es macizo) y el velo mitral anterior estaba fundido con el miocardio como una lámina fija en la cavidad (ahora lo dibuja el velo móvil). Los velos nacen del anillo medido hasta las paredes reales en cada dirección y, al cerrarse, se encuentran en su línea de coaptación (la «sonrisa» mitral, la «Y» tricuspídea), por lo que la válvula sella en sístole; el eje corto mitral se inclina hacia las puntas de los velos como haría el ecografista para ver la «boca de pez». El anillo tricuspídeo está más bajo en el tabique: su velo septal se inserta unos milímetros más cerca del ápex que la mitral, como en un corazón normal.
 - El eje corto subcostal coincide peor con su definición que las demás vistas.
 - Las puntuaciones Z solo incluyen por ahora los coeficientes PHN verificados (anillo mitral).
-- No hay insuficiencias ni estenosis valvulares ni modo M.
+- La única insuficiencia valvular es la tricuspídea de la anomalía de Ebstein; no hay estenosis valvulares ni modo M.
 - El teléfono solo aporta la orientación (no su posición sobre el tórax). La conexión directa (WebRTC, emparejada por el servidor público de PeerJS) falla en muchas redes de hospital o universidad; entonces los mensajes pasan por brókers MQTT públicos (HiveMQ, EMQX) por WebSocket seguro. Con `?relay=wss://tu-broker/mqtt` en la URL se usa un bróker propio.
 - El latido, las velocidades y las lesiones son esquemáticos: sirven para aprender orientación y conceptos, no para medir.
 

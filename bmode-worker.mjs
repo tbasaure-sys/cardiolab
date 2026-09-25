@@ -2,9 +2,9 @@
 import {loadTissue,HeartMotion,ventricularContraction,LABEL} from './tissue.mjs';
 import {buildViews,fanObstruction} from './views.mjs';
 import {createBMode} from './bmode.mjs';
-import {buildValves,sliceValves} from './valves.mjs';
+import {buildValves,sliceValves,setValveVariant} from './valves.mjs';
 import {placeAtlasPositions} from './geometry.mjs';
-import {applyVariant} from './chd-data.mjs';
+import {applyVariant,valveVariant} from './chd-data.mjs';
 import {buildFlow,lesionJets} from './flow.mjs';
 import {renderSpectrum,optimizeAim} from './spectral.mjs';
 
@@ -23,7 +23,7 @@ self.onmessage=async e=>{
   }
   // messages that arrive while the volume is still loading wait for it (never dropped)
   if(!tissue){if(!initDone)throw Error('Simulador sin inicializar');await initDone}
-  if(m.type==='variant'){tissue.reset();variant=m.spec||{id:'normal'};const info=applyVariant(tissue,variant);flow.jets=lesionJets(tissue,variant);info.jets=flow.jets.length;self.postMessage({type:'variant',id:m.id,info});return}
+  if(m.type==='variant'){tissue.reset();variant=m.spec||{id:'normal'};const info=applyVariant(tissue,variant);setValveVariant(valves,tissue,valveVariant(variant));flow.jets=lesionJets(tissue,variant);info.jets=flow.jets.length;self.postMessage({type:'variant',id:m.id,info});return}
   if(m.type==='render'){
    const t0=performance.now(),p=m.params,phase=p.phase??0,s=p.beating?ventricularContraction(phase):0;
    const leaflets=p.valves===false?[]:sliceValves(valves,m.pose,p.beating?phase:0,motion,s).map(v=>({segments:v.segments,strength:.012}));

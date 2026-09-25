@@ -35,6 +35,11 @@ export const VARIANTS=[
  {id:'coarct',name:'Coartación de aorta',short:'CoA',group:'Obstrucciones',params:{lumen:.0028},
   views:['ssn'],look:['Estrechamiento en el istmo, distal a la subclavia izquierda','Repisa posterior (shelf)'],
   pitfall:'Sin ventana supraesternal no se puede descartar. El Doppler (patrón en «diente de sierra») complementa el 2D.',doppler:'Aceleración con aliasing distal al istmo y cola diastólica: la «prolongación diastólica» es un signo de coartación significativa.',teach:'Palpar pulsos femorales y medir presión en las 4 extremidades sigue siendo clave.'},
+ {id:'ebstein',name:'Anomalía de Ebstein',short:'Ebstein',group:'Válvulas',params:{mm:18},
+  views:['a4c','sc4c','psaxMV'],look:['Velo septal tricuspídeo insertado mucho más cerca del ápex que la mitral (en el niño mayor y el adulto, más de 8 mm por m² de superficie corporal)','Velo anterior grande, alargado, «en vela», que sigue naciendo en el anillo','VD «atrializado»: la porción del VD por encima de los velos desplazados funciona como aurícula; el VD funcional queda pequeño','Los velos no llegan a coaptar en sístole'],
+  pitfall:'Compara las dos inserciones septales en la misma apical 4C: la tricúspide normal está solo unos milímetros más cerca del ápex. En el canal AV ocurre lo contrario (ambas al mismo nivel).',
+  doppler:'Insuficiencia tricuspídea en sístole que nace desplazada hacia el ápex, dentro del VD, y va hacia la AD (azul en apical, se aleja de la sonda). Suele ser de baja velocidad (≈2 m/s): la presión del VD es normal.',
+  teach:'El desplazamiento se mide en apical 4C desde la inserción septal de la mitral hasta la de la tricúspide y se indexa a la superficie corporal. Se asocia a CIA o foramen oval permeable y a vías accesorias (Wolff-Parkinson-White).'},
  {id:'effusion',name:'Derrame pericárdico moderado',short:'Derrame',group:'Pericardio',params:{mm:9},
   views:['plax','sc4c','a4c'],look:['Espacio anecoico entre el epicardio y el pericardio parietal','En PLAX: el derrame pasa por delante de la aorta descendente (el pleural, por detrás)'],
   pitfall:'La grasa epicárdica anterior puede simular derrame: el derrame es anecoico y rodea el corazón.',doppler:'Sin flujo en el espacio del derrame: el color ayuda a distinguirlo de una cavidad vascular.',teach:'Busca signos de taponamiento: colapso diastólico de AD y VD.'},
@@ -46,6 +51,10 @@ export const VARIANTS=[
   pitfall:'En el recién nacido la pared del VD es normalmente más gruesa que en el niño mayor.',doppler:'Sin jets propios: el Doppler se usa para estimar la presión del VD (insuficiencia tricuspídea, no simulada).',teach:'Piensa en estenosis pulmonar, hipertensión pulmonar o tetralogía de Fallot.'}
 ];
 export const VARIANT_BY_ID=Object.fromEntries(VARIANTS.map(v=>[v.id,v]));
+// leaflet changes of a variant, for valves.setValveVariant (sizes in metres, atlas units like the tissue edits)
+export function valveVariant(spec){
+ if(spec?.id==='ebstein')return {tricuspid:{displace:(spec.params?.mm??VARIANT_BY_ID.ebstein.params.mm)/1000,gap:.14}};
+ return {}}
 
 function centreOf(tissue,label,near,radius){return tissue.centroid([label],near,radius)||near}
 // nearest voxel of a label within radius (1 mm search grid), or null
@@ -77,6 +86,7 @@ export function applyVariant(tissue,spec){
    // posterior shelf at the isthmus: aortic lumen outside a small central channel becomes wall
    const isth=lm.ductAortic,c=centreOf(tissue,LABEL.AO_BLOOD,isth,.012),dir=unit(sub(c,lm.archTop)),r2=p.lumen*p.lumen;
    changed=tissue.paint((x,y,z)=>{const q=[x-c[0],y-c[1],z-c[2]],t=q[0]*dir[0]+q[1]*dir[1]+q[2]*dir[2];if(Math.abs(t)>.0028)return false;const perp=[q[0]-t*dir[0],q[1]-t*dir[1],q[2]-t*dir[2]];return perp[0]**2+perp[1]**2+perp[2]**2>r2},[c.map(v=>v-.016),c.map(v=>v+.016)],LABEL.VESSEL_WALL,new Set([LABEL.AO_BLOOD]));break;}
+  case 'ebstein':break; // a leaflet lesion: see valveVariant
   case 'effusion':tissue.effusionMM=p.mm;changed=1;break;
   case 'lvh':{
    // thicken the septum into the LV cavity along the whole septum
