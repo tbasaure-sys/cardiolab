@@ -1,6 +1,6 @@
 {
  "files": 103,
- "bytes": 73860858,
+ "bytes": 73862944,
  "largest": [
   "assets/anatomy.bin",
   6189936
@@ -39,9 +39,9 @@
   "tests/zscores.test.mjs": "3734c384989cd98560f9f9191a8fe499e3e436b9cc69798214950786df29256e",
   "tissue.mjs": "ec31d2f3c4a233bdce5af101b3a26eb396f00085d6b178483c194d8221b0cee0",
   "tutor.mjs": "fef2c84489e374c08c0ed66d7e7d98f81331483ab657fe02d4799cec4407dc48",
-  "valves.mjs": "3dec99b99d5aa3160fccc471358d923f630e7aeb6d135906523a3801f461d775",
+  "valves.mjs": "fcf989a0ba038bdd8a68ce655cd1787b0a8ab6d3a834132cde337dd8b7d86d62",
   "video-image.mjs": "4614f7f8506469a23f25a6a3e7153817d26d52d837e8a81bfbcf37724429812c",
-  "views.mjs": "3aeb031db2e3f101727f0bb1ff5be08eacb124584f01e97c582fc71dd9d70c8e",
+  "views.mjs": "164bb6ed230b875d35b5088c4ccbdcf68a356909082afd5a0427813dc7bf1acc",
   "volume-data.mjs": "0ea70157f1b8efa6dec4b20687f31d47648a59b85b3c31c6fcdce0e5762c11bf",
   "volume-geometry.mjs": "78d797b8a8ff992325b8caec63981d637f1130a90729a0741e73906d05f74150",
   "volume-scan.mjs": "614c580693f76180ba1d37b24a7b0fec8bb13feb7670b4abb5728a76b5db7d4c",
