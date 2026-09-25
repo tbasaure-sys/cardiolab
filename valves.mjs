@@ -22,7 +22,8 @@ const DEFS={
  // tips leave an oval orifice (the «fish mouth» of the short axis), not leaflets flat on the walls
  mitral:{kind:'av',R:.0155,leaflets:[{name:'Velo anterior mitral',a0:-62,a1:62,len:1.42,open:72},{name:'Velo posterior mitral',a0:62,a1:298,len:.92,open:58}]},
  // tricuspid: reference direction = the septum; septal leaflet on it, anterior toward the outflow, posterior inferior
- tricuspid:{kind:'av',R:.017,leaflets:[{name:'Velo septal tricuspídeo',a0:-55,a1:55,open:60},{name:'Velo anterior tricuspídeo',a0:55,a1:180,open:66},{name:'Velo posterior tricuspídeo',a0:180,a1:305,open:62}]},
+ // the tricuspid annulus is lower on the septum: its septal leaflet inserts closer to the apex than the mitral
+ tricuspid:{kind:'av',R:.017,septalDrop:.006,leaflets:[{name:'Velo septal tricuspídeo',a0:-55,a1:55,open:60},{name:'Velo anterior tricuspídeo',a0:55,a1:180,open:66},{name:'Velo posterior tricuspídeo',a0:180,a1:305,open:62}]},
  aortic:{kind:'semilunar',R:.0115,leaflets:[0,120,240].map((a,i)=>({name:['Velo coronario derecho','Velo coronario izquierdo','Velo no coronario'][i],a0:a+4,a1:a+116,len:1.04,closed:-14,open:82}))},
  pulmonary:{kind:'semilunar',R:.012,leaflets:[0,120,240].map((a,i)=>({name:'Velo pulmonar '+(i+1),a0:a+4,a1:a+116,len:1.04,closed:-14,open:82}))}
 };
@@ -40,7 +41,7 @@ export function buildValves(meshesByName,landmarks){
   if(id==='tricuspid'&&dot(e2,sub(lm.aorticValve,C))<0)e2=e2.map(v=>-v); // positive angles toward the outflow tract
   const hinge=lm.valveHinges?.[id]?Float32Array.from(lm.valveHinges[id]):null,R=hinge?hinge.reduce((a,b)=>a+b,0)/hinge.length:def.R;
   const leaflets=def.leaflets.map(L=>({...L,positions:new Float32Array((NI+1)*(NJ+1)*3),indices:indices()}));
-  const v={id,kind:def.kind,C,nv,e1,e2,R,hinge,leaflets};
+  const v={id,kind:def.kind,C,nv,e1,e2,R,hinge,leaflets,drop:def.septalDrop||0};
   if(def.kind==='av')coaptation(v);
   valves.push(v);
  }
@@ -51,7 +52,7 @@ export function buildValves(meshesByName,landmarks){
 // that bows back to split the orifice about 3:2 between the anterior and posterior leaflets, as their lengths.
 // Tricuspid: the centre of its annulus (the three leaflets close as a «Y»).
 function coaptation(v){
- v.hc=v.R*.36;
+ let hm=0;for(let k=0;k<72;k++)hm+=hingeH(v,k*Math.PI/36)/72;v.hc=v.R*.36+hm;
  if(v.id==='mitral'){const [A,P]=v.leaflets,xa=hingeR(v,0),xp=-hingeR(v,Math.PI),pt=deg=>{const f=rad(deg),r=hingeR(v,f);return [r*Math.cos(f),r*Math.sin(f)]};
   v.coapt={xc:xa-(xa-xp)*A.len/(A.len+P.len),c1:pt(A.a1),c2:pt(A.a0)}}
  else{let x=0,y=0;for(let k=0;k<72;k++){const f=k*Math.PI/36,r=hingeR(v,f);x+=r*Math.cos(f)/72;y+=r*Math.sin(f)/72}v.coapt={K:[x,y]}}
@@ -61,12 +62,14 @@ function coaptTarget(v,hy){const c=v.coapt;if(c.K)return c.K;
  return [c.xc+(x1-c.xc)*f*f,y]}
 // hinge radius at angle phi (radians from e1 toward e2)
 function hingeR(v,phi){if(!v.hinge)return v.R;const n=v.hinge.length,f=((phi/(2*Math.PI)%1+1)%1)*n,i=Math.floor(f),t=f-i;return v.hinge[i%n]*(1-t)+v.hinge[(i+1)%n]*t}
+// hinge height below the annulus plane (downstream), largest toward the reference direction (tricuspid: the septum)
+function hingeH(v,phi){return v.drop?v.drop*((1+Math.cos(phi))/2)**1.5:0}
 // Offline: distance from the valve centre, in its plane, to the first wall in 36 directions (metres).
 const PASS={mitral:[20,22,40],tricuspid:[21,23,41],aortic:[24,20,42],pulmonary:[25,21,43]}; // blood pools and valve voxels a hinge search may cross
 export function computeHinges(valves,tissue){const out={};
  for(const v of valves){const pass=new Set(PASS[v.id]),r=[];
-  for(let k=0;k<36;k++){const phi=k*Math.PI/18,d=[0,1,2].map(a=>Math.cos(phi)*v.e1[a]+Math.sin(phi)*v.e2[a]);let hit=null;
-   for(let x=.002;x<v.R*1.8;x+=.0005){if(!pass.has(tissue.tissueAt(...[0,1,2].map(a=>v.C[a]+d[a]*x)))){hit=x;break}}
+  for(let k=0;k<36;k++){const phi=k*Math.PI/18,d=[0,1,2].map(a=>Math.cos(phi)*v.e1[a]+Math.sin(phi)*v.e2[a]),h=hingeH(v,phi);let hit=null;
+   for(let x=.002;x<v.R*1.8;x+=.0005){if(!pass.has(tissue.tissueAt(...[0,1,2].map(a=>v.C[a]+d[a]*x+v.nv[a]*h)))){hit=x;break}}
    r.push(Math.max(v.R*.6,Math.min(v.R*1.6,hit??v.R*1.6)))}
   const sm=r.map((_,k)=>[-2,-1,0,1,2].reduce((s,o)=>s+r[(k+o+36)%36],0)/5);out[v.id]=sm.map(x=>+x.toFixed(5))}
  return out}
@@ -92,10 +95,10 @@ function shapeLeaflet(v,L,open,center){
  for(let i=0;i<=NI;i++){
   const phi=rad(L.a0+(L.a1-L.a0)*i/NI),Rp=hingeR(v,phi),hx=Rp*Math.cos(phi),hy=Rp*Math.sin(phi);
   const [tx,ty]=coaptTarget(v,hy),dx=tx-hx,dy=ty-hy,dist=Math.hypot(dx,dy)||1e-6,wx=dx/dist,wy=dy/dist;
-  const closed=Math.atan2(v.hc,dist),theta=closed+(rad(L.open)-closed)*open,len=Math.hypot(dist,v.hc);
+  const h0=hingeH(v,phi),closed=Math.atan2(v.hc-h0,dist),theta=closed+(rad(L.open)-closed)*open,len=Math.hypot(dist,v.hc-h0);
   for(let j=0;j<=NJ;j++){
    const t=j/NJ,bend=Math.sin(Math.PI*t)*.08*len*(1-open*.7); // slight belly toward the atrium
-   const inward=len*t*Math.cos(theta),x=hx+wx*inward,y=hy+wy*inward,axial=len*t*Math.sin(theta)-bend;
+   const inward=len*t*Math.cos(theta),x=hx+wx*inward,y=hy+wy*inward,axial=h0+len*t*Math.sin(theta)-bend;
    const k=(i*(NJ+1)+j)*3;for(let a=0;a<3;a++)P[k+a]=center[a]+v.e1[a]*x+v.e2[a]*y+v.nv[a]*axial;
   }
  }
