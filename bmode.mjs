@@ -17,9 +17,12 @@ smoothWarp();
 function warpAt(x,y,z,scale,out){const fx=x*scale,fy=y*scale,fz=z*scale,ix=Math.floor(fx),iy=Math.floor(fy),iz=Math.floor(fz),tx=fx-ix,ty=fy-iy,tz=fz-iz;
  out[0]=out[1]=out[2]=0;for(let c=0;c<8;c++){const dx=c&1,dy=(c>>1)&1,dz=c>>2,w=(dx?tx:1-tx)*(dy?ty:1-ty)*(dz?tz:1-tz),b=((((iz+dz)&NWM)*NW+((iy+dy)&NWM))*NW+((ix+dx)&NWM))*3;out[0]+=w*WARP[b];out[1]+=w*WARP[b+1];out[2]+=w*WARP[b+2]}}
 // scatterer clustering: log-normal amplitude at ~1.2 mm with occasional bright sparkles (as in real tissue)
-const CLU=new Float32Array(GN);for(let i=0;i<GN;i++){const g=Math.sqrt(-2*Math.log(hash3(i,41,2)+1e-9))*Math.cos(TWO_PI*hash3(i,43,6));CLU[i]=Math.exp(.55*g-.15)*(hash3(i,47,8)<.035?2.6:1)}
+// (moderate: strong clustering made myocardium look like cotton wool with salt; harmonic images are finer)
+const CLU=new Float32Array(GN);for(let i=0;i<GN;i++){const g=Math.sqrt(-2*Math.log(hash3(i,41,2)+1e-9))*Math.cos(TWO_PI*hash3(i,43,6));CLU[i]=Math.exp(.36*g-.065)*(hash3(i,47,8)<.012?1.8:1)}
+// gentle tissue heterogeneity at ~1.5 mm (HET, wider, is also used for noise and colour dropout)
+const HETT=new Float32Array(GN);for(let i=0;i<GN;i++)HETT[i]=.82+.36*hash3(i,61,9);
 // large-scale patchiness (~5 mm): real tissue brightness is never uniform
-const PATCH=new Float32Array(GN);for(let i=0;i<GN;i++){const g=Math.sqrt(-2*Math.log(hash3(i,53,3)+1e-9))*Math.cos(TWO_PI*hash3(i,59,7));PATCH[i]=Math.exp(.42*g-.09)}
+const PATCH=new Float32Array(GN);for(let i=0;i<GN;i++){const g=Math.sqrt(-2*Math.log(hash3(i,53,3)+1e-9))*Math.cos(TWO_PI*hash3(i,59,7));PATCH[i]=Math.exp(.3*g-.045)}
 function hidx(x,y,z){let h=(x*374761393+y*668265263+z*1274126177)|0;h=(h^(h>>>13))*1103515245|0;return (h^(h>>>16))&(GN-1)}
 
 export function tgcAmplitude(tgc,f){const x=Math.max(0,Math.min(1,f))*(tgc.length-1),i=Math.floor(x),v=tgc[i]+(tgc[Math.min(i+1,tgc.length-1)]-tgc[i])*(x-i);return 2**((v-50)/25)}
@@ -66,7 +69,7 @@ export function createBMode(){
     // coupling gel: until the beam enters the body, air is ignored
     if(lab===LABEL.AIR&&!entered){re[base+k]=0;im[base+k]=0;trans[base+k]=1;continue}entered=true;
     // skin and chest-wall layers along the ray (the probe sits on the skin)
-    if(lab===LABEL.SOFT||lab===LABEL.LIVER){if(r<.0018)lab=LABEL.SKIN;else if(r<.0055)lab=LABEL.SUBCUT;else if(r<.014&&lab===LABEL.SOFT)lab=LABEL.MUSCLE}
+    if(lab===LABEL.SOFT||lab===LABEL.LIVER){if(r<.0018)lab=LABEL.SKIN;else if(r<.0055)lab=LABEL.SUBCUT;else if(r<.014&&lab===LABEL.SOFT)lab=LABEL.MUSCLE;else if(lab===LABEL.SOFT&&r>.02&&tissue.lastDistance>.003&&tissue.lastDistance<.05)lab=LABEL.MEDIASTINUM}
     const pi=lab*3,scat=PROPS[pi],Z=PROPS[pi+1];
     let a=0,b=0;
     if(lab!==prevLab&&prevLab>=0){
@@ -87,7 +90,7 @@ export function createBMode(){
     if(scat>0&&I>1e-7){
      const gx=Math.floor(x*icell),gy=Math.floor(y*icell),gz=Math.floor(z*icell),g=hidx(gx,gy,gz);
      // gentle tissue heterogeneity (fibres, trabeculae) at ~1.5 mm
-     const w=I*scat*HET[hidx(gx>>3,gy>>3,gz>>3)]*CLU[hidx(gx>>2,gy>>2,gz>>2)]*PATCH[hidx(gx>>5,gy>>5,gz>>5)]*directivity;
+     const w=I*scat*HETT[hidx(gx>>3,gy>>3,gz>>3)]*CLU[hidx(gx>>2,gy>>2,gz>>2)]*PATCH[hidx(gx>>5,gy>>5,gz>>5)]*directivity;
      a+=w*GRE[g];b+=w*GIM[g];
     }
     // near-field clutter / reverberation haze from the chest wall (first ~2 cm)
@@ -98,6 +101,8 @@ export function createBMode(){
     if(cv&&j>=cj0&&j<=cj1&&k>=ck0&&k<=ck1&&I>2e-4&&color.flow.velocity(x,y,z,color.phase,vel))cv[base+k]=-(vel[0]*bx+vel[1]*by+vel[2]*bz);
     I*=stepAtt[lab];
    }
+   // near field: ring-down of the probe face and lens, horizontal bands in the first few millimetres (weaker in THI)
+   for(let k=0;k<samples;k++){const rp=(k+.5)*drp;if(rp>.01)break;re[base+k]+=(H?.0011:.0026)*Math.exp(-rp/.0025)*(.55+.45*Math.cos(TWO_PI*rp/.0017))*directivity}
    // lung: pleural reverberations (A-lines) at multiples of the pleural depth
    if(inLung){for(let m=2;m<=4;m++){const kk=Math.round(lungAt*m/dr);if(kk<samples){const amp=.03*.5**(m-1)*Math.exp(-2*alphaNp(.5)*lungAt*K*m);for(let t=-1;t<=1;t++){const idx=base+Math.min(samples-1,Math.max(0,kk+t));re[idx]+=amp*(1-Math.abs(t)*.5)}}}
     for(let k=Math.round(lungAt/dr)+2;k<samples;k++){const g=hash3(j,k,3);re[base+k]+=.0012*(g-.5)*Math.exp(-(k*dr-lungAt)*K/.03)*Math.exp(-2*alphaNp(.5)*k*drp)}}
@@ -109,14 +114,15 @@ export function createBMode(){
    for(const ov of overlays){
     const segs=ov.segments,str=ov.strength??.02;
     for(let i=0;i<segs.length;i+=4){
+     const mod=.55+.9*hash3(i,77,3); // leaflets are not uniform sheets: thicker, brighter spots (chordal insertions, tips)
      const x0=segs[i],y0=segs[i+1],x1=segs[i+2],y1=segs[i+3],len=Math.hypot(x1-x0,y1-y0),n=Math.max(1,Math.ceil(len/.00012));
      const tx=(x1-x0)/(len||1),ty=(y1-y0)/(len||1);
      for(let t=0;t<=n;t++){
       const x=x0+(x1-x0)*t/n,y=y0+(y1-y0)*t/n,r=Math.hypot(x,y);if(y<=0||r>=depth)continue;
       const th=Math.atan2(x,y),jf=(th+sector/2)/sector*lines-.5;if(jf<-.5||jf>lines-.5)continue;
       const j=Math.round(jf),k=Math.round(r/dr-.5);if(k<0||k>=samples)continue;
-      const perp=Math.abs(tx*(y/r)-ty*(x/r)),idx=j*samples+k,amp=str*(.25+.75*perp*perp)*trans[idx];
-      if(amp>ovb[idx])ovb[idx]=amp;
+      const perp=Math.abs(tx*(y/r)-ty*(x/r)),idx=j*samples+k,amp=str*mod*(.25+.75*perp*perp)*trans[idx];
+      if(amp>ovb[idx])ovb[idx]=amp;if(k+1<samples&&amp*.5>ovb[idx+1])ovb[idx+1]=amp*.5;if(k>0&&amp*.5>ovb[idx-1])ovb[idx-1]=amp*.5;
      }
     }
    }
@@ -133,7 +139,7 @@ export function createBMode(){
   const alphaSoft=.48*freq*.1151*100*(H?1.06:1),COMP=new Float32Array(samples),LUT=new Uint8Array(1024),REF=1/.025;
   for(let k=0;k<samples;k++){const r=(k+.5)*drp;COMP[k]=Math.min(1e4,Math.exp(2*alphaSoft*r))*tgcAmplitude(tgc,r/depth)*(1+.3*Math.exp(-(((r-focusR)/(.22*depth*K))**2)))} // transmit focus: a slightly brighter focal zone
   // grey map: reject the lowest levels, then a gentle S curve (harmonic-imaging look: black cavities, crisp tissue)
-  for(let i=0;i<1024;i++){const x=Math.max(0,(i/1023-.1)/.9),y=x<.5?.5*(2*x)**1.55:1-.5*(2-2*x)**1.1;LUT[i]=Math.round(255*Math.min(1,y))}
+  for(let i=0;i<1024;i++){const x=Math.max(0,(i/1023-.075)/.925),y=x<.5?.5*(2*x)**1.55:1-.5*(2-2*x)**1.1;LUT[i]=Math.round(255*Math.min(1,y))}
   // side lobes: a faint, wide lateral copy of the envelope (fills cavities next to bright walls with haze)
   const E=env;for(let i=0;i<N;i++)E[i]=Math.sqrt(re[i]*re[i]+im[i]*im[i]);
   // speckle reduction (as consoles do with compounding/persistence): blend with a small local mean
@@ -148,7 +154,8 @@ export function createBMode(){
    // machine default: compensate soft-tissue attenuation, then user TGC; receiver noise is amplified too
    const e=(E[i]+(H?.045:.11)*SL[i]+3e-9*HET[(i*7)&(GN-1)])*COMP[k]+4e-6*HET[(i*13+5)&(GN-1)];
    const db=8.685889638*Math.log(e*REF)+gainDB,v=(db-floorDB)/dynamicRange;
-   out[i]=v<=0?0:v>=1?255:LUT[(v*1023)|0];
+   // soft knee: very strong echoes (pericardium, specular walls) approach white without clipping into flat blobs
+   const vv=v>.82?.82+.18*(1-Math.exp(-(v-.82)/.18)):v;out[i]=vv<=0?0:LUT[(Math.min(.999,vv)*1023)|0];
   }
   let colorOut=null;
   if(cv){

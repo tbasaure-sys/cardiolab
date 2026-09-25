@@ -5,7 +5,7 @@ export const LABEL={AIR:0,SOFT:1,LUNG:2,BONE:3,LIVER:4,FAT:5,CARTILAGE:6,LV_MYO:
  LV_BLOOD:20,RV_BLOOD:21,LA_BLOOD:22,RA_BLOOD:23,AO_BLOOD:24,PA_BLOOD:25,CAVA_BLOOD:26,PV_BLOOD:27,CORONARY:28,CS_BLOOD:29,
  VESSEL_WALL:30,MITRAL:40,TRICUSPID:41,AORTIC_VALVE:42,PULMONARY_VALVE:43,
  // runtime-only labels (never in the source volume)
- PERICARDIUM:60,EFFUSION:61,SKIN:62,SUBCUT:63,MUSCLE:64,THROMBUS:65};
+ PERICARDIUM:60,EFFUSION:61,SKIN:62,SUBCUT:63,MUSCLE:64,THROMBUS:65,MEDIASTINUM:66};
 
 // [backscatter amplitude, impedance (MRayl), attenuation (dB/cm/MHz)]
 const P=[];const set=(ids,v)=>{for(const id of [].concat(ids))P[id]=v};
@@ -14,7 +14,7 @@ set(LABEL.SOFT,[.0032,1.63,.55]);
 set(LABEL.LUNG,[.0008,.0004,40]);
 set(LABEL.BONE,[.02,7.8,22]);
 set(LABEL.CARTILAGE,[.0045,1.8,.7]); // paediatric sternum: cartilage with small ossification centres
-set(LABEL.LIVER,[.0038,1.65,.5]);
+set(LABEL.LIVER,[.0047,1.65,.5]); // a little brighter than myocardium, as in harmonic imaging
 set(LABEL.FAT,[.012,1.38,.6]);
 set([LABEL.LV_MYO,LABEL.RV_MYO],[.0042,1.70,.55]);
 set([LABEL.LA_WALL,LABEL.RA_WALL],[.0045,1.70,.55]);
@@ -23,7 +23,10 @@ set([LABEL.LV_BLOOD,LABEL.RV_BLOOD,LABEL.LA_BLOOD,LABEL.RA_BLOOD,LABEL.AO_BLOOD,
 set(LABEL.VESSEL_WALL,[.008,1.74,.6]);
 // voxelised valves are replaced by the moving leaflet overlay; here they behave as blood
 set([LABEL.MITRAL,LABEL.TRICUSPID,LABEL.AORTIC_VALVE,LABEL.PULMONARY_VALVE],[.00008,1.61,.16]);
-set(LABEL.PERICARDIUM,[.022,1.95,.7]);
+set(LABEL.PERICARDIUM,[.018,1.95,.7]);
+// deep soft tissue the atlas leaves between the rib cage and the heart (in patients the heart lies against the chest
+// wall there): rendered faint so that it does not fill the near field; same impedance as soft tissue (no false edge)
+set(LABEL.MEDIASTINUM,[.0009,1.63,.5]);
 set(LABEL.EFFUSION,[.00012,1.52,.05]);
 set(LABEL.SKIN,[.014,1.75,.7]);
 set(LABEL.SUBCUT,[.0022,1.42,.6]);
