@@ -1,6 +1,6 @@
 {
- "files": 104,
- "bytes": 73870404,
+ "files": 105,
+ "bytes": 73873430,
  "largest": [
   "assets/anatomy.bin",
   6189936
@@ -9,7 +9,7 @@
   "app.mjs": "e88c8ab29281ea512fd53913f93c936e483233dd3663b46098fd6fc72bdc4162",
   "beam-map.mjs": "ed991ddc0c85494d3b300c9906886542d5736dc025570ccf543c298f9a5a34bc",
   "bmode-worker.mjs": "dcbe7419cabb5a5a296ffd5e23e1e8a62914f95d8f4f8ff744e0d4cc11bb1daa",
-  "bmode.mjs": "c8db4f13c2bd043d453d256d2f8fef522edcc06447d9834cf2dff2b11ccac29b",
+  "bmode.mjs": "f242eb3c4a029e0f08758ada8324c4b4bf009e24bb24263e97f7fa9a0840db76",
   "cabina.mjs": "1f897977d5a150a5ca834687d02e984ff4c4ea3a995142e3cf4d58068979ac10",
   "chd-data.mjs": "285c9ba6c7ed85b502cb4e5d304182dc06d43c83a782fc771755be84765b7fd8",
   "chd-panel.mjs": "4dc558590d47fc27069613808b149691c550e1e74155de0ad74e9740c66d7066",
@@ -33,6 +33,7 @@
   "sonda.html": "86f0c8ca833cee3c6988505ceb278887a4a7919c6d0574a5efd1ea4d3ca9f361",
   "sonda.mjs": "9703dfb96cea76efddb27a1ee3898c28f28e71663bcf5f6a8ff4517d2b22601d",
   "spectral.mjs": "3f7c62c4b9ff704b2683c467961234274e76884731122aaadc5ed19d060500c9",
+  "tests/bmode.test.mjs": "c8d81fb41598f8028acfacad2b88eb3f951dfebb5d42cf7675618160d47bc463",
   "tests/drills.test.mjs": "b0e294b0c45e9e30551b12b7121ef61bd0f26f9c95300cbb3813502d1bd83965",
   "tests/probe-motion.test.mjs": "018b2414e4debe14e9643431a8a6818ba91c1b0b67eb7e9b618b665f1166a824",
   "tests/relay.test.mjs": "b7a4feb5a2024e91d515032a36da90fb11cee339f7dba4c9ff29932dd3a79aee",
