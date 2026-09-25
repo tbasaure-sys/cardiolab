@@ -1,12 +1,12 @@
 {
  "files": 103,
- "bytes": 73293532,
+ "bytes": 73854044,
  "largest": [
   "assets/anatomy.bin",
   6189936
  ],
  "sha256": {
-  "app.mjs": "674c393f357cb64077e3c6e16a13988ec2b7f8d4ecdc8cb3b707f5394157ff1c",
+  "app.mjs": "091f7d708c5edb043c2a87f5685766c6b877373116858059bcdc0f9652963f55",
   "beam-map.mjs": "ed991ddc0c85494d3b300c9906886542d5736dc025570ccf543c298f9a5a34bc",
   "bmode-worker.mjs": "532ba08f899a01d073cdd6c87de48a5fb8ce0ced656ed9fcf7b68753448eb370",
   "bmode.mjs": "c8db4f13c2bd043d453d256d2f8fef522edcc06447d9834cf2dff2b11ccac29b",
@@ -19,7 +19,7 @@
   "echo4d.html": "e3a739134b2f08e49759e0f12af3e583379005009aea3edd42e3335fe617d4f5",
   "echo4d.mjs": "3a20a77c8d319e5714239fc6108cf7bb5312dada34d60579995ae8bae332e2c0",
   "flow.mjs": "4ec8a8a02bf6f8de4abe0f9a90a049bd9bb6ba62d425f722a7bf7266d93abf51",
-  "geometry.mjs": "1e191ca97603f65a31c865994657aa39d47fd7bb23cc5185e14b2a0f748d9656",
+  "geometry.mjs": "140141553ec7fec3f733eab11d8779d9fb0a2cff94e224db0a5ae43b5e1ae136",
   "index.html": "ad6ad459958567bd7f3b119560e6c955af708c97200c9ce5d9a126c50768750a",
   "instrument.mjs": "ddaf524c4dfe7508027d69bac168a2f810dffa8f4d1b7f5071adfac681be9d9d",
   "patient.mjs": "884f39f225136b1e06d419fc216b4e87ffef0e588c7e32d5ad1c1ad229678ff1",
@@ -41,7 +41,7 @@
   "tutor.mjs": "fef2c84489e374c08c0ed66d7e7d98f81331483ab657fe02d4799cec4407dc48",
   "valves.mjs": "dd86661d0c055d9cba8c99ac8ace20ecc0858265fca1d1eb27c1bf80f673f67f",
   "video-image.mjs": "4614f7f8506469a23f25a6a3e7153817d26d52d837e8a81bfbcf37724429812c",
-  "views.mjs": "289bb5ceb16cb68c89c0699ffde78a444c752b51015e57b184499dfaf312fec9",
+  "views.mjs": "d9d46a43c653010a40888db1473eaabf9752c39234ad4a5349d951303c122724",
   "volume-data.mjs": "0ea70157f1b8efa6dec4b20687f31d47648a59b85b3c31c6fcdce0e5762c11bf",
   "volume-geometry.mjs": "78d797b8a8ff992325b8caec63981d637f1130a90729a0741e73906d05f74150",
   "volume-scan.mjs": "614c580693f76180ba1d37b24a7b0fec8bb13feb7670b4abb5728a76b5db7d4c",
