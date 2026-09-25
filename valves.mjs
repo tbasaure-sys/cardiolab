@@ -63,7 +63,18 @@ function coaptTarget(v,hy){const c=v.coapt;if(c.K)return c.K;
 // hinge radius at angle phi (radians from e1 toward e2)
 function hingeR(v,phi){if(!v.hinge)return v.R;const n=v.hinge.length,f=((phi/(2*Math.PI)%1+1)%1)*n,i=Math.floor(f),t=f-i;return v.hinge[i%n]*(1-t)+v.hinge[(i+1)%n]*t}
 // hinge height below the annulus plane (downstream), largest toward the reference direction (tricuspid: the septum)
-function hingeH(v,phi){return v.drop?v.drop*((1+Math.cos(phi))/2)**1.5:0}
+function hingeH(v,phi){let h=v.drop?v.drop*((1+Math.cos(phi))/2)**1.5:0;
+ // Ebstein: the septal leaflet displaced toward the apex most, the posterior one less, the anterior one in place
+ if(v.displace)h+=v.displace*((1+Math.cos(phi+rad(30)))/2)**1.5;
+ return h}
+// Leaflet variants (congenital lesions of the valves), set per congenital variant. tricuspid: {displace: extra apical
+// drop of the septal and posterior hinges (m), gap: fraction by which the leaflets fall short of coaptation}. The
+// hinges at the new height are measured on the tissue; an empty spec restores the normal valves.
+export function setValveVariant(valves,tissue,spec={}){
+ for(const v of valves){if(v.kind!=='av')continue;const t=spec[v.id]||{};v.base??={hinge:v.hinge};
+  v.displace=t.displace||0;v.gap=t.gap||0;
+  v.hinge=v.displace&&tissue?Float32Array.from(computeHinges([v],tissue)[v.id]):v.base.hinge;coaptation(v)}
+}
 // Offline: distance from the valve centre, in its plane, to the first wall in 36 directions (metres).
 const PASS={mitral:[20,22,40],tricuspid:[21,23,41],aortic:[24,20,42],pulmonary:[25,21,43]}; // blood pools and valve voxels a hinge search may cross
 export function computeHinges(valves,tissue){const out={};
@@ -95,7 +106,7 @@ function shapeLeaflet(v,L,open,center){
  for(let i=0;i<=NI;i++){
   const phi=rad(L.a0+(L.a1-L.a0)*i/NI),Rp=hingeR(v,phi),hx=Rp*Math.cos(phi),hy=Rp*Math.sin(phi);
   const [tx,ty]=coaptTarget(v,hy),dx=tx-hx,dy=ty-hy,dist=Math.hypot(dx,dy)||1e-6,wx=dx/dist,wy=dy/dist;
-  const h0=hingeH(v,phi),closed=Math.atan2(v.hc-h0,dist),theta=closed+(rad(L.open)-closed)*open,len=Math.hypot(dist,v.hc-h0);
+  const h0=hingeH(v,phi),closed=Math.atan2(v.hc-h0,dist),theta=closed+(rad(L.open)-closed)*open,len=Math.hypot(dist,v.hc-h0)*(1-(v.gap||0));
   for(let j=0;j<=NJ;j++){
    const t=j/NJ,bend=Math.sin(Math.PI*t)*.08*len*(1-open*.7); // slight belly toward the atrium
    const inward=len*t*Math.cos(theta),x=hx+wx*inward,y=hy+wy*inward,axial=h0+len*t*Math.sin(theta)-bend;

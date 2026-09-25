@@ -131,6 +131,10 @@ export function lesionJets(tissue,spec,size=1){
   // on entering the pulmonary artery the ductal jet runs back along the main PA toward the pulmonary valve (red in PSAX)
   jets.push(jet(b,lm.pulmonaryValve.map((v,i)=>v-b[i]),{peak:3.0,timing:continuous,w0:.003,len:.04,back:.002,spread:.14,decay:.045}))}
  if(id==='coarct'){const c=centroidNear(tissue,[L.AO_BLOOD,L.VESSEL_WALL],lm.ductAortic,.012)||lm.ductAortic,d=c.map((v,i)=>v-lm.archTop[i]);jets.push(jet(c,d,{peak:3.0,timing:coarct,w0:.0025,len:.035,back:.006,spread:.1,decay:.03}))}
+ if(id==='ebstein'){
+  // tricuspid regurgitation from the displaced coaptation, inside the RV, back toward the right atrium; low velocity
+  const tv=lm.tricuspidValve,ax=lm.rvApex.map((v,i)=>v-tv[i]),l=Math.hypot(...ax),n=ax.map(v=>v/l),mm=(spec.params?.mm??18)/1000,p=tv.map((v,i)=>v+n[i]*(mm*.6+.008));
+  jets.push(jet(p,n.map(v=>-v),{peak:2.1,timing:holosystolic,w0:.005,len:.045,spread:.22}))}
  if(id==='lvh'){const p=lm.aorticValve.map((v,i)=>v+(lm.mitralValve[i]-v)*.35),d=lm.aorticValve.map((v,i)=>v-lm.lvApexCavity[i]);jets.push(jet(p,d,{peak:2.4,timing:lateSystolic,w0:.004,len:.03,back:.012,spread:.08}))}
  return jets;
 }

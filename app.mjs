@@ -302,7 +302,7 @@ $('dop-scale').onchange=()=>{const v=$('dop-scale').value;dop.scale=v?Number(v):
 $('dop-baseline').onchange=()=>{dop.baseline=Number($('dop-baseline').value);dop.caliper=null;requestSpectrum()};
 // CW line through a lesion at its systolic position (the heart moves under a fixed line). Each lesion is measured
 // from the window that best aligns the beam with its jet, as in practice.
-const CW_PLAN={vsdpm:{view:'plax',why:'paraesternal largo: el jet de la CIV va hacia la sonda'},vsdm:{view:'plax',why:'paraesternal largo: jet hacia la sonda'},coarct:{view:'ssn',why:'supraesternal: el haz sigue la aorta descendente'},lvh:{view:'a3c',why:'apical 3 cámaras: el tracto de salida alineado con el haz'},pda:{view:'psaxAV',why:'eje corto inclinado hacia la bifurcación pulmonar: el jet ductal vuelve por el tronco hacia la sonda'}};
+const CW_PLAN={ebstein:{view:'a4c',why:'apical 4 cámaras: el jet de insuficiencia tricuspídea va alineado con el haz'},vsdpm:{view:'plax',why:'paraesternal largo: el jet de la CIV va hacia la sonda'},vsdm:{view:'plax',why:'paraesternal largo: jet hacia la sonda'},coarct:{view:'ssn',why:'supraesternal: el haz sigue la aorta descendente'},lvh:{view:'a3c',why:'apical 3 cámaras: el tracto de salida alineado con el haz'},pda:{view:'psaxAV',why:'eje corto inclinado hacia la bifurcación pulmonar: el jet ductal vuelve por el tronco hacia la sonda'}};
 function cwTarget(id){const plan=CW_PLAN[id],t=simViews?.[plan.view];if(!t)return null;if(id!=='pda')return t;
  const lm=engine.landmarks,pv=lm.pulmonaryValve,dp=lm.ductPulmonary,tgt=pv.map((v,i)=>v+(dp[i]-v)*.6),o=t.origin,unit=a=>{const l=Math.hypot(...a)||1;return a.map(v=>v/l)},cr=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
  const d=unit(sub(tgt,o)),n=unit(cr(d,sub(dp,pv)));let u=unit(cr(d,n));if(u[0]+u[2]<0)u=u.map(v=>-v);return {origin:o,d,u,n:unit(cr(u,d)),depth:.15,sector:80,meta:{center:tgt,landmarks:{}}}}
@@ -467,6 +467,7 @@ function setTgcAll(values){if(!ready)return;display.tgc=[...values];requestSim(f
 const PRESET_OF_WINDOW={plax:'plax',psax:'psax',apical:'apical',subcostal:'subcostal',ssn:'ssn'};
 const LESION_AT={asd2:'asdSecundum',asd1:'asdPrimum',vsdpm:'vsdPerimembranous',vsdm:'vsdMuscular',avsd:'asdPrimum',pda:['ductAortic','ductPulmonary'],coarct:'ductAortic'};
 function lesionPosition(id){const lm=engine.landmarks,k=LESION_AT[id];if(lm&&id==='lvh')return lm.aorticValve.map((v,i)=>v+(lm.mitralValve[i]-v)*.35); // subaortic outflow, where the septal bulge narrows it
+ if(lm&&id==='ebstein'){const tv=lm.tricuspidValve,ax=lm.rvApex.map((v,i)=>v-tv[i]),l=Math.hypot(...ax);return tv.map((v,i)=>v+ax[i]/l*.019)} // displaced tricuspid coaptation
  if(!lm||!k)return null;if(Array.isArray(k))return k.map(n=>lm[n]).reduce((a,b)=>a.map((v,i)=>(v+b[i])/2));return lm[k]}
 const panels={coach:$('coach'),drills:$('drills'),chd:$('chd')};let drills=null;let openPanel=null;
 function showPanel(name){
