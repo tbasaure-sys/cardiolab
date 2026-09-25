@@ -73,7 +73,9 @@ export function buildViews(lm,obstruct=null){
  };
  {const root=unit(sub(av,mid(mv,apex)));
   views.psaxAV=psax(av,unit(add(mul(long,.3),mul(root,.7))),.14);views.psaxAV.meta={center:av,landmarks:{'Válvula aórtica':av,'Válvula pulmonar':pv}};}
- const mvLevel=add(mv,mul(long,-.012)),papLevel=add(mv,mul(sub(apex,mv),.5));
+ // mitral leaflet level, 16 mm (atlas) below the orifice: the annulus of the atlas is tilted, so a plane closer to it
+ // cuts the aortic root and the left atrium instead of both leaflets (fish mouth)
+ const mvLevel=add(mv,mul(long,-.016)),papLevel=add(mv,mul(sub(apex,mv),.5));
  views.psaxMV=psax(mvLevel,long,.16);views.psaxMV.meta={center:mvLevel,landmarks:{'Mitral · nivel de velos':mvLevel}};
  views.psaxPM=psax(papLevel,long,.16);views.psaxPM.meta={center:papLevel,landmarks:{'Músculos papilares':papLevel}};
  // Apical views: probe on the true apex
@@ -102,7 +104,7 @@ export function buildViews(lm,obstruct=null){
  // Suprasternal long axis of the aortic arch: probe in the notch above the manubrium; plane through the notch,
  // the ascending and the descending aorta
  {const arch=lm.archTop,asc=add(av,mul(unit(sub(arch,av)),.035)),desc=lm.ductAortic;
-  let best=null;for(let ix=-.02;ix<=.02+1e-9;ix+=.002)for(let iz=-.012;iz<=.02+1e-9;iz+=.002){const org=surface(SSN[0]+ix,SSN[2]+iz),n=unit(cross(sub(asc,org),sub(desc,org))),tgt=add(arch,[0,0,-.012]);const cost=(o?o(org,tgt,n):0)+norm(sub(org,SSN))*40;if(!best||cost<best.cost)best={cost,org,n,tgt}}
+  let best=null;for(let ix=-.02;ix<=.02+1e-9;ix+=.002)for(let iz=0;iz<=.02+1e-9;iz+=.002){const org=surface(SSN[0]+ix,SSN[2]+iz) /* never below the notch (manubrium) */,n=unit(cross(sub(asc,org),sub(desc,org))),tgt=add(arch,[0,0,-.012]);const cost=(o?o(org,tgt,n):0)+norm(sub(org,SSN))*40;if(!best||cost<best.cost)best={cost,org,n,tgt}}
   let d=unit(sub(best.tgt,best.org));d=unit(sub(d,mul(best.n,dot(d,best.n))));let u=unit(cross(d,best.n));if(dot(u,head)<0)u=mul(u,-1);
   views.ssn={origin:best.org,u,d,n:unit(cross(u,d)),depth:.18,sector:80};views.ssn.meta={center:arch,landmarks:{'Arco aórtico':arch,'Aorta ascendente':asc,'Istmo aórtico':desc}};}
  // landmarks and centre are used for scoring: keep them on the ideal plane itself (project the near ones, drop far ones)

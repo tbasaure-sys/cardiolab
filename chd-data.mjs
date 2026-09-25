@@ -48,6 +48,13 @@ export const VARIANTS=[
 export const VARIANT_BY_ID=Object.fromEntries(VARIANTS.map(v=>[v.id,v]));
 
 function centreOf(tissue,label,near,radius){return tissue.centroid([label],near,radius)||near}
+// nearest voxel of a label within radius (1 mm search grid), or null
+function nearestOf(tissue,label,p,radius=.02){let best=null,bd=Infinity;
+ for(let x=-radius;x<=radius;x+=.001)for(let y=-radius;y<=radius;y+=.001)for(let z=-radius;z<=radius;z+=.001){const d=x*x+y*y+z*z;if(d<bd&&d<=radius*radius&&tissue.tissueAt(p[0]+x,p[1]+y,p[2]+z)===label){bd=d;best=[p[0]+x,p[1]+y,p[2]+z]}}
+ return best}
+// ventricular septal defect: the hole at the landmark, carried through the septum to the nearest RV blood
+function vsd(tissue,c,radius){let n=tissue.sphere(c,radius,LABEL.LV_BLOOD,VENTRICULAR);const rv=nearestOf(tissue,LABEL.RV_BLOOD,c);
+ if(rv)n+=tissue.capsule(c,add(rv,mul(unit(sub(rv,c)),.001)),radius*.85,LABEL.LV_BLOOD,VENTRICULAR);return n}
 
 export function applyVariant(tissue,spec){
  const v=VARIANT_BY_ID[spec?.id]||VARIANT_BY_ID.normal,lm=tissue.landmarks,p={...(v.params||{}),...(spec?.params||{})};let changed=0;
@@ -55,8 +62,8 @@ export function applyVariant(tissue,spec){
  switch(v.id){
   case 'asd2':changed=tissue.sphere(lm.asdSecundum,p.radius,LABEL.LA_BLOOD,ATRIAL);break;
   case 'asd1':changed=tissue.sphere(lm.asdPrimum,p.radius,LABEL.LA_BLOOD,ATRIAL);break;
-  case 'vsdpm':changed=tissue.sphere(lm.vsdPerimembranous,p.radius,LABEL.LV_BLOOD,VENTRICULAR);break;
-  case 'vsdm':changed=tissue.sphere(lm.vsdMuscular,p.radius,LABEL.LV_BLOOD,VENTRICULAR);break;
+  case 'vsdpm':changed=vsd(tissue,lm.vsdPerimembranous,p.radius);break;
+  case 'vsdm':changed=vsd(tissue,lm.vsdMuscular,p.radius);break;
   case 'avsd':{
    changed+=tissue.sphere(lm.asdPrimum,p.radius,LABEL.LA_BLOOD,ATRIAL);
    const crux=add(mid(lm.mitralValve,lm.tricuspidValve),mul(long,-.006));

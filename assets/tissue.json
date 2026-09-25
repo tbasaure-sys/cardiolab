@@ -23,7 +23,7 @@
    "distanceToHeart_0.25mm"
   ],
   "file": "tissue-fine.bin.gz",
-  "sha256": "d7400ff0b07806cdcdabd32482b3de824655c3411468516c24f6e05ac36cd0c5",
+  "sha256": "db5ffcba179d3cd0dbde726ce21c0d9ea95c82d11c04065e9345cfbd7fe91fd5",
   "layout": "x fastest, then y, then z; 2 bytes per voxel"
  },
  "coarse": {
@@ -42,7 +42,7 @@
    "label"
   ],
   "file": "tissue-coarse.bin.gz",
-  "sha256": "060be559745b4aea742188b4ff0909271166168b8444472e2e9895006d9b087d",
+  "sha256": "58b96def414eac2855d3bb0a194848d23c743149366b52f90bf7e3d8969acb36",
   "layout": "x fastest, then y, then z"
  },
  "labels": {
@@ -76,24 +76,24 @@
  },
  "landmarks": {
   "aorticValve": [
-   0.01188,
-   -0.01381,
-   0.02455
+   0.0104,
+   -0.01466,
+   0.02411
   ],
   "pulmonaryValve": [
-   0.02977,
-   -0.03061,
-   0.02764
+   0.02911,
+   -0.03079,
+   0.03003
   ],
   "mitralValve": [
-   0.01712,
-   0.01024,
-   0.0059
+   0.01482,
+   0.01358,
+   0.00358
   ],
   "tricuspidValve": [
-   -0.00808,
-   -0.02888,
-   -0.00077
+   -0.0095,
+   -0.0291,
+   -0.00145
   ],
   "lvApex": [
    0.07313,
@@ -101,14 +101,14 @@
    -0.04071
   ],
   "lvApexCavity": [
-   0.0619,
-   -0.03513,
-   -0.04
+   0.06611,
+   -0.02784,
+   -0.03243
   ],
   "rvApex": [
-   0.06125,
-   -0.02587,
-   -0.049
+   0.05694,
+   -0.03408,
+   -0.04002
   ],
   "archTop": [
    -0.01184,
@@ -159,7 +159,161 @@
    0.01354,
    -0.00826,
    0.00736
-  ]
+  ],
+  "valveHinges": {
+   "mitral": [
+    0.0093,
+    0.0093,
+    0.0093,
+    0.01174,
+    0.01428,
+    0.01612,
+    0.01876,
+    0.02186,
+    0.02252,
+    0.02308,
+    0.02434,
+    0.0248,
+    0.0248,
+    0.0248,
+    0.0248,
+    0.02474,
+    0.02458,
+    0.02412,
+    0.02326,
+    0.0224,
+    0.022,
+    0.0211,
+    0.0186,
+    0.01636,
+    0.01412,
+    0.01148,
+    0.00944,
+    0.0093,
+    0.0093,
+    0.0093,
+    0.0093,
+    0.0093,
+    0.0093,
+    0.0093,
+    0.0093,
+    0.0093
+   ],
+   "tricuspid": [
+    0.02094,
+    0.02184,
+    0.02094,
+    0.01924,
+    0.0186,
+    0.0158,
+    0.0136,
+    0.0135,
+    0.0133,
+    0.0108,
+    0.0109,
+    0.0112,
+    0.0115,
+    0.0122,
+    0.0132,
+    0.0144,
+    0.0156,
+    0.017,
+    0.0183,
+    0.0194,
+    0.0204,
+    0.0213,
+    0.0222,
+    0.023,
+    0.02404,
+    0.02508,
+    0.02602,
+    0.02666,
+    0.0272,
+    0.0272,
+    0.0272,
+    0.0272,
+    0.02516,
+    0.02292,
+    0.02148,
+    0.02148
+   ],
+   "aortic": [
+    0.0104,
+    0.0111,
+    0.0112,
+    0.0117,
+    0.0121,
+    0.0128,
+    0.0128,
+    0.0126,
+    0.0121,
+    0.0117,
+    0.0122,
+    0.013,
+    0.0139,
+    0.015,
+    0.0164,
+    0.0166,
+    0.0168,
+    0.0168,
+    0.0166,
+    0.016,
+    0.0155,
+    0.015,
+    0.0147,
+    0.0143,
+    0.0141,
+    0.0139,
+    0.0141,
+    0.0132,
+    0.0134,
+    0.0122,
+    0.011,
+    0.0104,
+    0.0101,
+    0.0095,
+    0.0101,
+    0.0107
+   ],
+   "pulmonary": [
+    0.0142,
+    0.0144,
+    0.0151,
+    0.0159,
+    0.0168,
+    0.0176,
+    0.0182,
+    0.0183,
+    0.018,
+    0.0176,
+    0.0169,
+    0.0163,
+    0.0159,
+    0.0159,
+    0.0163,
+    0.017,
+    0.01774,
+    0.01844,
+    0.01874,
+    0.01824,
+    0.01774,
+    0.0173,
+    0.0168,
+    0.0165,
+    0.0166,
+    0.017,
+    0.01744,
+    0.01798,
+    0.01852,
+    0.01906,
+    0.0192,
+    0.01876,
+    0.01782,
+    0.01668,
+    0.01564,
+    0.0146
+   ]
+  }
  },
  "geometrySHA256": "c8b1de6e9eca5a9753462dbed12b978ae2bcc25b652b39cbcb632cef5590cf08",
  "derivation": "Generalized winding number of atlas meshes (walls, vessels, papillary muscles, bones); cavities = enclosed space; valve leaflets = 0.9 mm around the source surfaces. Lungs, liver and diaphragm are procedural. Derived from Z-Anatomy / BodyParts3D (CC BY-SA).",
@@ -172,5 +326,7 @@
   ],
   "falloffMM": 57,
   "note": "Heart moved toward the chest wall (the atlas leaves a wide gap between the rib cage and the apex); surrounding tissue follows with a smooth falloff. Meshes get the same rigid shift at load (geometry.HEART_SHIFT)."
- }
+ },
+ "landmarkNote": "Valve centres at the orifice between the two blood pools; cavity apices as the blood farthest from the inflow valve (recomputed from the tissue volume).",
+ "septumRepair": "Fine volume: the split atlas septum (thin RV layer, a gap labelled LV blood, thin LV layer) was closed into LV myocardium, with a minimum septal thickness of 6 mm (atlas) that fades near the aortic valve; the atlas anterior mitral leaflet, fused into the LV myocardium label as a static sheet in the cavity, became MITRAL (rendered as blood; the moving leaflet overlay draws it)."
 }

@@ -7,7 +7,10 @@ Licencias y fuentes
 - Anatomía: Z-Anatomy (CC BY-SA 4.0), derivado de BodyParts3D / DBCLS (CC BY-SA 2.1 Japan). Ver assets/LICENSE-anatomy.txt.
   Los volúmenes acústicos (assets/tissue-*) derivan de esas mallas y se comparten bajo la misma licencia (CC BY-SA).
   Modificaciones: el corazón y el tejido que lo rodea se desplazaron 2 cm hacia la pared torácica (deformación suave aplicada
-  igual a assets/anatomy.bin y a assets/tissue-fine.bin.gz; ver heartShift en assets/tissue.json).
+  igual a assets/anatomy.bin y a assets/tissue-fine.bin.gz; ver heartShift en assets/tissue.json). En assets/tissue-fine.bin.gz
+  se cerró el tabique interventricular (dividido en el atlas) y el velo mitral anterior fundido con el miocardio pasó a
+  etiqueta de válvula (ver septumRepair en assets/tissue.json); los centros valvulares y los ápex se recalcularon sobre el
+  volumen y cada válvula guarda su anillo medido hasta las paredes (valveHinges).
 - three.js: licencia MIT (node_modules/three/LICENSE).
 - PeerJS 1.5.5 (emparejamiento WebRTC de la sonda-teléfono): MIT (node_modules/peerjs/LICENSE).
 - qrcode-generator 2.0.4 (código QR de emparejamiento): MIT, (c) Kazuhiko Arase (node_modules/qrcode-generator/LICENSE).
