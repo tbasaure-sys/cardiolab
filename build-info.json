@@ -1,15 +1,15 @@
 {
  "files": 103,
- "bytes": 73288011,
+ "bytes": 73293532,
  "largest": [
   "assets/anatomy.bin",
   6189936
  ],
  "sha256": {
-  "app.mjs": "f288f90f90c47efc67a6ed9d038c7daaad21f57c294f941a098ca342c4d5f163",
+  "app.mjs": "674c393f357cb64077e3c6e16a13988ec2b7f8d4ecdc8cb3b707f5394157ff1c",
   "beam-map.mjs": "ed991ddc0c85494d3b300c9906886542d5736dc025570ccf543c298f9a5a34bc",
   "bmode-worker.mjs": "532ba08f899a01d073cdd6c87de48a5fb8ce0ced656ed9fcf7b68753448eb370",
-  "bmode.mjs": "b4a09b0445afe5734145e51035f0586e1da05fbd9554a0f58bacf09ca596ad4f",
+  "bmode.mjs": "c8db4f13c2bd043d453d256d2f8fef522edcc06447d9834cf2dff2b11ccac29b",
   "cabina.mjs": "1f897977d5a150a5ca834687d02e984ff4c4ea3a995142e3cf4d58068979ac10",
   "chd-data.mjs": "5b2ab8945eb6240247e27a1e8b1db5930f608674ea32e8c091a752886f4902ed",
   "chd-panel.mjs": "c77770ee91378da81dedd9c139c567c53e7a17715716621828322856365ad9c2",
@@ -19,7 +19,7 @@
   "echo4d.html": "e3a739134b2f08e49759e0f12af3e583379005009aea3edd42e3335fe617d4f5",
   "echo4d.mjs": "3a20a77c8d319e5714239fc6108cf7bb5312dada34d60579995ae8bae332e2c0",
   "flow.mjs": "4ec8a8a02bf6f8de4abe0f9a90a049bd9bb6ba62d425f722a7bf7266d93abf51",
-  "geometry.mjs": "e8d480a7044011706e6f0a98997a8b061ddc9a1ffa8bd849c9610c7052b6d870",
+  "geometry.mjs": "1e191ca97603f65a31c865994657aa39d47fd7bb23cc5185e14b2a0f748d9656",
   "index.html": "ad6ad459958567bd7f3b119560e6c955af708c97200c9ce5d9a126c50768750a",
   "instrument.mjs": "ddaf524c4dfe7508027d69bac168a2f810dffa8f4d1b7f5071adfac681be9d9d",
   "patient.mjs": "884f39f225136b1e06d419fc216b4e87ffef0e588c7e32d5ad1c1ad229678ff1",
@@ -37,7 +37,7 @@
   "tests/probe-motion.test.mjs": "018b2414e4debe14e9643431a8a6818ba91c1b0b67eb7e9b618b665f1166a824",
   "tests/relay.test.mjs": "b7a4feb5a2024e91d515032a36da90fb11cee339f7dba4c9ff29932dd3a79aee",
   "tests/zscores.test.mjs": "3734c384989cd98560f9f9191a8fe499e3e436b9cc69798214950786df29256e",
-  "tissue.mjs": "1c2ef9bacd42bd92fa82f8c3163c26adca186d215d9daca497f5ce5153560833",
+  "tissue.mjs": "ec31d2f3c4a233bdce5af101b3a26eb396f00085d6b178483c194d8221b0cee0",
   "tutor.mjs": "fef2c84489e374c08c0ed66d7e7d98f81331483ab657fe02d4799cec4407dc48",
   "valves.mjs": "dd86661d0c055d9cba8c99ac8ace20ecc0858265fca1d1eb27c1bf80f673f67f",
   "video-image.mjs": "4614f7f8506469a23f25a6a3e7153817d26d52d837e8a81bfbcf37724429812c",
