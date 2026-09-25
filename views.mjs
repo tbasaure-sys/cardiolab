@@ -75,8 +75,11 @@ export function buildViews(lm,obstruct=null){
   views.psaxAV=psax(av,unit(add(mul(long,.3),mul(root,.7))),.14);views.psaxAV.meta={center:av,landmarks:{'Válvula aórtica':av,'Válvula pulmonar':pv}};}
  // mitral leaflet level, 16 mm (atlas) below the orifice: the annulus of the atlas is tilted, so a plane closer to it
  // cuts the aortic root and the left atrium instead of both leaflets (fish mouth)
- const mvLevel=add(mv,mul(long,-.016)),papLevel=add(mv,mul(sub(apex,mv),.5));
- views.psaxMV=psax(mvLevel,long,.16);views.psaxMV.meta={center:mvLevel,landmarks:{'Mitral · nivel de velos':mvLevel}};
+ const mvLevel=add(mv,mul(long,-.012)),papLevel=add(mv,mul(sub(apex,mv),.5));
+ // the plane follows the leaflet tips: deeper on the anterior (aortic) side, where the long anterior leaflet reaches,
+ // which also keeps the aortic root out of the section (tilted 12° from the LV short axis)
+ const toAo=sub(av,mv),antDir=unit(sub(toAo,mul(long,dot(toAo,long)))),mvAxis=unit(add(long,mul(antDir,Math.tan(rad(12)))));
+ views.psaxMV=psax(mvLevel,mvAxis,.16);views.psaxMV.meta={center:mvLevel,landmarks:{'Mitral · nivel de velos':mvLevel}};
  views.psaxPM=psax(papLevel,long,.16);views.psaxPM.meta={center:papLevel,landmarks:{'Músculos papilares':papLevel}};
  // Apical views: probe on the true apex
  {const n4=unit(cross(sub(mv,apex),sub(tv,apex))),c4=mid(mv,tv);
