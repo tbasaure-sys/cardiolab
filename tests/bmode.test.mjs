@@ -15,3 +15,18 @@ test('slice thickness: a wall 1 mm outside the plane shows in the image',()=>{
  const thin=meanIn(bm.render(tissue,{...opts,elevation:false}),.032,.038),thick=meanIn(bm.render(tissue,opts),.032,.038);
  assert.ok(thick>thin+25,`mean grey ${thin.toFixed(0)} → ${thick.toFixed(0)}`);
 });
+
+test('slice thickness keeps uniform tissue as bright as a thin plane (sub-ray echoes add in power)',()=>{
+ const uni={lastDistance:0,tissueAt:()=>LABEL.LV_MYO,lookup(){return LABEL.LV_MYO}},bm=createBMode();
+ const o={pose:{...pose,depth:.1},lines:64,freq:6,bodyScale:1,gain:1};
+ const thin=meanIn(bm.render(uni,{...o,elevation:false}),.03,.05),thick=meanIn(bm.render(uni,o),.03,.05);
+ assert.ok(Math.abs(thick-thin)<8,`mean grey ${thin.toFixed(0)} vs ${thick.toFixed(0)}`);
+});
+
+test('cardiac depth gain: a wall behind 4 cm of blood shows mild enhancement, not a white slab',()=>{
+ // two 8 mm myocardial walls at 2 and 7 cm with blood between, like the septum and posterior wall across the LV
+ const walls={lastDistance:0,tissueAt:(x,y,z)=>(y>.02&&y<.028)||(y>.07&&y<.078)?LABEL.LV_MYO:LABEL.LV_BLOOD,lookup(x,y,z){return this.tissueAt(x,y,z)}};
+ const f=createBMode().render(walls,{pose:{...pose,depth:.1},lines:64,freq:6,bodyScale:1,gain:.8});
+ const near=meanIn(f,.0215,.0265),far=meanIn(f,.0715,.0765);
+ assert.ok(far>near&&far-near<90,`near ${near.toFixed(0)}, far ${far.toFixed(0)}`);
+});

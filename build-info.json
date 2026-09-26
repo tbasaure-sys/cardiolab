@@ -1,6 +1,6 @@
 {
  "files": 105,
- "bytes": 73873430,
+ "bytes": 73878547,
  "largest": [
   "assets/anatomy.bin",
   6189936
@@ -8,8 +8,8 @@
  "sha256": {
   "app.mjs": "e88c8ab29281ea512fd53913f93c936e483233dd3663b46098fd6fc72bdc4162",
   "beam-map.mjs": "ed991ddc0c85494d3b300c9906886542d5736dc025570ccf543c298f9a5a34bc",
-  "bmode-worker.mjs": "dcbe7419cabb5a5a296ffd5e23e1e8a62914f95d8f4f8ff744e0d4cc11bb1daa",
-  "bmode.mjs": "f242eb3c4a029e0f08758ada8324c4b4bf009e24bb24263e97f7fa9a0840db76",
+  "bmode-worker.mjs": "18809898afbddab10b9588f46a4f441acf9a9d53005176af363c5640d9febeaf",
+  "bmode.mjs": "5da88d4ac41e76646ec48442152ce783858eadbda0cc16166c03e4d757dcead9",
   "cabina.mjs": "1f897977d5a150a5ca834687d02e984ff4c4ea3a995142e3cf4d58068979ac10",
   "chd-data.mjs": "285c9ba6c7ed85b502cb4e5d304182dc06d43c83a782fc771755be84765b7fd8",
   "chd-panel.mjs": "4dc558590d47fc27069613808b149691c550e1e74155de0ad74e9740c66d7066",
@@ -33,7 +33,7 @@
   "sonda.html": "86f0c8ca833cee3c6988505ceb278887a4a7919c6d0574a5efd1ea4d3ca9f361",
   "sonda.mjs": "9703dfb96cea76efddb27a1ee3898c28f28e71663bcf5f6a8ff4517d2b22601d",
   "spectral.mjs": "3f7c62c4b9ff704b2683c467961234274e76884731122aaadc5ed19d060500c9",
-  "tests/bmode.test.mjs": "c8d81fb41598f8028acfacad2b88eb3f951dfebb5d42cf7675618160d47bc463",
+  "tests/bmode.test.mjs": "947a643ec52748f4dd04eaca50d5e1943ff94f08cb359bc5c101e6b7d54c4bc0",
   "tests/drills.test.mjs": "b0e294b0c45e9e30551b12b7121ef61bd0f26f9c95300cbb3813502d1bd83965",
   "tests/probe-motion.test.mjs": "018b2414e4debe14e9643431a8a6818ba91c1b0b67eb7e9b618b665f1166a824",
   "tests/relay.test.mjs": "b7a4feb5a2024e91d515032a36da90fb11cee339f7dba4c9ff29932dd3a79aee",
@@ -41,7 +41,7 @@
   "tests/zscores.test.mjs": "3734c384989cd98560f9f9191a8fe499e3e436b9cc69798214950786df29256e",
   "tissue.mjs": "ec31d2f3c4a233bdce5af101b3a26eb396f00085d6b178483c194d8221b0cee0",
   "tutor.mjs": "fef2c84489e374c08c0ed66d7e7d98f81331483ab657fe02d4799cec4407dc48",
-  "valves.mjs": "287f0e9ae8568f660266529310bf161468c69a684876bf758d593b9149ffa9fc",
+  "valves.mjs": "cb009f38d1c3701e3cff65bb377124741a4d1b830c1ede24c7cfc5f28a1fc990",
   "video-image.mjs": "4614f7f8506469a23f25a6a3e7153817d26d52d837e8a81bfbcf37724429812c",
   "views.mjs": "164bb6ed230b875d35b5088c4ccbdcf68a356909082afd5a0427813dc7bf1acc",
   "volume-data.mjs": "0ea70157f1b8efa6dec4b20687f31d47648a59b85b3c31c6fcdce0e5762c11bf",

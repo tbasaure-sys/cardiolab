@@ -26,7 +26,10 @@ self.onmessage=async e=>{
   if(m.type==='variant'){tissue.reset();variant=m.spec||{id:'normal'};const info=applyVariant(tissue,variant);setValveVariant(valves,tissue,valveVariant(variant));flow.jets=lesionJets(tissue,variant);info.jets=flow.jets.length;self.postMessage({type:'variant',id:m.id,info});return}
   if(m.type==='render'){
    const t0=performance.now(),p=m.params,phase=p.phase??0,s=p.beating?ventricularContraction(phase):0;
-   const leaflets=p.valves===false?[]:sliceValves(valves,m.pose,p.beating?phase:0,motion,s).map(v=>({segments:v.segments,strength:.012}));
+   // leaflets cut across the slice thickness too (as the tissue): the central cut and two ±1.1 mm (physical, at 6 MHz; thinner at higher frequency) away, weaker
+   const leaflets=[];if(p.valves!==false){const po=m.pose,e=.0011*(6/(p.freq||6))/(p.bodyScale||1);
+    for(const [k,w] of [[0,1],[-1,.6],[1,.6]]){const pose=k?{...po,origin:po.origin.map((v,i)=>v+po.n[i]*e*k)}:po;
+     for(const v of sliceValves(valves,pose,p.beating?phase:0,motion,s))leaflets.push({segments:v.segments,t:v.t,strength:.012*w})}}
    const frame=engine.render(tissue,{pose:m.pose,lines:p.lines,samples:p.samples,bodyScale:p.bodyScale,freq:p.freq,gain:p.gain,tgc:p.tgc,dynamicRange:p.dynamicRange,focus:p.focus,harmonic:p.harmonic,motion,contraction:s,overlays:leaflets,color:p.color&&p.color.on?{flow,phase,roi:p.color.roi,nyquist:p.color.nyquist}:null});
    const data=frame.data.slice(),color=frame.color;
    self.postMessage({type:'frame',id:m.id,key:m.key,phaseIndex:m.phaseIndex,frame:{lines:frame.lines,samples:frame.samples,depth:frame.depth,sector:frame.sector,data,color},ms:performance.now()-t0},color?[data.buffer,color.buffer]:[data.buffer]);

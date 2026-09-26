@@ -9,7 +9,7 @@ Simulador docente de ecocardiografía transtorácica que funciona en el navegado
 ## Qué incluye
 
 - **Tres vistas sincronizadas**: la sonda sobre el tórax, el plano de corte en el corazón 3D (con mapa del haz) y la imagen eco del mismo plano.
-- **Imagen eco simulada** trazada rayo a rayo sobre un volumen de tejidos: atenuación dependiente de la frecuencia, reflexión especular, speckle ligado a la anatomía, grosor de corte del haz (elevación: volumen parcial y sombras de borde suave), sombra de costillas y pulmón, latido esquemático y válvulas móviles.
+- **Imagen eco simulada** trazada rayo a rayo sobre un volumen de tejidos: atenuación dependiente de la frecuencia, reflexión especular, speckle ligado a la anatomía, grosor de corte del haz (elevación: volumen parcial y sombras de borde suave), reverberación del campo cercano, haz más ancho en los bordes del sector, ganancia en profundidad de preset cardíaco, sombra de costillas y pulmón, latido esquemático y válvulas móviles.
 - **Doppler color, PW y CW** sobre un campo de flujo docente, con límite de Nyquist, aliasing y Bernoulli simplificada.
 - **Tamaño del paciente**: de recién nacido a adolescente (y adulto). La anatomía se escala con √(superficie corporal); la acústica sigue siendo física, así que cambian la profundidad y la frecuencia adecuadas. Frecuencia cardíaca típica por edad.
 - **Consola** con ganancia, TGC, profundidad, sector, frecuencia, foco, rango dinámico, armónico (THI), persistencia, zoom, contraste, cáliper y grabación; atajos de teclado. La pantalla imita un equipo: sonda y preset, frecuencia de cuadros calculada, regla de profundidad con el foco, cine al congelar. Cada maniobra se anuncia sobre la imagen con las mismas palabras que las pistas.
