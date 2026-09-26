@@ -5,7 +5,6 @@
 // The hinge is not a circle: landmarks.valveHinges gives, every 10° around the flow axis, how far the blood
 // reaches before the first wall (lateral wall, septum, aortic root…), computed offline with computeHinges, so the
 // leaflets grow out of the real walls (mitro-aortic continuity, septal tricuspid leaflet on the septum).
-import {sliceMesh} from './geometry.mjs';
 import {valveOpening} from './tissue.mjs';
 
 const unit=a=>{const l=Math.hypot(...a)||1;return a.map(v=>v/l)};
@@ -115,13 +114,27 @@ function shapeLeaflet(v,L,open,center){
  }
 }
 
-// Deform leaflets for a phase and slice them with the probe plane. Returns [{valve, segments}] in plane coordinates.
+// Slice a leaflet mesh with the probe plane; besides the segments (plane coordinates) returns, per segment, its position
+// along the leaflet (0 at the hinge, 1 at the free edge), interpolated from the mesh rows.
+function sliceLeaflet(P,idx,pose){
+ const n=pose.n,o=pose.origin,u=pose.u,d=pose.d,off=dot(n,o),nv=P.length/3,dist=new Float64Array(nv),seg=[],tt=[];
+ for(let v=0;v<nv;v++)dist[v]=P[v*3]*n[0]+P[v*3+1]*n[1]+P[v*3+2]*n[2]-off;
+ for(let q=0;q<idx.length;q+=3){const ids=[idx[q],idx[q+1],idx[q+2]],ds=ids.map(v=>dist[v]);
+  if(ds.every(v=>v>1e-9)||ds.every(v=>v<-1e-9))continue;const hits=[];
+  for(let e=0;e<3;e++){const a=ids[e],b=ids[(e+1)%3],da=ds[e],db=ds[(e+1)%3];if((da<0&&db<0)||(da>0&&db>0)||Math.abs(da-db)<1e-12)continue;
+   const f=da/(da-db),pt=[0,1,2].map(k=>P[a*3+k]+f*(P[b*3+k]-P[a*3+k])-o[k]),ta=(a%(NJ+1))/NJ,tb=(b%(NJ+1))/NJ;
+   const h=[dot(pt,u),dot(pt,d),ta+f*(tb-ta)];if(!hits.some(x=>Math.hypot(x[0]-h[0],x[1]-h[1])<1e-8))hits.push(h)}
+  if(hits.length===2){seg.push(hits[0][0],hits[0][1],hits[1][0],hits[1][1]);tt.push((hits[0][2]+hits[1][2])/2)}}
+ return {segments:new Float32Array(seg),t:new Float32Array(tt)}}
+
+// Deform leaflets for a phase and slice them with the probe plane. Returns [{valve, leaflet, segments, t}] in plane
+// coordinates (t: position of each segment along the leaflet, 0 hinge … 1 free edge).
 export function sliceValves(valves,pose,phase,motion,s){
  const out=[],tmp=[0,0,0];
  for(const v of valves){
   const open=phase==null?0:valveOpening(phase,v.kind==='av'?'av':'semilunar');
   let center=v.C;if(motion&&s){const back=motion.inverse(v.C,s,tmp,v.kind==='av'?1:.5);center=[2*v.C[0]-back[0],2*v.C[1]-back[1],2*v.C[2]-back[2]]}
-  for(const L of v.leaflets){shapeLeaflet(v,L,open,center);const seg=sliceMesh(L.positions,L.indices,pose);if(seg.length)out.push({valve:v.id,leaflet:L.name,segments:seg})}
+  for(const L of v.leaflets){shapeLeaflet(v,L,open,center);const c=sliceLeaflet(L.positions,L.indices,pose);if(c.segments.length)out.push({valve:v.id,leaflet:L.name,...c})}
  }
  return out;
 }

@@ -47,10 +47,14 @@ export function createBMode(){
   const depth=pose.depth,samples=opts.samples||Math.min(960,Math.round(depth*K/.00025)),dr=depth/samples,drp=dr*K,N=lines*samples;ensure(N);re.fill(0,0,N);im.fill(0,0,N);trans.fill(0,0,N);
   const sector=pose.sector*Math.PI/180,o=pose.origin,u=pose.u,d=pose.d;
   // slice thickness (elevation): the image integrates a few millimetres on both sides of the plane, thinnest at the
-  // elevation focus of the probe lens (~5 cm) — oblique walls blur, thin out-of-plane structures show partially and
+  // elevation focus of the probe lens — oblique walls blur, thin out-of-plane structures show partially and
   // shadows have soft edges. Three sub-rays across the slice, weighted like the elevation beam profile.
-  const nv=pose.n||[u[1]*d[2]-u[2]*d[1],u[2]*d[0]-u[0]*d[2],u[0]*d[1]-u[1]*d[0]],ELEV=opts.elevation===false?[[0,1]]:[[-1,.27],[0,.46],[1,.27]];
-  const elevAt=r=>.45*.0025*(H?.85:1)*Math.sqrt(1+((r*K-.05)/.035)**2)/K; // sub-ray offset (atlas units) at atlas depth r
+  const nv=pose.n||[u[1]*d[2]-u[2]*d[1],u[2]*d[0]-u[0]*d[2],u[0]*d[1]-u[1]*d[0]],ELEV=opts.elevation===false?[[0,1]]:[[-1,.45],[0,.77],[1,.45]],
+   EW=ELEV.reduce((t,e)=>t+e[1],0); // sub-ray echoes have independent speckle phases, so they add in power: Σw² = 1 keeps
+   // uniform tissue as bright as with a thin plane (only partial volume lowers it); the transmitted energy averages (÷Σw)
+  // slice ≈2.5 mm at the elevation focus for a 6 MHz probe, thinner for higher-frequency (neonatal) probes (∝ wavelength);
+  // the lens focuses about the heart's centre for the patient the probe is chosen for (6 cm × body scale)
+  const eF=.06*K,eW=.0025*(6/freq),elevAt=r=>.45*eW*(H?.85:1)*Math.sqrt(1+((r*K-eF)/(.58*eF))**2)/K; // sub-ray offset (atlas units)
   const alphaNp=(db)=>db*freq*.1151*100; // per metre (one-way), from dB/cm/MHz
   const cell=.00016*(4/freq)/K*(H?1:1.25); // speckle cell ~ scales with wavelength (physical), expressed in atlas units
   const p=[0,0,0],q=[0,0,0],wv=[0,0,0];let meanLungDepth=0,lungHits=0;
@@ -80,7 +84,7 @@ export function createBMode(){
     const jit=JIT[(j*131+k)&1023];
     let lab=tissue.tissueAt(x+jit,y-jit,z+jit*.5);
     // coupling gel: until the beam enters the body, air is ignored
-    if(lab===LABEL.AIR&&!entered){trans[base+k]+=ew;continue}entered=true;
+    if(lab===LABEL.AIR&&!entered){trans[base+k]+=ew/EW;continue}entered=true;
     // skin and chest-wall layers along the ray (the probe sits on the skin)
     if(lab===LABEL.SOFT||lab===LABEL.LIVER){if(r<.0018)lab=LABEL.SKIN;else if(r<.0055)lab=LABEL.SUBCUT;else if(r<.014&&lab===LABEL.SOFT)lab=LABEL.MUSCLE;else if(lab===LABEL.SOFT&&r>.02&&tissue.lastDistance>.003&&tissue.lastDistance<.05)lab=LABEL.MEDIASTINUM}
     const pi=lab*3,scat=PROPS[pi],Z=PROPS[pi+1];
@@ -111,7 +115,7 @@ export function createBMode(){
     // (in atlas units: reverberations come from the chest wall, whose thickness scales with the patient)
     if(H){const bu=1-.3*Math.exp(-r*K/.01);a*=bu;b*=bu}
     if(r<.03){const g=hidx(j,k,31),f=.0016*(H?1:2.6)*Math.exp(-r/.009)*directivity;a+=f*GRE[g];b+=f*GIM[g]}
-    re[base+k]+=a*directivity*ew;im[base+k]+=b*directivity*ew;trans[base+k]+=I*ew;
+    re[base+k]+=a*directivity*ew;im[base+k]+=b*directivity*ew;trans[base+k]+=I*ew/EW;
     if(cv&&!eo&&j>=cj0&&j<=cj1&&k>=ck0&&k<=ck1&&I>2e-4&&color.flow.velocity(x,y,z,color.phase,vel))cv[base+k]=-(vel[0]*bx+vel[1]*by+vel[2]*bz);
     I*=stepAtt[lab];
    }
@@ -127,9 +131,11 @@ export function createBMode(){
   if(overlays.length){
    if(!ovb||ovb.length<N)ovb=new Float32Array(N);ovb.fill(0,0,N);
    for(const ov of overlays){
-    const segs=ov.segments,str=ov.strength??.02;
+    const segs=ov.segments,str=ov.strength??.02,tt=ov.t;
     for(let i=0;i<segs.length;i+=4){
-     const mod=.55+.9*hash3(i,77,3); // leaflets are not uniform sheets: thicker, brighter spots (chordal insertions, tips)
+     // leaflets are not uniform sheets: the body is thin and less bright, the free edge (coaptation zone, chordal
+     // insertions) thicker and brighter; plus irregular brighter spots
+     const tl=tt?tt[i>>2]:.5,mod=(.5+.65*hash3(i,77,3))*(.62+.75*tl*tl),thick=tl>.72;
      const x0=segs[i],y0=segs[i+1],x1=segs[i+2],y1=segs[i+3],len=Math.hypot(x1-x0,y1-y0),n=Math.max(1,Math.ceil(len/.00012));
      const tx=(x1-x0)/(len||1),ty=(y1-y0)/(len||1);
      for(let t=0;t<=n;t++){
@@ -138,21 +144,32 @@ export function createBMode(){
       const j=Math.round(jf),k=Math.round(r/dr-.5);if(k<0||k>=samples)continue;
       const perp=Math.abs(tx*(y/r)-ty*(x/r)),idx=j*samples+k,amp=str*mod*(.25+.75*perp*perp)*trans[idx];
       if(amp>ovb[idx])ovb[idx]=amp;if(k+1<samples&&amp*.5>ovb[idx+1])ovb[idx+1]=amp*.5;if(k>0&&amp*.5>ovb[idx-1])ovb[idx-1]=amp*.5;
+      if(thick){const h=amp*.45;if(j>0&&h>ovb[idx-samples])ovb[idx-samples]=h;if(j<lines-1&&h>ovb[idx+samples])ovb[idx+samples]=h;if(k+2<samples&&h>ovb[idx+2])ovb[idx+2]=h}
      }
     }
    }
-   for(let i=0;i<N;i++){const a=ovb[i];if(a>0){const g=hidx(i,17,3);re[i]+=a*(.8+.2*GRE[g]);im[i]+=a*.2*GIM[g]}}
+   // partially developed speckle: fibrous leaflets are strong, fairly coherent reflectors but not smooth tubes
+   for(let i=0;i<N;i++){const a=ovb[i];if(a>0){const g=hidx(i,17,3);re[i]+=a*(.55+.45*GRE[g]);im[i]+=a*.45*GIM[g]}}
   }
+  // near-field reverberation: echoes from the chest wall and anterior pericardium bounce between the probe face and those
+  // layers and return again at twice their depth (a faint ghost of the anterior wall inside the RV); weaker in THI
+  {const lim=Math.min(samples>>1,Math.round(.03/drp)),g=H?.035:.07;
+   for(let j=0;j<lines;j++){const b=j*samples;for(let k=4;k<lim;k++){const k2=2*k+1;re[b+k2]+=g*re[b+k];im[b+k2]+=g*im[b+k]}}}
   // point spread: axial (pulse length) and lateral (beam width, focused)
   const lambda=.00154/freq,sigA=Math.max(.8,(1.15*lambda)/drp),focusR=focus*depth*K;
   convolveAxial(re,lines,samples,sigA);convolveAxial(im,lines,samples,sigA);
   const dth=sector/lines,apert=.012;
   const sigL=new Float32Array(samples);for(let k=0;k<samples;k++){const r=(k+.5)*drp,w0=Math.max(.0004,lambda*focusR/apert*.55),zr=Math.PI*w0*w0/lambda*2.2,w=w0*Math.sqrt(1+((r-focusR)/zr)**2)+.00025;sigL[k]=Math.max(.35,.5*w*(H?1:1.3)/(Math.max(r,.004)*dth))}
-  convolveLateral(re,lines,samples,sigL,env);convolveLateral(im,lines,samples,sigL,env);
+  // steered beams are wider (effective aperture ∝ cos θ): the image blurs laterally toward the sector edges
+  const steer=new Float32Array(lines);for(let j=0;j<lines;j++)steer[j]=1/Math.cos(-sector/2+sector*(j+.5)/lines);
+  convolveLateral(re,lines,samples,sigL,env,steer);convolveLateral(im,lines,samples,sigL,env,steer);
   // envelope, noise, compression
   const out=new Uint8Array(N),gainDB=20*Math.log10(Math.max(.05,gain))*1.6,floorDB=-dynamicRange;
-  const alphaSoft=.48*freq*.1151*100*(H?1.06:1),COMP=new Float32Array(samples),LUT=new Uint8Array(1024),REF=1/.025;
-  for(let k=0;k<samples;k++){const r=(k+.5)*drp;COMP[k]=Math.min(1e4,Math.exp(2*alphaSoft*r))*tgcAmplitude(tgc,r/depth)*(1+.3*Math.exp(-(((r-focusR)/(.22*depth*K))**2)))} // transmit focus: a slightly brighter focal zone
+  // machine depth gain (before the user's TGC): a cardiac preset assumes ~0.32 dB/cm/MHz, not the 0.48 of solid tissue,
+  // because the beam crosses mostly blood; the gain is unchanged at the heart's centre (6 cm × body scale), only the slope differs, so
+  // deep walls behind the cavities are not over-compensated (a mild posterior enhancement remains, as in patients)
+  const alphaSoft=.32*freq*.1151*100*(H?1.06:1),PIV=Math.exp(2*(.48-.32)*freq*.1151*100*(H?1.06:1)*.06*K),COMP=new Float32Array(samples),LUT=new Uint8Array(1024),REF=1/.025;
+  for(let k=0;k<samples;k++){const r=(k+.5)*drp;COMP[k]=Math.min(1e4,Math.exp(2*alphaSoft*r)*PIV)*tgcAmplitude(tgc,r/depth)*(1+.3*Math.exp(-(((r-focusR)/(.22*depth*K))**2)))} // transmit focus: a slightly brighter focal zone
   // grey map: reject the lowest levels, then a gentle S curve (harmonic-imaging look: black cavities, crisp tissue)
   for(let i=0;i<1024;i++){const x=Math.max(0,(i/1023-.075)/.925),y=x<.5?.5*(2*x)**1.55:1-.5*(2-2*x)**1.1;LUT[i]=Math.round(255*Math.min(1,y))}
   // side lobes: a faint, wide lateral copy of the envelope (fills cavities next to bright walls with haze)
@@ -194,11 +211,13 @@ function convolveAxial(a,lines,samples,sigma){
  const tmp=new Float32Array(samples);
  for(let j=0;j<lines;j++){const b=j*samples;for(let k=0;k<samples;k++){let s=0;for(let t=-R;t<=R;t++){const kk=k+t;if(kk>=0&&kk<samples)s+=a[b+kk]*w[t+R]}tmp[k]=s}a.set(tmp,b)}
 }
-function convolveLateral(a,lines,samples,sig,tmp){
+function convolveLateral(a,lines,samples,sig,tmp,steer=null){
  const w=new Float32Array(64);
  for(let k=0;k<samples;k++){
-  const sigma=sig[k],R=Math.min(20,Math.ceil(sigma*2.2));for(let t=0;t<=R;t++)w[t]=Math.exp(-t*t/(2*sigma*sigma));
-  for(let j=0;j<lines;j++){let s=a[j*samples+k],ws=1;const lo=Math.max(-R,-j),hi=Math.min(R,lines-1-j);for(let t=lo;t<=hi;t++){if(!t)continue;const wt=w[t<0?-t:t];s+=a[(j+t)*samples+k]*wt;ws+=wt}tmp[j*samples+k]=s/ws}
+  for(let j=0;j<lines;j++){
+   // kernel per line only when steering widens it (quantised to 0.1 so neighbouring lines share weights)
+   if(j===0||(steer&&Math.abs(steer[j]-steer[j-1])>1e-9&&Math.round(steer[j]*10)!==Math.round(steer[j-1]*10))){const sigma=sig[k]*(steer?Math.round(steer[j]*10)/10:1),R=Math.min(20,Math.ceil(sigma*2.2));w.R=R;for(let t=0;t<=R;t++)w[t]=Math.exp(-t*t/(2*sigma*sigma))}
+   const R=w.R;let s=a[j*samples+k],ws=1;const lo=Math.max(-R,-j),hi=Math.min(R,lines-1-j);for(let t=lo;t<=hi;t++){if(!t)continue;const wt=w[t<0?-t:t];s+=a[(j+t)*samples+k]*wt;ws+=wt}tmp[j*samples+k]=s/ws}
  }
  a.set(tmp.subarray(0,lines*samples));
 }
