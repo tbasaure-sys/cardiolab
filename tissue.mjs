@@ -123,8 +123,27 @@ export class HeartMotion{
  constructor(landmarks){
   const A=landmarks.lvApex,mv=landmarks.mitralValve,tv=landmarks.tricuspidValve,base=[0,1,2].map(i=>(mv[i]+tv[i])/2);
   const ax=[0,1,2].map(i=>base[i]-A[i]),L=Math.hypot(...ax);this.A=A;this.a=ax.map(v=>v/L);this.L=L;this.base=base;this.atrial=.055;
-  this.longitudinal=.13;this.radial=.16;
+  this.longitudinal=.13;
+  // LV wall: incompressible thickening around the cavity (landmarks.lvEndo: endocardial / epicardial radius per level and
+  // angle around the cavity's centroid axis). The endocardium moves inward by `endo` of its radius at end-systole, the
+  // myocardium keeps its volume (it also shortens along the axis), so the epicardium moves much less and the wall thickens; beyond the
+  // epicardium the motion fades out over `fade`. A small global radial component moves the RV and atria.
+  const T=landmarks.lvEndo;this.radial=T?.04:.16;
+  if(T){const from=T.from,to=T.to,d=[0,1,2].map(i=>to[i]-from[i]),l=Math.hypot(...d),a=d.map(v=>v/l),e1=T.e1,e2=[a[1]*e1[2]-a[2]*e1[1],a[2]*e1[0]-a[0]*e1[2],a[0]*e1[1]-a[1]*e1[0]];
+   this.lv={from,a,e1,e2,L:l,NL:T.levels,NA:T.angles,cen:Float32Array.from(T.centre),ri:Float32Array.from(T.ri),re:Float32Array.from(T.re),endo:.32,fade:.008}}
  }
+ // LV wall thickening: current position (after the global motion is undone) → reference, in place on q
+ _wall(q,s){const T=this.lv,f=T.from,x=q[0]-f[0],y=q[1]-f[1],z=q[2]-f[2],l=x*T.a[0]+y*T.a[1]+z*T.a[2];if(l<0||l>T.L)return;
+  const lf=l/T.L*T.NL-.5,li=Math.max(0,Math.min(T.NL-1,Math.round(lf))),cx=T.cen[li*2],cy=T.cen[li*2+1];
+  const u=x*T.e1[0]+y*T.e1[1]+z*T.e1[2]-cx,v=x*T.e2[0]+y*T.e2[1]+z*T.e2[2]-cy,r=Math.hypot(u,v);if(r<1e-6)return;
+  let k=Math.atan2(v,u)/(2*Math.PI)*T.NA;if(k<0)k+=T.NA;const k0=Math.floor(k)%T.NA,k1=(k0+1)%T.NA,w=k-Math.floor(k);
+  const a0=T.ri[li*T.NA+k0],a1=T.ri[li*T.NA+k1];if(!a0||!a1)return;const ri=a0*(1-w)+a1*w,re=T.re[li*T.NA+k0]*(1-w)+T.re[li*T.NA+k1]*w;
+  // taper toward both ends of the cavity (apex tip, valve plane)
+  const ends=Math.min(1,l/(.15*T.L),(T.L-l)/(.12*T.L)),e=T.endo*s*Math.max(0,ends),rc=ri*(1-e);if(e<=0)return;
+  // the myocardium keeps its volume: it shortens along the axis (longitudinal × s), so its cross-section grows by F
+  const F=1/(1-this.longitudinal*s),rec=Math.sqrt(rc*rc+F*(re*re-ri*ri));
+  let r0;if(r<=rc)r0=r/(1-e);else if(r<=rec)r0=Math.sqrt(ri*ri+(r*r-rc*rc)/F);else r0=r+(re-rec)*Math.max(0,1-(r-rec)/T.fade);
+  const m=r0/r;q[0]=f[0]+(l*T.a[0])+(cx+u*m)*T.e1[0]+(cy+v*m)*T.e2[0];q[1]=f[1]+(l*T.a[1])+(cx+u*m)*T.e1[1]+(cy+v*m)*T.e2[1];q[2]=f[2]+(l*T.a[2])+(cx+u*m)*T.e1[2]+(cy+v*m)*T.e2[2]}
  // current (deformed) position → reference position. s = contraction (0 diastole … 1 end-systole)
  inverse(p,s,out,falloff=1){
   const q=[p[0]-this.A[0],p[1]-this.A[1],p[2]-this.A[2]],l=q[0]*this.a[0]+q[1]*this.a[1]+q[2]*this.a[2];
@@ -133,7 +152,8 @@ export class HeartMotion{
   const baseCur=this.L-shift;
   if(l<=baseCur){l0=l*this.L/Math.max(1e-6,baseCur);const w=Math.sin(Math.PI*Math.max(0,Math.min(1,l0/this.L))*.5+.3);rs=1/(1-this.radial*s*falloff*w)}
   else{const above=l-baseCur,f=Math.max(0,1-above/this.atrial);l0=l+shift*f;rs=1+.05*s*falloff*f}
-  out[0]=this.A[0]+l0*this.a[0]+r[0]*rs;out[1]=this.A[1]+l0*this.a[1]+r[1]*rs;out[2]=this.A[2]+l0*this.a[2]+r[2]*rs;return out;
+  out[0]=this.A[0]+l0*this.a[0]+r[0]*rs;out[1]=this.A[1]+l0*this.a[1]+r[1]*rs;out[2]=this.A[2]+l0*this.a[2]+r[2]*rs;
+  if(this.lv&&s>0)this._wall(out,s*falloff);return out;
  }
  // reference → current (for leaflet vertices); small iterations of the inverse
  forward(p0,s,out=[0,0,0]){let c=[...p0],t=[0,0,0];for(let i=0;i<6;i++){this.inverse(c,s,t);c=[c[0]+(p0[0]-t[0]),c[1]+(p0[1]-t[1]),c[2]+(p0[2]-t[2])]}out[0]=c[0];out[1]=c[1];out[2]=c[2];return out}

@@ -10,7 +10,8 @@ Licencias y fuentes
   igual a assets/anatomy.bin y a assets/tissue-fine.bin.gz; ver heartShift en assets/tissue.json). En assets/tissue-fine.bin.gz
   se cerró el tabique interventricular (dividido en el atlas) y el velo mitral anterior fundido con el miocardio pasó a
   etiqueta de válvula (ver septumRepair en assets/tissue.json); los centros valvulares y los ápex se recalcularon sobre el
-  volumen y cada válvula guarda su anillo medido hasta las paredes (valveHinges).
+  volumen y cada válvula guarda su anillo medido hasta las paredes (valveHinges); los radios endo- y epicárdicos del VI por nivel
+  y ángulo (lvEndo) se midieron sobre el mismo volumen para el modelo de contracción.
 - three.js: licencia MIT (node_modules/three/LICENSE).
 - PeerJS 1.5.5 (emparejamiento WebRTC de la sonda-teléfono): MIT (node_modules/peerjs/LICENSE).
 - qrcode-generator 2.0.4 (código QR de emparejamiento): MIT, (c) Kazuhiko Arase (node_modules/qrcode-generator/LICENSE).
