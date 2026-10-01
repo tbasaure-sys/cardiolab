@@ -37,13 +37,13 @@ export function tgcAmplitude(tgc,f){const x=Math.max(0,Math.min(1,f))*(tgc.lengt
 export function createBMode(){
  let re,im,trans,env,ovb,cvb,cap=0;
  function ensure(n){if(n>cap){cap=n;re=new Float32Array(n);im=new Float32Array(n);trans=new Float32Array(n);env=new Float32Array(n)}}
- // opts: {pose, lines, samples, freq (MHz), gain, tgc[8], dynamicRange (dB), focus (0..1 of depth), motion, contraction, overlays:[{segments,strength}], clutter, bodyScale, harmonic}
+ // opts: {pose, lines, samples, freq (MHz), gain, tgc[8], dynamicRange (dB), focus (0..1 of depth), motion, contraction, overlays:[{segments,strength}], clutter, bodyScale, harmonic, seed (frame: varies the receiver noise)}
  // harmonic (THI, default): the image is formed at 2f, so less chest-wall clutter and side-lobe haze, a narrower
  // beam and weak signal close to the probe (the harmonic builds up with depth), at the cost of penetration.
  // Positions along the ray (r, dr) are in atlas units, like the anatomy; bodyScale (K) converts them to physical
  // metres for everything acoustic (attenuation, wavelength, speckle size, beam width, reverberations).
  function render(tissue,opts){
-  const {pose,lines=176,freq=4,gain=1,tgc=[50,50,50,50,50,50,50,50],dynamicRange=52,focus=.55,motion=null,contraction=0,overlays=[],color=null}=opts,K=opts.bodyScale||1,H=opts.harmonic!==false;
+  const {pose,lines=176,freq=4,gain=1,tgc=[50,50,50,50,50,50,50,50],dynamicRange=52,focus=.55,motion=null,contraction=0,overlays=[],color=null}=opts,seed=((opts.seed|0)*2654435761)>>>19,K=opts.bodyScale||1,H=opts.harmonic!==false;
   const depth=pose.depth,samples=opts.samples||Math.min(960,Math.round(depth*K/.00025)),dr=depth/samples,drp=dr*K,N=lines*samples;ensure(N);re.fill(0,0,N);im.fill(0,0,N);trans.fill(0,0,N);
   const sector=pose.sector*Math.PI/180,o=pose.origin,u=pose.u,d=pose.d;
   // slice thickness (elevation): the image integrates a few millimetres on both sides of the plane, thinnest at the
@@ -185,7 +185,10 @@ export function createBMode(){
   for(let j=0;j<lines;j++)for(let k=0;k<samples;k++){
    const i=j*samples+k;
    // machine default: compensate soft-tissue attenuation, then user TGC; receiver noise is amplified too
-   const e=(E[i]+(H?.045:.11)*SL[i]+3e-9*HET[(i*7)&(GN-1)])*COMP[k]+4e-6*HET[(i*13+5)&(GN-1)];
+   // receiver (thermal) noise: Rayleigh, new in every frame (seed) and amplified by the depth gain and TGC — invisible at
+   // normal gain, a fine flickering grain in the deep, empty field when the gain is pushed (as on a real machine)
+   const gn=(i*7+seed)&(GN-1),rn=.8*Math.sqrt(GRE[gn]*GRE[gn]+GIM[gn]*GIM[gn]);
+   const e=(E[i]+(H?.045:.11)*SL[i]+1e-7*rn)*COMP[k]+4e-6*HET[(i*13+5+seed)&(GN-1)];
    const db=8.685889638*Math.log(e*REF)+gainDB,v=(db-floorDB)/dynamicRange;
    // soft knee: very strong echoes (pericardium, specular walls) approach white without clipping into flat blobs
    const vv=v>.82?.82+.18*(1-Math.exp(-(v-.82)/.18)):v;out[i]=vv<=0?0:LUT[(Math.min(.999,vv)*1023)|0];

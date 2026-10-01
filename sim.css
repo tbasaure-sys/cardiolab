@@ -188,3 +188,62 @@ body.image-only .view.anatomy .viewport::after{content:'Corazón oculto · guía
 .phone-bar{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:20;display:flex;gap:8px;align-items:center;background:#0f1a21;border:1px solid #458e83;border-radius:24px;padding:6px 8px 6px 16px;font-size:12px;color:#bafcef;box-shadow:0 6px 24px #0008}
 .phone-bar[hidden]{display:none}
 @media(max-width:650px){.phone-grid{grid-template-columns:1fr}.phone-qr{max-width:220px}}
+
+/* «Eco grande»: the echo image takes the right side at full height; chest and heart stack on the left */
+@media(min-width:1101px){
+body.echo-big .workspace:not(.with-reference){grid-template-columns:minmax(240px,.6fr) minmax(0,1.7fr);grid-template-rows:minmax(0,1fr) minmax(0,1fr)}
+body.echo-big .workspace:not(.with-reference)>.patient{grid-column:1;grid-row:1}
+body.echo-big .workspace:not(.with-reference)>.anatomy{grid-column:1;grid-row:2;border-left:0;border-top:1px solid var(--line)}
+body.echo-big .workspace:not(.with-reference)>.scan{grid-column:2;grid-row:1/span 2}
+body.echo-big .workspace:not(.with-reference) .patient .view-foot,body.echo-big .workspace:not(.with-reference) .anatomy .view-foot{display:none}
+body.echo-big .workspace:not(.with-reference) .patient .view-heading,body.echo-big .workspace:not(.with-reference) .anatomy .view-heading{height:auto;min-height:34px;padding:5px 10px;flex-wrap:wrap}
+body.echo-big .workspace:not(.with-reference) .anatomy .heading-checks{gap:6px}
+}
+.echo-big-toggle{font-size:11px;padding:3px 8px;margin-right:8px;background:none;border-color:#35505a;color:#bfeee5}
+@media(max-width:1100px){.echo-big-toggle{display:none}}
+
+/* wide screens, cabina + «Eco grande»: the deck (probe + console) becomes a column to the right of the views (not while
+   a side panel — trainer, drills, lesions, course — takes the width: then it stays under the image) */
+@media(min-width:1101px){
+body.cabina.echo-big .practice-shell:not(.with-tutor) .practice-main{display:grid;grid-template-columns:minmax(0,1fr) clamp(380px,30vw,470px);column-gap:12px;align-items:start}
+body.cabina.echo-big .practice-shell:not(.with-tutor) .practice-main>*{grid-column:1/-1}
+body.cabina.echo-big .practice-shell:not(.with-tutor) .practice-main>.workspace{grid-column:1}
+body.cabina.echo-big .practice-shell:not(.with-tutor) .practice-main>.deck{grid-column:2;display:flex;flex-direction:column;gap:8px;margin:0;max-height:var(--ws-h);overflow:auto}
+body.cabina.echo-big .practice-shell:not(.with-tutor) .deck #pose-controls{grid-template-columns:repeat(2,minmax(0,1fr))}
+body.cabina.echo-big .practice-shell:not(.with-tutor) .deck .machine-console:not(.full){display:flex;flex-direction:column}
+body.cabina.echo-big .practice-shell:not(.with-tutor) .deck .deck-tools{position:static;order:-1;flex-wrap:wrap;margin:0 0 4px}
+body.cabina.echo-big .practice-shell:not(.with-tutor) .deck .machine-console:not(.full) .console-knobs{grid-template-columns:repeat(4,minmax(0,1fr));padding-right:0;row-gap:8px}
+body.cabina.echo-big .practice-shell:not(.with-tutor) .deck #pose-controls input[type=number]{width:62px}
+body.cabina.echo-big .practice-shell:not(.with-tutor) .deck .machine-console:not(.full) .mode-keys,body.cabina.echo-big .practice-shell:not(.with-tutor) .deck .machine-console:not(.full) .mode-bank{flex-wrap:wrap}
+}
+
+/* probe maneuver sliders: value + unit, a larger hit area */
+.slider .value{display:inline-flex;align-items:center;gap:3px}.slider .unit{font:10px Consolas,monospace;color:#7f95a1;min-width:14px}
+.slider input[type=range]{height:22px;cursor:ew-resize}.slider label>span:first-child{cursor:help}
+.knob{touch-action:none}.knob.turning{box-shadow:0 0 0 3px #63ddc855}
+
+/* phones: image docked on top (sticky), then probe, console, 3D views */
+@media(max-width:650px){
+body.phone-dock .practice-main{display:flex;flex-direction:column}
+body.phone-dock .practice-main>*{order:5}
+body.phone-dock .practice-main>.display-setting{order:0}
+body.phone-dock .practice-main>.scan{order:1;position:sticky;top:0;z-index:40;height:min(46vh,430px);background:#05080b;border:1px solid var(--line);border-radius:0 0 8px 8px;box-shadow:0 6px 14px #000a}
+body.phone-dock .practice-main>.scan .view-foot{display:none}
+body.phone-dock .practice-main>.scan .view-heading{height:34px;padding:6px 10px}
+body.phone-dock .practice-main>.scan .scan-modes{height:auto;min-height:32px;padding-bottom:4px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+body.phone-dock .practice-main>.scan .scan-modes>*{flex:0 0 auto}
+body.phone-dock .practice-main>.inspector{order:2}
+body.phone-dock .practice-main>.machine-console,body.phone-dock .practice-main>#instrument{order:3}
+body.phone-dock .practice-main>.workspace{order:4;margin-top:12px}
+}
+/* cockpit: the window buttons and the learning modes share one row when they fit (more height for the image) */
+@media(min-width:1101px){
+body.cabina main{display:flex;flex-wrap:wrap;column-gap:22px;align-items:center}
+body.cabina main>*{flex:1 1 100%;min-width:0}
+body.cabina main>.windows{flex:0 0 auto;width:auto}
+body.cabina main>.course-bar{flex:1 1 360px;width:auto;border-top:0}
+body.cabina main>.course-bar .course-progress progress{display:none}
+body.cabina .windows .guide{display:none}
+}
+/* bottom deck: the value boxes are narrow, the unit is in the tooltip */
+body.cabina .practice-shell.with-tutor #pose-controls .unit,body.cabina:not(.echo-big) #pose-controls .unit{display:none}
