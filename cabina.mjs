@@ -6,7 +6,7 @@ const $=id=>document.getElementById(id);
 
 export const SHORTCUTS=[
  ['Sonda',[['← →','Desplazar lateral'],['↑ ↓','Desplazar vertical'],['Q / E','Rotar (antihorario / horario)'],['W / S','Inclinar (tilt): barre el plano; la imagen indica hacia dónde'],['A / D','Bascular: haz a la izquierda / derecha de la imagen (D = hacia el marcador)'],['Mayús + tecla','Paso fino'],['R','Restablecer ventana'],['B','Barrido']]],
- ['Imagen',[['Espacio','Congelar / descongelar'],['+ / −','Profundidad'],[', / .','Ganancia − / +'],['F','Frecuencia (2,5 → 12 MHz)'],['[ / ]','Foco más superficial / más profundo'],['H','Armónico (THI) sí / no'],['← → congelado','Recorrer el cine cuadro a cuadro'],['C','Doppler color'],['P / K','Doppler PW / CW'],['Rueda sobre la eco','Profundidad (con Mayús: ganancia)'],['?','Mostrar u ocultar esta ayuda']]]
+ ['Imagen',[['Espacio','Congelar / descongelar'],['+ / −','Profundidad'],[', / .','Ganancia − / +'],['F','Frecuencia (2,5 → 12 MHz)'],['G','Eco grande / tres vistas iguales'],['[ / ]','Foco más superficial / más profundo'],['H','Armónico (THI) sí / no'],['← → congelado','Recorrer el cine cuadro a cuadro'],['C','Doppler color'],['P / K','Doppler PW / CW'],['Rueda sobre la eco','Profundidad (con Mayús: ganancia)'],['?','Mostrar u ocultar esta ayuda']]]
 ];
 
 export function mountCabina(api){
@@ -24,8 +24,11 @@ export function mountCabina(api){
  const sweep=$('sweep');const sweepHome=document.createComment('sweep');
 
  // the three views take whatever height is left once the deck is on screen
- function fit(){if(!on)return;const top=workspace.getBoundingClientRect().top+scrollY;document.documentElement.style.setProperty('--ws-h',`${Math.max(320,Math.min(820,innerHeight-top-deck.offsetHeight-14))}px`)}
+ // (with «Eco grande» on a wide screen the deck is a column beside the views, so they take the full height left)
+ function fit(){if(!on)return;const top=workspace.getBoundingClientRect().top+scrollY,side=deck.getBoundingClientRect().left>workspace.getBoundingClientRect().left+100;
+  document.documentElement.style.setProperty('--ws-h',`${Math.max(320,Math.min(side?1100:820,innerHeight-top-(side?0:deck.offsetHeight)-14))}px`)}
  function enable(v){
+  if(v&&document.body.classList.contains('phone-dock'))v=false;
   if(v===on)return;on=v;document.body.classList.toggle('cabina',on);$('layout-toggle').textContent=on?'Diseño: cabina':'Diseño: clásico';$('layout-toggle').setAttribute('aria-pressed',String(on));
   if(on){probe.before(probeHome);instrument.before(instrumentHome);sweep.before(sweepHome);workspace.after(deck);deck.append(probe,instrument);instrument.append(tools);probe.querySelector('.section-heading').append(sweep);requestAnimationFrame(fit)}
   else{probeHome.replaceWith(probe);instrumentHome.replaceWith(instrument);sweepHome.replaceWith(sweep);tools.remove();deck.remove();instrument.classList.remove('full','tgc-open');document.documentElement.style.removeProperty('--ws-h')}
@@ -52,6 +55,7 @@ export function mountCabina(api){
    case 'q':api.nudge('rotation',-deg*2);break;case 'e':api.nudge('rotation',deg*2);break;
    case 'w':api.nudge('tilt',deg);break;case 's':api.nudge('tilt',-deg);break;
    case 'a':api.nudge('rock',-deg);break;case 'd':api.nudge('rock',deg);break;
+   case 'g':bigBtn.click();break;
    case 'r':api.click('reset-pose');break;case 'b':api.click('sweep');break;
    case ' ':api.click('freeze');break;
    case '+':case '=':api.set('depth',api.value('depth')+(fine?.005:.01));break;case '-':case '_':api.set('depth',api.value('depth')-(fine?.005:.01));break;
@@ -66,6 +70,23 @@ export function mountCabina(api){
  // wheel on the echo image: depth (Shift: gain)
  $('scan').addEventListener('wheel',e=>{if(!api.ready())return;e.preventDefault();const s=e.deltaY<0?1:-1;if(e.shiftKey)api.set('gain',api.value('gain')+.1*s);else api.set('depth',api.value('depth')-.01*s)},{passive:false});
 
+
+ // «Eco grande»: the image is the main object; the probe on the chest and the heart stack in a narrow column beside it
+ const BIG='cardiolab.echoBig.v1',bigBtn=document.createElement('button');bigBtn.id='echo-big';bigBtn.className='echo-big-toggle';
+ bigBtn.title='Eco grande: el tórax y el corazón se apilan a la izquierda (tecla G)';
+ function setBig(v){document.body.classList.toggle('echo-big',v);bigBtn.setAttribute('aria-pressed',String(v));bigBtn.textContent=v?'⤡ Tres vistas':'⤢ Eco grande';
+  bigBtn.title=v?'Vuelve a las tres vistas del mismo tamaño (tecla G)':'Eco grande: el tórax y el corazón se apilan a la izquierda (tecla G)';try{localStorage.setItem(BIG,v?'1':'0')}catch{}dispatchEvent(new Event('resize'));requestAnimationFrame(fit)}
+ bigBtn.onclick=()=>setBig(!document.body.classList.contains('echo-big'));
+ document.querySelector('.scan .scan-meta')?.prepend(bigBtn);
+ let big=null;try{big=localStorage.getItem(BIG)}catch{}
+ setBig(big?big==='1':true);
+
+ // phones: the echo image is docked at the top and stays on screen (sticky) while the probe and the console scroll
+ // under it; the page order becomes image → probe → console → 3D views
+ const scanView=document.querySelector('.workspace>.scan'),scanHome=document.createComment('scan');const narrow=matchMedia('(max-width:650px)');
+ function dock(){const v=narrow.matches;if(v===document.body.classList.contains('phone-dock'))return;document.body.classList.toggle('phone-dock',v);
+  if(v){if(on)enable(false);scanView.before(scanHome);workspace.before(scanView)}else scanHome.replaceWith(scanView);dispatchEvent(new Event('resize'))}
+ narrow.addEventListener('change',dock);dock();
  let saved=null;try{saved=localStorage.getItem(KEY)}catch{}
  enable(saved?saved==='cabina':innerWidth>=1000);
  return {enable,get on(){return on},fit};

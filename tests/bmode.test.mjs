@@ -30,3 +30,13 @@ test('cardiac depth gain: a wall behind 4 cm of blood shows mild enhancement, no
  const near=meanIn(f,.0215,.0265),far=meanIn(f,.0715,.0765);
  assert.ok(far>near&&far-near<90,`near ${near.toFixed(0)}, far ${far.toFixed(0)}`);
 });
+
+test('receiver noise: black at normal gain, a flickering grain deep in an empty field when the gain is pushed',()=>{
+ const air={lastDistance:0,tissueAt:(x,y)=>y<.003?LABEL.SKIN:LABEL.AIR,lookup(x,y){return this.tissueAt(x,y)}},bm=createBMode();
+ const o={pose:{...pose,depth:.12,sector:60},lines:64,freq:6,bodyScale:1};
+ const far=f=>meanIn(f,.096,.12),r=(gain,seed)=>bm.render(air,{...o,gain,seed});
+ assert.ok(far(r(1,0))<8,'normal gain');
+ const a=r(2.5,0),b=r(2.5,1);assert.ok(far(a)>20,`high gain ${far(a).toFixed(0)}`);
+ let d=0,n=0;for(let i=0;i<a.data.length;i++){if(i%a.samples<a.samples*.8)continue;d+=Math.abs(a.data[i]-b.data[i]);n++}
+ assert.ok(d/n>8,`frame-to-frame change ${(d/n).toFixed(1)}`);
+});
