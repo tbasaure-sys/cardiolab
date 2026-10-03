@@ -134,6 +134,22 @@ export const VIEW_INFO={
 };
 
 // ---------------------------------------------------------------- scoring
+// Short view card: where the probe goes and what the view shows (paediatric practice; marker clock as VIEW_INFO.clock)
+export const VIEW_CARD={
+ plax:{probe:'Borde esternal izquierdo, 3.er–4.º espacio intercostal; marcador hacia el hombro derecho (10–11 h).',shows:['Tracto de salida del VD','septo interventricular','VI','pared inferolateral','válvula mitral','raíz aórtica','AI','aorta descendente']},
+ psaxAV:{probe:'Misma ventana, girada 90° en sentido horario (marcador hacia el hombro izquierdo, 1–2 h), basculada hacia la base.',shows:['Válvula aórtica («Y»)','AI','AD','septo interauricular','válvula tricúspide','tracto de salida del VD','válvula pulmonar']},
+ psaxMV:{probe:'Eje corto paraesternal, inclinado desde la válvula aórtica hacia el ápex hasta los velos mitrales.',shows:['VI circular','velos mitrales anterior y posterior («boca de pez»)','VD']},
+ psaxPM:{probe:'Eje corto paraesternal, más inclinado hacia el ápex que el mitral.',shows:['VI circular','músculos papilares','septo','paredes anterior, lateral e inferior','VD']},
+ a4c:{probe:'Ápex (choque de punta), 4.º–5.º espacio intercostal, línea medioclavicular o algo lateral; marcador a la izquierda del paciente (3 h), haz hacia el hombro derecho.',shows:['Las cuatro cámaras','septos interventricular e interauricular','válvulas mitral y tricúspide (la tricúspide algo más apical)','venas pulmonares']},
+ a5c:{probe:'Desde la apical 4C, inclina el haz hacia anterior.',shows:['Tracto de salida del VI','válvula aórtica','cuatro cámaras']},
+ a2c:{probe:'Desde la apical 4C, rota ~60° en sentido antihorario (marcador a las 12–1 h).',shows:['VI (paredes anterior e inferior)','AI','válvula mitral','orejuela izquierda']},
+ a3c:{probe:'Desde la apical 2C, sigue rotando antihorario (marcador a las 11 h).',shows:['VI (septo anterior y pared inferolateral)','tracto de salida del VI','válvula aórtica','válvula mitral','AI']},
+ sc4c:{probe:'Bajo el apéndice xifoides, sonda casi plana apuntando al hombro izquierdo; marcador a las 3 h.',shows:['Hígado','cuatro cámaras','septo interauricular perpendicular al haz (ideal para CIA)']},
+ scSAX:{probe:'Desde la subcostal 4C, rota 90° (marcador hacia la cabeza, 12 h).',shows:['Vena cava inferior','AD','septo interauricular (vista bicava)','barrido de las cavidades en eje corto']},
+ ssn:{probe:'Hueco supraesternal con el cuello extendido; marcador a las 12–1 h, en el plano del arco.',shows:['Arco aórtico','troncos supraaórticos','aorta descendente e istmo','rama pulmonar derecha']}
+};
+// nearest standard view to a pose (best plane agreement), or null when nothing is close
+export function nearestView(pose,targets){let best=null;for(const [id,t] of Object.entries(targets||{})){if(!VIEW_INFO[id]||!t?.meta)continue;const a=planeAgreement(pose,t);if(!best||a.score>best.score)best={id,score:a.score}}return best&&best.score>=25?best:null}
 export function planeAgreement(pose,target){
  const n=pose.n,tn=target.n;const cosN=Math.max(-1,Math.min(1,dot(n,tn)));
  const angle=deg(Math.acos(Math.abs(cosN)));

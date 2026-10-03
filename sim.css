@@ -247,3 +247,19 @@ body.cabina .windows .guide{display:none}
 }
 /* bottom deck: the value boxes are narrow, the unit is in the tooltip */
 body.cabina .practice-shell.with-tutor #pose-controls .unit,body.cabina:not(.echo-big) #pose-controls .unit{display:none}
+
+/* plane map labels (view 02) */
+.plane-labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}.plane-labels[hidden]{display:none}
+.plane-label{position:absolute;left:0;top:0;pointer-events:auto;font:700 9.5px 'Segoe UI',system-ui,sans-serif;letter-spacing:.3px;padding:1px 5px;border-radius:3px;border:1px solid var(--c);background:rgba(8,14,19,.72);color:var(--c);white-space:nowrap;cursor:pointer;line-height:1.3;opacity:.85}
+.plane-label:hover,.plane-label.current{opacity:1;background:var(--c);color:#071016}
+/* view card (panel 03): nearest standard view, where the probe goes, what it shows */
+.view-card{margin:0 10px 4px;padding:6px 10px 6px 12px;border-left:3px solid var(--c);background:#0d171e;border-radius:0 6px 6px 0;font-size:11px;line-height:1.45}
+.view-card[hidden]{display:none}
+.view-card-head{display:flex;align-items:center;gap:7px}.view-card-head strong{font-size:12.5px;font-weight:650;color:#eef6f8}
+.view-card-dot{width:7px;height:7px;border-radius:50%;background:var(--c)}
+.view-card-score{margin-left:auto;font:10px Consolas,monospace;color:#8fa4b0}
+.view-card dl{display:grid;grid-template-columns:auto 1fr;gap:1px 9px;margin:3px 0 0}
+.view-card dt{font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:#7f95a1;padding-top:2px}
+.view-card dd{margin:0;color:#c9d6dd}
+body.phone-dock .practice-main>.scan .view-card{display:none}
+.planes-on .beam-labels{display:none}
