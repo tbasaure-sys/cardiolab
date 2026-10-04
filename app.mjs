@@ -11,7 +11,8 @@ import {createVideoRecorder,recordingExtension} from './recording-format.mjs';
 import {initialDisplay,mountInstrument,applyDisplayTone,boundedCursor,distanceMM} from './instrument.mjs';
 import {createSimEngine,CINE_PHASES} from './sim-engine.mjs';
 import {scanConvert,COLOR_MAP} from './bmode.mjs';
-import {VIEW_INFO,markerClock,describeManeuver} from './views.mjs';
+import {VIEW_INFO,VIEW_CARD,nearestView,markerClock,describeManeuver} from './views.mjs';
+import {mountPlaneMap,WINDOW_COLORS} from './plane-map.mjs';
 import {mountCoach} from './coach.mjs';
 import {mountCHD} from './chd-panel.mjs';
 import {mountDrills} from './drills.mjs';
@@ -21,12 +22,13 @@ import {roiAround} from './flow.mjs';
 import {HeartMotion} from './tissue.mjs';
 import {mountBeamMap} from './beam-map.mjs';
 import {mountCabina} from './cabina.mjs';
-import {buildValves} from './valves.mjs';
+import {buildValves,sliceValves} from './valves.mjs';
+import {createSketch} from './sketch.mjs';
 
 // patient size first: every default depth below is scaled to it
 const PATIENT_KEY='cardiolab.patient.v1';let patient=(()=>{try{return PATIENT_BY_ID[localStorage.getItem(PATIENT_KEY)]}catch{return null}})()||PATIENT_BY_ID.child;setBodyScale(bodyScale(patient));
 const $=id=>document.getElementById(id),state={...defaultState(),mode:'echo'},scan=$('scan'),ctx=scan.getContext('2d',{willReadFrequently:true});
-let beam=null,manifest,meshes=[],byId=new Map(),views=[],worker,ready=false,busy=false,pending=null,revision=0,active=null,selected=null,crosshair=null;
+let beam=null,planeMap=null,mainValves=null,sketch=createSketch(),manifest,meshes=[],byId=new Map(),views=[],worker,ready=false,busy=false,pending=null,revision=0,active=null,selected=null,crosshair=null;
 let frozen=false,sweeping=false,sweepStart=0,sweepBase=0,recording=null,dragging=false,latestRequestedAt=0,frameCount=0;
 let tutor=null,pediatricDisplay=true,instrument=null,references=null,videoImage=null,echoSource='sim',resumeAfterFreeze=false,imageOnly=false;const display=initialDisplay();
 // simulated B-mode: engine, cardiac phase, cine cache of scan-converted images
@@ -138,7 +140,7 @@ function accept(msg){
   busy=false;if(msg.type==='error'){status('No se pudo calcular el corte: '+msg.message,true);dispatch();return}
   if(msg.id===revision){if(active&&JSON.stringify(active.pose)!==JSON.stringify(msg.pose)){crosshair=null;display.points=[];}active=msg;active.visible=msg.cuts.filter(c=>visibleCut(c,msg.pose));active.elapsed=performance.now()-latestRequestedAt;latencies.push(active.elapsed);if(latencies.length>100)latencies.shift();
     if(selected&&!active.visible.some(c=>c.id===selected)){selected=null;crosshair=null}
-    beam?.update(active,selected);beam?.track(msg.pose,scanYSign(msg.state.preset,pediatricDisplay));$('beam-path').textContent=beam?.enabled&&beam.path?'Línea central (cm): '+beam.path:'';
+    beam?.update(active,selected);beam?.track(msg.pose,scanYSign(msg.state.preset,pediatricDisplay));updateViewCard();$('beam-path').textContent=beam?.enabled&&beam.path?'Línea central (cm): '+beam.path:'';
     for(const v of views)updateView(v,msg.pose);renderScan();renderStructures();$('latency').textContent=`${Math.round(active.elapsed)} ms`;
     status(frozen?'Plano congelado':(sweeping?'Barrido de sonda':'Vistas sincronizadas'));$('marker-clock').textContent=`Marcador ${Math.round(markerClock(msg.pose.u))||12} h`;coach?.update();$('depth-readout').textContent=realEcho()?'Vídeo':cmText(msg.pose.depth);
     tutor?.observe(teachingSnapshot());references?.update({...teachingSnapshot(),frozen});
@@ -163,6 +165,12 @@ function renderScan(){
   const p=active.pose,s=active.state,ySign=scanYSign(s.preset,pediatricDisplay),cx=w/2,baseScale=Math.min((w-45)/(2*p.depth*Math.sin(rad(p.sector/2))),(h-65)/p.depth),scale=baseScale*display.zoom,cy=(ySign===1?28:h-32)+ySign*p.depth*.55*(baseScale-scale);projection={cx,cy,scale,ySign};
   $('orientation-note').textContent=ySign===-1?'Vértice abajo · presentación pediátrica':'Vértice arriba';
   const left=ySign*Math.PI/2-rad(p.sector/2),right=ySign*Math.PI/2+rad(p.sector/2),sector=new Path2D();sector.moveTo(cx,cy);sector.arc(cx,cy,p.depth*scale,left,right);sector.closePath();
+  $('mode-anatomy').classList.toggle('active',s.mode==='anatomy'&&!display.sketch);$('mode-sketch').classList.toggle('active',s.mode==='anatomy'&&!!display.sketch);
+  if(s.mode==='anatomy'&&display.sketch){
+   // «Lámina»: pencil drawing of the cut (leaflets closed, a still sheet)
+   sketch.draw(ctx,{w,h,projection,pose:p,cuts:active.visible,byId,leaflets:mainValves?sliceValves(mainValves,p,.2):null,engine,variantKey:chdVariantKey,redraw:renderScan});
+   ctx.font="10px 'Segoe UI'";ctx.fillStyle='#6f6b62';ctx.textAlign='left';ctx.fillText(`LÁMINA · ${VIEW_INFO[nearestView(p,simViews||{})?.id]?.name?.toUpperCase()||'CORTE ANATÓMICO'}`,10,16);ctx.textAlign='right';ctx.fillText('MARCADOR →',w-10,16);
+   drawCalipers();instrument?.update();return}
   ctx.save();ctx.clip(sector);ctx.fillStyle=s.mode==='echo'?'#030405':'#0b141c';ctx.fillRect(0,0,w,h);
   ctx.strokeStyle='#20313c';ctx.lineWidth=.5;ctx.setLineDash([2,5]);for(const [depth] of depthTicks(p.depth)){ctx.beginPath();ctx.arc(cx,cy,depth*scale,0,Math.PI*2);ctx.stroke()}ctx.setLineDash([]);
   for(const cut of active.cuts){const m=byId.get(cut.id),path=pathFor(cut,scale,cx,cy,ySign);ctx.save();
@@ -331,6 +339,8 @@ function preset(key){if(frozen||!ready)return;stopSweep();Object.assign(state,de
 document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>preset(b.dataset.preset));
 $('reset-pose').onclick=()=>preset(state.preset);$('reset-camera').onclick=()=>{beam?.setFollow(false);views.forEach(resetCamera)};
 $('expose').onchange=()=>{if(active)views.forEach(v=>updateView(v,active.pose))};
+$('mode-sketch').onclick=()=>{if(frozen||imageOnly||!ready)return;display.sketch=true;if(state.mode!=='anatomy')$('mode-anatomy').onclick();else renderScan()};
+$('mode-anatomy').addEventListener('click',()=>{display.sketch=false}); // a real click (the Lámina button calls onclick directly)
 for(const mode of ['anatomy','echo'])$(`mode-${mode}`).onclick=()=>{if(frozen||(imageOnly&&mode==='anatomy'))return;state.mode=mode;$('echo-tools').hidden=mode!=='echo';for(const m of ['anatomy','echo'])$(`mode-${m}`).classList.toggle('active',m===mode);if(!realEcho())references?.video.pause();syncControls();requestSlice()};
 $('echo-source').onchange=()=>{if($('echo-source').value==='volume'){location.href='echo4d.html';return}echoSource=$('echo-source').value;$('sim-tools').hidden=echoSource!=='sim';requestSim(false);display.measuring=false;display.points=[];crosshair=null;if(active)views.forEach(v=>updateView(v,active.pose));if(!realEcho())references?.video.pause();syncControls();renderScan();renderStructures()};
 $('freeze').onclick=()=>{if(!ready)return;frozen=!frozen;if(realEcho()){if(frozen){resumeAfterFreeze=!references.video.paused;references.video.pause()}else if(resumeAfterFreeze){resumeAfterFreeze=false;references.video.play().catch(()=>{})}}stopSweep();$('freeze').textContent=frozen?'Reanudar':'Congelar';$('freeze').classList.toggle('active',frozen);syncControls();status(frozen?'Plano congelado':'Vistas sincronizadas')};
@@ -398,7 +408,7 @@ if(window.CARDIOLAB_PUBLIC){document.querySelector('#echo-source option[value=re
 let lastSweepRequest=0;
 function animate(now){requestAnimationFrame(animate);frameCount++;videoImage?.tick();
   const dt=Math.min(.1,(now-lastTick)/1000);lastTick=now;if(!frozen&&engine.params.beating&&beatSpeed>0){phase=(phase+dt*heartRate/60*beatSpeed)%1;dop.beat+=dt*heartRate/60*beatSpeed}
-  if(simEcho()&&ready&&active){if(simQuick&&!dragging&&!sweeping&&now-lastPoseChange>260)requestSim(false);drawSim()}if(sweeping&&ready&&!frozen&&now-lastSweepRequest>65){state.tilt=clamp(sweepBase+12*Math.sin((now-sweepStart)/1500),-60,60);syncControls();requestSlice();lastSweepRequest=now}beam?.frame(now,selected);for(const v of views){v.orbit.update();v.renderer.render(v.scene,v.camera)}if(recording){if(now-recording.lastFrame>50){compositeFrame();poseLog.push({t:now-recording.start,imageSource:realEcho()?'real-video':'atlas',video:realEcho()?videoImage.metadata():null,display:displaySnapshot(),gain:state.gain});recording.lastFrame=now}$('record').textContent=`■ ${Math.min(10,(now-recording.start)/1000).toFixed(1)} / 10 s`;if(now-recording.start>=10000&&recording.recorder.state==='recording')recording.recorder.stop()}}
+  if(simEcho()&&ready&&active){if(simQuick&&!dragging&&!sweeping&&now-lastPoseChange>260)requestSim(false);drawSim()}if(sweeping&&ready&&!frozen&&now-lastSweepRequest>65){state.tilt=clamp(sweepBase+12*Math.sin((now-sweepStart)/1500),-60,60);syncControls();requestSlice();lastSweepRequest=now}beam?.frame(now,selected);planeMap?.frame();for(const v of views){v.orbit.update();v.renderer.render(v.scene,v.camera)}if(recording){if(now-recording.lastFrame>50){compositeFrame();poseLog.push({t:now-recording.start,imageSource:realEcho()?'real-video':'atlas',video:realEcho()?videoImage.metadata():null,display:displaySnapshot(),gain:state.gain});recording.lastFrame=now}$('record').textContent=`■ ${Math.min(10,(now-recording.start)/1000).toFixed(1)} / 10 s`;if(now-recording.start>=10000&&recording.recorder.state==='recording')recording.recorder.stop()}}
 async function boot(){
   manifest=await (await fetch('assets/anatomy.json')).json();const buffer=await (await fetch('assets/anatomy.bin')).arrayBuffer();
   const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',buffer))].map(b=>b.toString(16).padStart(2,'0')).join('');if(hash!==manifest.geometrySHA256)throw Error('La geometría no coincide con su manifiesto');
@@ -462,16 +472,27 @@ function applyState(next,{animate=false}={}){
  const step=now=>{const k=Math.min(1,(now-t0)/dur),e=k<.5?2*k*k:1-(-2*k+2)**2/2;for(const key of keys){if(next[key]==null)continue;state[key]=key==='rotation'?from[key]+wrap(next[key]-from[key])*e:from[key]+(next[key]-from[key])*e}syncControls();requestSlice();if(k<1)requestAnimationFrame(step)};requestAnimationFrame(step);
 }
 // image-only practice: the heart is hidden (3D heart, structure names, contours); only the echo image guides the probe
-function setImageOnly(on){on=!!on;if(on===imageOnly)return;imageOnly=on;document.body.classList.toggle('image-only',on);
+function setImageOnly(on){on=!!on;if(on===imageOnly)return;imageOnly=on;queueMicrotask(updateViewCard);document.body.classList.toggle('image-only',on);
  if(on){overlayContours=false;$('sim-overlay').checked=false;selected=null;crosshair=null;display.measuring=false;display.points=[];beam?.setFollow(false);
   if(state.mode!=='echo'||(echoSource!=='sim'&&!engine.failed)){state.mode='echo';if(!engine.failed){echoSource='sim';$('echo-source').value='sim'}$('echo-tools').hidden=false;$('sim-tools').hidden=echoSource!=='sim';for(const m of ['anatomy','echo'])$(`mode-${m}`).classList.toggle('active',m==='echo');syncControls();requestSlice()}}
- for(const id of ['mode-anatomy','echo-source','sim-overlay'])$(id).disabled=on;
+ for(const id of ['mode-anatomy','mode-sketch','echo-source','sim-overlay'])$(id).disabled=on;
  if(views[0])for(const mesh of views[0].anatomical)mesh.visible=!on||byId.get(mesh.userData.id).kind!=='heart';
  for(const v of views)v.lesionMark.visible=!on&&!!lesion;
  if(active){views.forEach(v=>updateView(v,active.pose));renderStructures();renderScan()}instrument?.update()}
 function setTgcAll(values){if(!ready)return;display.tgc=[...values];requestSim(false);renderScan();instrument?.update();logDisplay()}
 const PRESET_OF_WINDOW={plax:'plax',psax:'psax',apical:'apical',subcostal:'subcostal',ssn:'ssn'};
 const LESION_AT={asd2:'asdSecundum',asd1:'asdPrimum',vsdpm:'vsdPerimembranous',vsdm:'vsdMuscular',avsd:'asdPrimum',pda:['ductAortic','ductPulmonary'],coarct:'ductAortic'};
+// standard views: go to one (plane map), and the card naming the view the probe is closest to (where the probe goes and
+// what the view shows). Both stay hidden while the answer is being tested (heart hidden, or «Leer la imagen» open).
+async function goToView(id){const t=simViews?.[id];if(!t||!ready||imageOnly)return;const {solveState}=await import('./views.mjs');
+ const sol=solveState(t,PRESET_OF_WINDOW[VIEW_INFO[id].window]);applyState({...sol.state,mode:state.mode,depth:physical(t.depth)},{animate:true});status(`${VIEW_INFO[id].name} · ${VIEW_CARD[id]?.probe||''}`)}
+function updateViewCard(){const el=$('view-card'),hide=imageOnly||openPanel==='drills';
+ planeMap?.setEnabled(!hide&&$('plane-map').checked);
+ const near=!hide&&active&&simViews?nearestView(active.pose,simViews):null;planeMap?.setCurrent(near?.score>=55?near.id:null);
+ if(!near){el.hidden=true;return}const info=VIEW_INFO[near.id],card=VIEW_CARD[near.id];el.hidden=false;
+ const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+ el.style.setProperty('--c',WINDOW_COLORS[info.window]||'#9fb3c1');
+ el.innerHTML=`<div class="view-card-head"><span class="view-card-dot"></span><strong>${near.score>=70?'':'Cerca de: '}${esc(info.name)}</strong><span class="view-card-score" title="Coincidencia del plano actual con la vista de referencia">${near.score} %</span></div><dl><dt>Sonda</dt><dd>${esc(card.probe)}</dd><dt>Muestra</dt><dd>${card.shows.map(esc).join(' · ')}</dd></dl>`}
 function lesionPosition(id){const lm=engine.landmarks,k=LESION_AT[id];if(lm&&id==='lvh')return lm.aorticValve.map((v,i)=>v+(lm.mitralValve[i]-v)*.35); // subaortic outflow, where the septal bulge narrows it
  if(lm&&id==='ebstein'){const tv=lm.tricuspidValve,ax=lm.rvApex.map((v,i)=>v-tv[i]),l=Math.hypot(...ax);return tv.map((v,i)=>v+ax[i]/l*.019)} // displaced tricuspid coaptation
  if(!lm||!k)return null;if(Array.isArray(k))return k.map(n=>lm[n]).reduce((a,b)=>a.map((v,i)=>(v+b[i])/2));return lm[k]}
@@ -481,7 +502,7 @@ function showPanel(name){
  for(const [k,el] of Object.entries(panels)){const on=k===name&&openPanel!==name;el.hidden=!on;$('tab-'+k).classList.toggle('active',on);$('tab-'+k).setAttribute('aria-expanded',String(on))}
  const leaving=openPanel;openPanel=name==='course'||openPanel===name?null:name;
  if(leaving==='coach'&&openPanel!=='coach')coach?.stop();if(leaving==='drills'&&openPanel!=='drills')drills?.stop();if(leaving==='chd'&&openPanel!=='chd')chd?.leave();if(openPanel==='chd')chd?.enter();
- $('practice-shell').classList.toggle('with-tutor',!!openPanel||!$('tutor').hidden);$('practice-shell').classList.toggle('with-drills',openPanel==='drills');
+ $('practice-shell').classList.toggle('with-tutor',!!openPanel||!$('tutor').hidden);$('practice-shell').classList.toggle('with-drills',openPanel==='drills');updateViewCard();
 }
 for(const k of Object.keys(panels))$('tab-'+k).onclick=()=>{if(!coach||!chd||!drills){status('Preparando el simulador…');return}showPanel(k)};
 $('course-toggle').addEventListener('click',()=>{if(openPanel){for(const el of Object.values(panels))el.hidden=true;for(const k of Object.keys(panels))$('tab-'+k).classList.remove('active');if(openPanel==='coach')coach?.stop();if(openPanel==='drills')drills?.stop();if(openPanel==='chd')chd?.leave();$('practice-shell').classList.remove('with-drills');openPanel=null}},true);
@@ -491,7 +512,7 @@ $('sources-top').onclick=()=>$('sources').click();
 $('echo-tools').hidden=state.mode!=='echo';
 engine.ready.then(async()=>{
  simViews=await engine.getViews();
- try{const byName={};for(const m of meshes)if(m.kind==='heart')byName[m.sourceName]={sourceName:m.sourceName,positions:m.positions,indices:m.indices};beam?.setValves(buildValves(byName,engine.landmarks));if(active){beam.update(active,selected);views.forEach(v=>updateView(v,active.pose))}}catch(e){console.warn('valvas del mapa del haz',e)}
+ try{const byName={};for(const m of meshes)if(m.kind==='heart')byName[m.sourceName]={sourceName:m.sourceName,positions:m.positions,indices:m.indices};mainValves=buildValves(byName,engine.landmarks);beam?.setValves(mainValves);if(active){beam.update(active,selected);views.forEach(v=>updateView(v,active.pose))}}catch(e){console.warn('valvas del mapa del haz',e)}
  // window presets start exactly on the reference views computed from the anatomy
  const BASE={plax:'plax',psax:'psaxPM',apical:'a4c',subcostal:'sc4c',ssn:'ssn'};
  for(const [k,v] of Object.entries(BASE)){const t=simViews[v];if(t)Object.assign(PRESETS[k],{x:t.origin[0],z:t.origin[2],target:t.origin.map((o,i)=>o+t.d[i]*.08),up:[...t.u]})}
@@ -501,6 +522,10 @@ engine.ready.then(async()=>{
  coach=mountCoach({...common,host:$('coach'),setTarget:setTargetPose,ySign,imageOnly:setImageOnly});
  drills=mountDrills({...common,host:$('drills'),ySign,setTgc:setTgcAll,visible:()=>openPanel==='drills'});
  chd=mountCHD({...common,host:$('chd'),onVariant:(spec,reveal)=>{chdVariantKey=spec.id+JSON.stringify(spec.params||{});setLesionMarker(reveal?lesionPosition(spec.id):null);requestSim(false);requestSpectrum()},colorOnLesion:id=>focusColorOn(lesionPosition(id)),cwOnLesion:id=>cwOnLesion(id)});
+ planeMap=mountPlaneMap({view:views[1],targets:simViews,info:VIEW_INFO,onGo:goToView});
+ {let on=false;try{on=localStorage.getItem('cardiolab.planeMap.v1')==='1'}catch{}$('plane-map').checked=on;
+  $('plane-map').onchange=()=>{try{localStorage.setItem('cardiolab.planeMap.v1',$('plane-map').checked?'1':'0')}catch{}updateViewCard()}}
+ updateViewCard();
  if(ready)requestSim(false);
 }).catch(e=>{console.error(e);status('Simulador eco no disponible: '+e.message,true);echoSource='synthetic';$('echo-source').value='synthetic'});
 syncControls();boot().catch(e=>{console.error(e);status('No se pudo iniciar: '+e.message,true)});

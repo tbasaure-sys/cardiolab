@@ -9,6 +9,8 @@ Simulador docente de ecocardiografía transtorácica que funciona en el navegado
 ## Qué incluye
 
 - **Tres vistas sincronizadas**: la sonda sobre el tórax, el plano de corte en el corazón 3D (con mapa del haz) y la imagen eco del mismo plano.
+- **Mapa de planos**: las 11 vistas estándar dibujadas a la vez sobre el corazón 3D, coloreadas por ventana; un clic en un nombre lleva a esa vista. Bajo la imagen, una **ficha** nombra la vista más cercana, dónde va la sonda y qué muestra (se oculta al ponerse a prueba).
+- **Lámina**: el corte dibujado como una ilustración de anatomía a lápiz (paredes sombreadas, cavidades abiertas, velos en tinta y nombres con líneas guía), para el primer contacto antes de la imagen eco.
 - **Imagen eco simulada** trazada rayo a rayo sobre un volumen de tejidos: atenuación dependiente de la frecuencia, reflexión especular, speckle ligado a la anatomía, grosor de corte del haz (elevación: volumen parcial y sombras de borde suave), reverberación del campo cercano, haz más ancho en los bordes del sector, ganancia en profundidad de preset cardíaco, sombra de costillas y pulmón, latido con engrosamiento sistólico de la pared (miocardio incompresible: la cavidad se acorta ~30 % y la pared se engruesa ~30–50 %) y válvulas móviles.
 - **Doppler color, PW y CW** sobre un campo de flujo docente, con límite de Nyquist, aliasing y Bernoulli simplificada.
 - **Tamaño del paciente**: de recién nacido a adolescente (y adulto). La anatomía se escala con √(superficie corporal); la acústica sigue siendo física, así que cambian la profundidad y la frecuencia adecuadas. Frecuencia cardíaca típica por edad.
@@ -53,7 +55,8 @@ node --test tests/*.test.mjs
 | `patient.mjs`, `zscores.mjs` | Tamaño del paciente y puntuaciones Z (PHN) |
 | `probe-motion.mjs`, `phone-probe.mjs`, `relay.mjs`, `sonda.*` | Teléfono como sonda: orientación → maniobras, emparejamiento y página del teléfono |
 | `chd-data.mjs`, `chd-panel.mjs` | Cardiopatías |
-| `beam-map.mjs`, `instrument.mjs`, `cabina.mjs` | Mapa del haz, consola y diseño cabina |
+| `beam-map.mjs`, `plane-map.mjs`, `sketch.mjs` | Mapa del haz, mapa de planos y lámina del corte |
+| `instrument.mjs`, `cabina.mjs` | Consola y diseño cabina |
 | `echo4d.*`, `volume-*.mjs` | Página del volumen 4D |
 | `assets/` | Atlas, volúmenes de tejido y volumen mitral 4D |
 | `node_modules/` | Copias de three.js, PeerJS y qrcode-generator (MIT) usadas directamente por el navegador |
