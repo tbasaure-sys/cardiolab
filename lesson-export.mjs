@@ -8,7 +8,7 @@ import {CINE_PHASES} from './sim-engine.mjs';
 const FPS=10;
 const STAGE_NAMES={orientar:'Orientar',mover:'Mover',confirmar:'Confirmar',optimizar:'Optimizar',rescatar:'Rescatar',evidencia:'Evidencia'};
 const LAYOUTS={
- '16:9':{w:1280,h:720,title:[32,46,26],echo:[24,72,800,560],plane:[848,72,408,272],probe:[848,360,408,272],caption:[24,646,1232,62,21]},
+ '16:9':{w:1280,h:720,title:[32,46,26],echo:[24,72,800,474],plane:[848,72,408,230],probe:[848,316,408,230],caption:[24,558,1232,150,20]},
  '9:16':{w:720,h:1280,title:[28,58,30],echo:[16,90,688,600],plane:[16,708,340,250],probe:[364,708,340,250],caption:[16,976,688,280,27]}
 };
 function wrap(g,text,maxW){const out=[];let line='';for(const word of String(text).split(/\s+/)){const t=line?line+' '+word:word;if(g.measureText(t).width>maxW&&line){out.push(line);line=word}else line=t}if(line)out.push(line);return out}
@@ -16,7 +16,7 @@ function fit(g,src,[x,y,w,h]){const s=Math.min(w/src.width,h/src.height),dw=src.
 const quantPhase=p=>(Math.floor((((p%1)+1)%1)*CINE_PHASES)+.5)/CINE_PHASES;
 
 // ---------------------------------------------------------------- one frame of the lesson at time t
-function createRenderer({api,spec,compiled,format}){
+export function createRenderer({api,spec,compiled,format}){
  const L=LAYOUTS[format],canvas=document.createElement('canvas');canvas.width=L.w;canvas.height=L.h;const g=canvas.getContext('2d');
  const echoCache=new Map(),views={plane:document.createElement('canvas'),probe:document.createElement('canvas')};let viewsKey=null,variantKey=null,colorKey=null;
  async function frame(t){

@@ -13,10 +13,10 @@
   "image": "simulación",
   "topology": "Corazón de referencia (atlas adulto escalado).",
   "sources": ["lang2015", "lopez2010", "ase2024", "docencia"],
-  "teaching": "El estado de partida (sonda un espacio intercostal por encima del ápex, reorientada para conservar las válvulas) está calculado sobre el atlas; preguntas y rescate son diseño docente propio."
+  "teaching": "El estado de partida (sonda ≈1 cm por encima y algo lateral al choque de punta, reorientada para conservar ambas válvulas en el plano; el ápex real queda ≈8 mm fuera del corte) se buscó sobre el atlas comprobando que la ventana no quede tapada por pulmón; preguntas y rescate son diseño docente propio."
  },
  "limits": [
-  "El acortamiento se genera desplazando la sonda sobre un atlas adulto; en el paciente cambian también la posición del ápex con el decúbito y la respiración, que no se simulan.",
+  "El acortamiento se genera desplazando la sonda sobre un atlas adulto; en este atlas, subir la sonda más de ≈1 cm la deja sobre el pulmón y no hay imagen, por eso el ejemplo es moderado; en el paciente cambian también la posición del ápex con el decúbito y la respiración, que no se simulan.",
   "El simulador no permite medir volúmenes; el ejercicio enseña cuándo un plano no es apto para medir."
  ],
  "windows": {"available": ["apical"]},
@@ -27,20 +27,20 @@
  },
  "competencies": ["adquisicion", "medicion", "reconocimiento"],
  "steps": [
-  {"id": "partida", "stage": "orientar", "title": "Una apical que parece correcta", "from": {"view": "a4c", "offset": {"z": 0.022, "tilt": -15, "rock": 6.5}},
+  {"id": "partida", "stage": "orientar", "title": "Una apical que parece correcta", "from": {"view": "a4c", "offset": {"z": 0.010, "x": 0.006, "rock": -6}},
    "caption": "Imagen apical con cuatro cámaras y ambas válvulas. Antes de usarla, comprueba si el plano llega al ápex real.",
-   "predict": {"prompt": "Si la sonda está un espacio por encima del ápex real y el haz se reorienta hacia las válvulas, ¿cómo se verá el VI?", "options": ["Más corto, con el ápex grueso y redondeado", "Más largo y estrecho", "Igual: el ápex siempre entra en la apical"], "answer": "Más corto, con el ápex grueso y redondeado", "why": "El plano corta la pared anterolateral en lugar de la punta: la cavidad termina antes y la «punta» que se ve es pared cortada en oblicuo."},
+   "predict": {"prompt": "Si la sonda está por encima del ápex real y el haz se reorienta hacia las válvulas, ¿cómo se verá el VI?", "options": ["Más corto, con el ápex grueso y redondeado", "Más largo y estrecho", "Igual: el ápex siempre entra en la apical"], "answer": "Más corto, con el ápex grueso y redondeado", "why": "El plano corta la pared anterolateral en lugar de la punta: la cavidad termina antes y la «punta» que se ve es pared cortada en oblicuo."},
    "competencies": ["reconocimiento"]},
   {"id": "reconocer", "stage": "confirmar", "title": "Reconocer el acortamiento",
    "caption": "Signos de acortamiento: el ápex parece grueso, no se acerca a la base en sístole y el VI es más corto que en otras vistas.",
    "confirm": {"prompt": "¿Cuál de estos hallazgos indica que el plano no pasa por el ápex real?", "options": ["El ápex se ve grueso y redondeado y apenas se mueve", "Se ven las dos aurículas", "La tricúspide está más cerca del ápex que la mitral"], "answer": "El ápex se ve grueso y redondeado y apenas se mueve", "why": "Ver ambas aurículas no descarta el acortamiento, y el desplazamiento apical de la tricúspide es normal."},
    "competencies": ["reconocimiento", "medicion"]},
-  {"id": "corregir", "stage": "mover", "title": "Bajar al ápex real", "maneuver": {"verb": "deslizar", "direction": "caudal", "amount": 22, "keeps": "Válvulas auriculoventriculares en el centro"},
+  {"id": "corregir", "stage": "mover", "title": "Bajar al ápex real", "maneuver": {"verb": "deslizar", "direction": "caudal", "amount": 10, "keeps": "Válvulas auriculoventriculares en el centro"},
    "to": {"view": "a4c"}, "goal": {"view": "a4c", "min": 75, "anchors": ["lvApexCavity"]},
-   "caption": "Desliza la sonda hacia caudal y lateral hasta el choque de punta y reorienta el haz hacia las válvulas: el VI se alarga y el ápex se adelgaza.",
+   "caption": "Desliza la sonda ≈1 cm hacia caudal, hasta el choque de punta, y vuelve a centrar las válvulas: el VI se alarga y el ápex se adelgaza.",
    "explain": {"prompt": "¿Por qué deslizar y no solo inclinar?", "options": ["Porque el ápex está debajo de otro punto de la piel: inclinar desde el mismo espacio no alcanza la punta", "Porque inclinar cambia el marcador de lado", "Porque deslizar aumenta la frecuencia de la sonda"], "answer": "Porque el ápex está debajo de otro punto de la piel: inclinar desde el mismo espacio no alcanza la punta", "why": "Desde un espacio demasiado alto, ninguna orientación del haz contiene a la vez el ápex y las válvulas."},
    "rescue": [{"when": "La ventana baja queda tapada por pulmón", "say": "En el paciente: decúbito lateral izquierdo más marcado y espiración. Si sigue sin verse el ápex, declara que el VI no es medible desde esta ventana y usa otra vista para la pregunta.", "to": {"view": "a2c"}}],
-   "hints": ["El problema no es el ángulo: es el punto de contacto.", "Desliza hacia caudal (hacia los pies) un espacio intercostal.", "Después reorienta el haz para volver a centrar las válvulas."],
+   "hints": ["El problema no es el ángulo: es el punto de contacto.", "Desliza hacia caudal (hacia los pies) hasta el choque de punta.", "Después reorienta el haz para volver a centrar las válvulas."],
    "competencies": ["adquisicion"]},
   {"id": "guardar", "stage": "evidencia", "title": "Evidencia con el ápex real", "evidence": {"kind": "frame"},
    "caption": "Guarda el cuadro con el ápex real: solo en este plano tiene sentido valorar el tamaño y la función global del VI.",

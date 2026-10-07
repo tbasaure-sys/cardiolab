@@ -1,12 +1,12 @@
 {
  "files": 124,
- "bytes": 74093628,
+ "bytes": 74094983,
  "largest": [
   "assets/anatomy.bin",
   6189936
  ],
  "sha256": {
-  "app.mjs": "2200f95607bb71b7224d43a7503bdf8d984e5aaf1b88a0f2c6f90966c7488317",
+  "app.mjs": "8d5a9dd95673d61f98accb029820974d5a5e7d302c8d2bb14fd001cdb20f21fd",
   "beam-map.mjs": "ed991ddc0c85494d3b300c9906886542d5736dc025570ccf543c298f9a5a34bc",
   "bmode-worker.mjs": "8266a62db4212efeff4d3caf7c4081b719f46aa306f635832b14c334c29df582",
   "bmode.mjs": "a5bbea9577c8cc622935e04febb232bbd06c1886958d5c88c4409eaddd3312b3",
@@ -23,7 +23,7 @@
   "index.html": "a63c3461a28fb2a13a3cb5eb30607d3e2fa9442cf6c3afb1bd00a11e4b467cd5",
   "instrument.mjs": "74a3d18a1cc85c8cd893ba5d9864d7123818c84d481f6d5139d133bd7fa8d1e0",
   "lesson-engine.mjs": "6162e28b1cb4d5b4c69f7e698f0a3cb706b85db7879040edb1369b16aba93f35",
-  "lesson-export.mjs": "b759254b2a66c98b4460bb2024c1df27f5f1e408ad417e7550c0ae091ef6b829",
+  "lesson-export.mjs": "55ceb12e84adc796896edcb26e948e86dee53e4f549cb40c34bacd4ab80f595a",
   "lesson-panel.mjs": "417f2e9b707ffa003663fbc906b0ce39355a2ee7b80f5d655afbf8d243a652ee",
   "patient.mjs": "884f39f225136b1e06d419fc216b4e87ffef0e588c7e32d5ad1c1ad229678ff1",
   "phone-probe.mjs": "55059d63a762b9850a49309122515e2e44b17dcbf4d9f484d9da2ae25c4f1ffc",
@@ -41,7 +41,7 @@
   "tests/bmode.test.mjs": "587a95c4e466d0a240386271d55b7bfec3a8ce7bfbfc13f269eccad78cfb08b7",
   "tests/drills.test.mjs": "b0e294b0c45e9e30551b12b7121ef61bd0f26f9c95300cbb3813502d1bd83965",
   "tests/lesson-export.test.mjs": "1e98a36ca9396fe50384aae4bd18d9b62b8d832beebb063767c77f8db53cc9d5",
-  "tests/lessons.test.mjs": "3a9e2acd9c7c3cf681b55d411f4da316313d5d1b21b280bca531898dbbaca5a5",
+  "tests/lessons.test.mjs": "f71e4874d2e48d67e0ba3550d3c469a2bd139421f8ab3ab2726370afd7fd7d8f",
   "tests/motion.test.mjs": "1621352e8a4ab85a2011410329660c3d71d07e8dd09688c1c4d506269c370ee8",
   "tests/probe-motion.test.mjs": "018b2414e4debe14e9643431a8a6818ba91c1b0b67eb7e9b618b665f1166a824",
   "tests/relay.test.mjs": "b7a4feb5a2024e91d515032a36da90fb11cee339f7dba4c9ff29932dd3a79aee",

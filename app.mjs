@@ -555,7 +555,7 @@ engine.ready.then(async()=>{
  drills=mountDrills({...common,host:$('drills'),ySign,setTgc:setTgcAll,visible:()=>openPanel==='drills'});
  chd=mountCHD({...common,host:$('chd'),onVariant:(spec,reveal)=>{chdVariantKey=spec.id+JSON.stringify(spec.params||{});setLesionMarker(reveal?lesionPosition(spec.id):null);requestSim(false);requestSpectrum()},colorOnLesion:id=>focusColorOn(lesionPosition(id)),cwOnLesion:id=>cwOnLesion(id)});
  planeMap=mountPlaneMap({view:views[1],targets:simViews,info:VIEW_INFO,onGo:goToView});
- lessonPanel=mountLessons({host:$('lessons'),...tutorApi(),visible:()=>openPanel==='lessons'});
+ {const api=tutorApi();lessonPanel=mountLessons({host:$('lessons'),...api,visible:()=>openPanel==='lessons'});if(window.echoLab)echoLab.tutor=Object.assign(api,{panel:lessonPanel})}
  {let on=false;try{on=localStorage.getItem('cardiolab.planeMap.v1')==='1'}catch{}$('plane-map').checked=on;
   $('plane-map').onchange=()=>{try{localStorage.setItem('cardiolab.planeMap.v1',$('plane-map').checked?'1':'0')}catch{}updateViewCard()}}
  updateViewCard();

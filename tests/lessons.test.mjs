@@ -100,3 +100,11 @@ test('coverage declares pending items and lessons declare their limits',()=>{
  for(const spec of Object.values(lessons)){assert.ok(spec.limits?.length,spec.id);assert.ok(spec.provenance.sources.includes('docencia'),spec.id)}
  for(const s of Object.values(sources))assert.ok(s.supports);
 });
+
+test('no scene of any lesson sits on a window blocked by lung or bone (the image would be empty)',async()=>{
+ const zlib=await import('node:zlib'),{parseTissue,LABEL}=await import('../tissue.mjs');const meta=JSON.parse(fs.readFileSync(new URL('../assets/tissue.json',import.meta.url)));
+ const t=parseTissue(meta,zlib.gunzipSync(fs.readFileSync(new URL(`../assets/${meta.fine.file}`,import.meta.url))),zlib.gunzipSync(fs.readFileSync(new URL(`../assets/${meta.coarse.file}`,import.meta.url))));
+ const blocked=p=>{let n=0;const sec=p.sector*Math.PI/180;for(let j=0;j<41;j++){const th=-sec/2+sec*(j+.5)/41,b=[0,1,2].map(i=>Math.cos(th)*p.d[i]+Math.sin(th)*p.u[i]);
+  for(let r=.003;r<p.depth*.7;r+=.001){const l=t.tissueAt(...[0,1,2].map(i=>p.origin[i]+b[i]*r));if(l===LABEL.LUNG||l===LABEL.BONE){n++;break}}}return n/41};
+ for(const spec of Object.values(lessons))for(const s of compileLesson(spec,ctx).scenes){const f=blocked(poseFromState(s.to));assert.ok(f<=.7,`${spec.id}/${s.step}: ${Math.round(f*100)} % de las líneas tapadas`)}
+});
