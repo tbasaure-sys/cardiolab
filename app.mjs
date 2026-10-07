@@ -523,7 +523,10 @@ $('echo-tools').hidden=state.mode!=='echo';
 function ensureEcho(){if(state.mode!=='echo'||echoSource!=='sim'){state.mode='echo';echoSource='sim';$('echo-source').value='sim';for(const m of ['anatomy','echo'])$(`mode-${m}`).classList.toggle('active',m==='echo');$('echo-tools').hidden=false;$('sim-tools').hidden=false;syncControls()}}
 function aimDopplerAtPoint(point){const p=poseFromState(state),q=point.map((v,i)=>v-p.origin[i]);aimDoppler(q[0]*p.u[0]+q[1]*p.u[1]+q[2]*p.u[2],q[0]*p.d[0]+q[1]*p.d[1]+q[2]*p.d[2])}
 // resolves once the plane of the current state is sliced and drawn (or after a timeout)
-function waitApplied(timeout=10000){return new Promise(res=>{const t0=performance.now(),f=()=>{if((active&&active.id===revision&&!busy)||performance.now()-t0>timeout)requestAnimationFrame(()=>requestAnimationFrame(()=>res(active?.id===revision)));else setTimeout(f,25)};f()})}
+// and the 3D cameras have stopped moving (orbit damping, beam follow), so that the same state draws the same pixels
+function waitApplied(timeout=10000){return new Promise(res=>{const t0=performance.now(),camKey=()=>views.map(v=>[...v.camera.position.toArray(),...v.camera.quaternion.toArray()].map(x=>x.toFixed(6)).join()).join('|');
+ let last=null,still=0;const settle=()=>{const k=camKey();still=k===last?still+1:0;last=k;if(still>=3||performance.now()-t0>timeout)requestAnimationFrame(()=>res(active?.id===revision));else requestAnimationFrame(settle)};
+ const f=()=>{if((active&&active.id===revision&&!busy)||performance.now()-t0>timeout)requestAnimationFrame(settle);else setTimeout(f,25)};f()})}
 // deterministic still of the simulated echo for a state and cardiac phase (export): no wall clock involved
 async function renderEchoStill(st,ph,w,h){const p=poseFromState(st),ySign=scanYSign(st.preset,pediatricDisplay);syncEngine();const frame=await engine.renderOnce(p,{phase:ph,lines:168});
  const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');g.fillStyle='#05080b';g.fillRect(0,0,w,h);const img=g.createImageData(w,h);scanConvert(frame,img,simProjection(w,h,p,ySign),1);g.putImageData(img,0,0);return c}
@@ -540,7 +543,12 @@ function tutorApi(){return {
  setTarget:p=>setTargetPose(p),imageOnly:on=>setImageOnly(on),lockPhase:p=>{phaseLock=p==null?null:((p%1)+1)%1;if(phaseLock!=null){phase=phaseLock;dop.beat=phaseLock}},
  setCaption:t=>{tutorCaption=t||null;renderScan()},blockWindows:list=>{blockedWindows=list?.length?[...list]:null;renderScan()},
  captureFrame:()=>new Promise(r=>{compositeFrame();composite.toBlob(r,'image/png')}),recordClip:s=>recordComposite(s),download:(blob,name)=>download(blob,name),
- waitApplied,renderEcho:renderEchoStill,canvases:()=>({probe:views[0].renderer.domElement,plane:views[1].renderer.domElement,scan}),pediatric:()=>pediatricDisplay,
+ waitApplied,renderEcho:renderEchoStill,resetCameras:()=>{beam?.setFollow(false);views.forEach(resetCamera)},
+ // the 3D views drawn at a fixed size and pixel ratio (export): the pixels do not depend on the page layout
+ renderViews:(w,h)=>views.map(v=>{const r=v.renderer,size=r.getSize(new THREE.Vector2()),pr=r.getPixelRatio(),aspect=v.camera.aspect;
+  r.setPixelRatio(1);r.setSize(w,h,false);v.camera.aspect=w/h;v.camera.updateProjectionMatrix();r.render(v.scene,v.camera);
+  const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(r.domElement,0,0);
+  r.setPixelRatio(pr);r.setSize(size.x,size.y,false);v.camera.aspect=aspect;v.camera.updateProjectionMatrix();r.render(v.scene,v.camera);return c}),canvases:()=>({probe:views[0].renderer.domElement,plane:views[1].renderer.domElement,scan}),pediatric:()=>pediatricDisplay,
  metadata:()=>exportMetadata()}}
 engine.ready.then(async()=>{
  simViews=await engine.getViews();

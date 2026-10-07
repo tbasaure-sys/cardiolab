@@ -1,12 +1,12 @@
 {
  "files": 124,
- "bytes": 74094983,
+ "bytes": 74096351,
  "largest": [
   "assets/anatomy.bin",
   6189936
  ],
  "sha256": {
-  "app.mjs": "8d5a9dd95673d61f98accb029820974d5a5e7d302c8d2bb14fd001cdb20f21fd",
+  "app.mjs": "3eb285cac5b23d1e46c13bf973ce411f891b1f42d564b6b8330c73b443029e6d",
   "beam-map.mjs": "ed991ddc0c85494d3b300c9906886542d5736dc025570ccf543c298f9a5a34bc",
   "bmode-worker.mjs": "8266a62db4212efeff4d3caf7c4081b719f46aa306f635832b14c334c29df582",
   "bmode.mjs": "a5bbea9577c8cc622935e04febb232bbd06c1886958d5c88c4409eaddd3312b3",
@@ -23,8 +23,8 @@
   "index.html": "a63c3461a28fb2a13a3cb5eb30607d3e2fa9442cf6c3afb1bd00a11e4b467cd5",
   "instrument.mjs": "74a3d18a1cc85c8cd893ba5d9864d7123818c84d481f6d5139d133bd7fa8d1e0",
   "lesson-engine.mjs": "6162e28b1cb4d5b4c69f7e698f0a3cb706b85db7879040edb1369b16aba93f35",
-  "lesson-export.mjs": "55ceb12e84adc796896edcb26e948e86dee53e4f549cb40c34bacd4ab80f595a",
-  "lesson-panel.mjs": "417f2e9b707ffa003663fbc906b0ce39355a2ee7b80f5d655afbf8d243a652ee",
+  "lesson-export.mjs": "7efcf215b94bd1ec1a7258ff29f72ad33509b25e906ac6fb365b36304034f315",
+  "lesson-panel.mjs": "07226f75fea88c5c4f150bc8073e20b03058e80d3cffff77d5ca98bbc1dba75c",
   "patient.mjs": "884f39f225136b1e06d419fc216b4e87ffef0e588c7e32d5ad1c1ad229678ff1",
   "phone-probe.mjs": "55059d63a762b9850a49309122515e2e44b17dcbf4d9f484d9da2ae25c4f1ffc",
   "plane-map.mjs": "03bd4295c78cc33c510f7a4c9f351f66fdcd4079445fcbe83d2309feb2f9d21d",

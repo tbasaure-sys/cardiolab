@@ -22,7 +22,7 @@ export function createRenderer({api,spec,compiled,format}){
  async function frame(t){
   const s=seek(compiled,t),stKey=JSON.stringify(s.state);
   const vk=JSON.stringify(s.variant||{id:'normal'});if(vk!==variantKey){variantKey=vk;await api.setVariant(s.variant||{id:'normal'});echoCache.clear()}
-  if(stKey!==viewsKey){viewsKey=stKey;api.apply(s.state);await api.waitApplied();const c=api.canvases();for(const k of ['plane','probe']){views[k].width=c[k].width;views[k].height=c[k].height;views[k].getContext('2d').drawImage(c[k],0,0)}colorKey=null}
+  if(stKey!==viewsKey){viewsKey=stKey;api.apply(s.state);await api.waitApplied();const [probe,plane]=api.renderViews(L.plane[2],L.plane[3]),c={probe,plane};for(const k of ['plane','probe']){views[k].width=c[k].width;views[k].height=c[k].height;views[k].getContext('2d').drawImage(c[k],0,0)}colorKey=null}
   // the colour box is placed around its landmark in the current plane, so it follows the probe state
   const ck=stKey+JSON.stringify(s.color||null);if(ck!==colorKey){colorKey=ck;api.color(s.color);for(const k of [...echoCache.keys()])if(k.startsWith(stKey))echoCache.delete(k)}
   const ph=quantPhase(s.phase),ek=stKey+'|'+ph;let echo=echoCache.get(ek);
@@ -100,7 +100,7 @@ async function hashCanvas(c){const d=c.getContext('2d').getImageData(0,0,c.width
 export async function exportMicroLesson({api,spec,ctx,seed,format='16:9',sources,status=()=>{}}){
  const compiled=compileLesson(spec,ctx,{seed}),renderer=createRenderer({api,spec,compiled,format});
  const warnings=[];if(compiled.scenes.some(x=>x.doppler))warnings.push('El vídeo muestra el 2D y el color; el espectro Doppler pulsado/continuo todavía no se incrusta en la exportación (sí en la demostración interactiva).');if(compiled.duration<60||compiled.duration>90)warnings.push(`Duración ${compiled.duration.toFixed(1)} s, fuera del rango 60–90 s de una microlección.`);
- api.lockPhase(0);api.setCaption(null);
+ api.lockPhase(0);api.setCaption(null);api.resetCameras?.(); // 3D views from their default cameras: the frame does not depend on how the user left them
  try{
   // repeatability: the same time gives the same frame, also after rendering other times in between
   status('Comprobando la repetibilidad de los cuadros…');const kf=keyframes(compiled),probeT=kf[Math.min(1,kf.length-1)].t;

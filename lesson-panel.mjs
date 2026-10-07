@@ -93,11 +93,11 @@ export function mountLessons(api){
   $('ls-play').onclick=()=>{run.playing=!run.playing;if(run.playing&&run.t>=compiled.duration)run.t=0;$('ls-play').textContent=run.playing?'Pausa':'Reproducir'};
   $('ls-seek').oninput=()=>{run.t=Number($('ls-seek').value);run.playing=false;$('ls-play').textContent='Reproducir'};
   host.querySelectorAll('[data-scene]').forEach(li=>li.onclick=()=>{run.t=compiled.scenes[Number(li.dataset.scene)].t0;});
-  $('ls-export').onclick=async()=>{run.playing=false;$('ls-play').textContent='Reproducir';const b=$('ls-export');b.disabled=true;
+  $('ls-export').onclick=async()=>{run.playing=false;$('ls-play').textContent='Reproducir';const b=$('ls-export');b.disabled=true;run.exporting=true;
    try{const {exportMicroLesson}=await import('./lesson-export.mjs');await exportMicroLesson({api,spec:run.spec,ctx,seed:run.seed,format:fmt,sources:catalog.sources,status:t=>{$('ls-export-status').textContent=t}})}
-   catch(e){console.error(e);$('ls-export-status').textContent='No se pudo exportar: '+e.message}finally{b.disabled=false}};
+   catch(e){console.error(e);$('ls-export-status').textContent='No se pudo exportar: '+e.message}finally{b.disabled=false;if(run)run.exporting=false}};
   let last=performance.now(),lastApply=0,busyVariant=false;
-  const frame=async now=>{if(!run||run.mode!=='demostracion')return;raf=requestAnimationFrame(frame);const dt=Math.min(.1,(now-last)/1000);last=now;
+  const frame=async now=>{if(!run||run.mode!=='demostracion')return;raf=requestAnimationFrame(frame);if(run.exporting){last=now;return}const dt=Math.min(.1,(now-last)/1000);last=now;
    if(run.playing&&!busyVariant){run.t=Math.min(compiled.duration,run.t+dt);if(run.t>=compiled.duration){run.playing=false;$('ls-play').textContent='Repetir'}}
    const s=seek(compiled,run.t);$('ls-seek').value=String(run.t.toFixed(1));$('ls-time').textContent=`${fmtT(run.t)} / ${fmtT(compiled.duration)}`;
    const prev=run.last;run.last=s;
