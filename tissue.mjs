@@ -5,7 +5,7 @@ export const LABEL={AIR:0,SOFT:1,LUNG:2,BONE:3,LIVER:4,FAT:5,CARTILAGE:6,LV_MYO:
  LV_BLOOD:20,RV_BLOOD:21,LA_BLOOD:22,RA_BLOOD:23,AO_BLOOD:24,PA_BLOOD:25,CAVA_BLOOD:26,PV_BLOOD:27,CORONARY:28,CS_BLOOD:29,
  VESSEL_WALL:30,MITRAL:40,TRICUSPID:41,AORTIC_VALVE:42,PULMONARY_VALVE:43,
  // runtime-only labels (never in the source volume)
- PERICARDIUM:60,EFFUSION:61,SKIN:62,SUBCUT:63,MUSCLE:64,THROMBUS:65,MEDIASTINUM:66};
+ PERICARDIUM:60,EFFUSION:61,SKIN:62,SUBCUT:63,MUSCLE:64,THROMBUS:65,MEDIASTINUM:66,FOSSA:67};
 
 // [backscatter amplitude, impedance (MRayl), attenuation (dB/cm/MHz)]
 const P=[];const set=(ids,v)=>{for(const id of [].concat(ids))P[id]=v};
@@ -18,6 +18,9 @@ set(LABEL.LIVER,[.0047,1.65,.5]); // a little brighter than myocardium, as in ha
 set(LABEL.FAT,[.012,1.38,.6]);
 set([LABEL.LV_MYO,LABEL.RV_MYO],[.0042,1.70,.55]);
 set([LABEL.LA_WALL,LABEL.RA_WALL],[.0045,1.70,.55]);
+// floor of the fossa ovalis: a thin fibrous membrane, a weak diffuse scatterer whose echoes are mostly specular — bright
+// when the beam meets it head-on (subcostal), lost when the beam runs along it (apical «dropout»)
+set(LABEL.FOSSA,[.0005,1.80,.6]);
 set(LABEL.PAPILLARY,[.0048,1.71,.55]);
 set([LABEL.LV_BLOOD,LABEL.RV_BLOOD,LABEL.LA_BLOOD,LABEL.RA_BLOOD,LABEL.AO_BLOOD,LABEL.PA_BLOOD,LABEL.CAVA_BLOOD,LABEL.PV_BLOOD,LABEL.CORONARY,LABEL.CS_BLOOD],[.00008,1.61,.16]);
 set(LABEL.VESSEL_WALL,[.008,1.74,.6]);
@@ -35,8 +38,8 @@ set(LABEL.THROMBUS,[.006,1.66,.3]);
 export const PROPS=new Float32Array(256*3);for(let i=0;i<256;i++){const v=P[i]||P[LABEL.SOFT];PROPS.set(v,i*3)}
 
 export const BLOOD=new Set([LABEL.LV_BLOOD,LABEL.RV_BLOOD,LABEL.LA_BLOOD,LABEL.RA_BLOOD,LABEL.AO_BLOOD,LABEL.PA_BLOOD,LABEL.CAVA_BLOOD,LABEL.PV_BLOOD,LABEL.CS_BLOOD,LABEL.CORONARY,LABEL.MITRAL,LABEL.TRICUSPID,LABEL.AORTIC_VALVE,LABEL.PULMONARY_VALVE]);
-export const MYOCARDIUM=new Set([LABEL.LV_MYO,LABEL.RV_MYO,LABEL.LA_WALL,LABEL.RA_WALL,LABEL.PAPILLARY]);
-export const LABEL_NAMES={[LABEL.LV_BLOOD]:'Cavidad VI',[LABEL.RV_BLOOD]:'Cavidad VD',[LABEL.LA_BLOOD]:'Cavidad AI',[LABEL.RA_BLOOD]:'Cavidad AD',[LABEL.AO_BLOOD]:'Aorta',[LABEL.PA_BLOOD]:'Arteria pulmonar',[LABEL.CAVA_BLOOD]:'Vena cava',[LABEL.PV_BLOOD]:'Vena pulmonar',[LABEL.CS_BLOOD]:'Seno coronario',[LABEL.LV_MYO]:'Miocardio VI',[LABEL.RV_MYO]:'Pared VD',[LABEL.LA_WALL]:'Pared AI',[LABEL.RA_WALL]:'Pared AD',[LABEL.PAPILLARY]:'Músculo papilar',[LABEL.LUNG]:'Pulmón',[LABEL.BONE]:'Costilla / esternón',[LABEL.LIVER]:'Hígado',[LABEL.SOFT]:'Pared torácica / mediastino',[LABEL.FAT]:'Grasa epicárdica',[LABEL.VESSEL_WALL]:'Pared vascular',[LABEL.PERICARDIUM]:'Pericardio',[LABEL.EFFUSION]:'Derrame pericárdico'};
+export const MYOCARDIUM=new Set([LABEL.LV_MYO,LABEL.RV_MYO,LABEL.LA_WALL,LABEL.RA_WALL,LABEL.PAPILLARY,LABEL.FOSSA]);
+export const LABEL_NAMES={[LABEL.LV_BLOOD]:'Cavidad VI',[LABEL.RV_BLOOD]:'Cavidad VD',[LABEL.LA_BLOOD]:'Cavidad AI',[LABEL.RA_BLOOD]:'Cavidad AD',[LABEL.AO_BLOOD]:'Aorta',[LABEL.PA_BLOOD]:'Arteria pulmonar',[LABEL.CAVA_BLOOD]:'Vena cava',[LABEL.PV_BLOOD]:'Vena pulmonar',[LABEL.CS_BLOOD]:'Seno coronario',[LABEL.LV_MYO]:'Miocardio VI',[LABEL.RV_MYO]:'Pared VD',[LABEL.LA_WALL]:'Pared AI',[LABEL.RA_WALL]:'Pared AD',[LABEL.PAPILLARY]:'Músculo papilar',[LABEL.LUNG]:'Pulmón',[LABEL.BONE]:'Costilla / esternón',[LABEL.LIVER]:'Hígado',[LABEL.SOFT]:'Pared torácica / mediastino',[LABEL.FAT]:'Grasa epicárdica',[LABEL.VESSEL_WALL]:'Pared vascular',[LABEL.PERICARDIUM]:'Pericardio',[LABEL.FOSSA]:'Fosa oval (membrana)',[LABEL.EFFUSION]:'Derrame pericárdico'};
 
 export function parseTissue(meta,fineBytes,coarseBytes){
  const fine={...meta.fine,data:new Uint8Array(fineBytes)},coarse={...meta.coarse,data:new Uint8Array(coarseBytes)};
@@ -51,11 +54,33 @@ export async function loadTissue(base='assets/'){
  return parseTissue(meta,f,c);
 }
 
+// The atlas interatrial septum is ~6 mm thick across the fossa ovalis, whose floor is a thin membrane in patients (the
+// thick limbus surrounds it). At load time the septum within FOSSA_R of the fossa centre is thinned to a ~1.5 mm
+// membrane (label FOSSA) about its mid-plane; the rest becomes blood of the atrium on that side. The limbus is untouched.
+// Not an edit (Tissue.reset keeps it): it is the reference anatomy. Returns what was done, for provenance.
+const FOSSA_R=.0075,FOSSA_HALF=.0008;
+function thinFossa(t){
+ const c=t.landmarks.asdSecundum,d=t.fine.data,[nx,ny,nz]=t.fine.dims,h=t.fh,o=t.fo,L=LABEL;
+ // septal normal: from the LA blood centroid to the RA blood centroid around the fossa
+ const cen=lab=>{const s=[0,0,0];let n=0;for(let x=-.025;x<=.025;x+=.002)for(let y=-.025;y<=.025;y+=.002)for(let z=-.025;z<=.025;z+=.002){const p=[c[0]+x,c[1]+y,c[2]+z];if(t.tissueAt(...p)===lab){s[0]+=p[0];s[1]+=p[1];s[2]+=p[2];n++}}return n?s.map(v=>v/n):null};
+ const la=cen(L.LA_BLOOD),ra=cen(L.RA_BLOOD);if(!la||!ra)return null;
+ const g=ra.map((v,i)=>v-la[i]),gl=Math.hypot(...g),u=g.map(v=>v/gl);
+ // septal mid-plane along the normal through the fossa centre
+ let s0=0,n0=0;for(let s=-.012;s<=.012;s+=.00025){const l=t.tissueAt(c[0]+u[0]*s,c[1]+u[1]*s,c[2]+u[2]*s);if(l===L.LA_WALL||l===L.RA_WALL){s0+=s;n0++}}if(!n0)return null;s0/=n0;
+ const r=Math.ceil((FOSSA_R+.004)/h),ci=c.map((v,a)=>Math.round((v-o[a])/h));let membrane=0,opened=0;
+ for(let k=ci[2]-r;k<=ci[2]+r;k++)for(let j=ci[1]-r;j<=ci[1]+r;j++)for(let i=ci[0]-r;i<=ci[0]+r;i++){
+  if(i<0||j<0||k<0||i>=nx||j>=ny||k>=nz)continue;const idx=((k*ny+j)*nx+i)*2,l=d[idx];if(l!==L.LA_WALL&&l!==L.RA_WALL)continue;
+  const p=[o[0]+i*h-c[0],o[1]+j*h-c[1],o[2]+k*h-c[2]],s=p[0]*u[0]+p[1]*u[1]+p[2]*u[2],rho=Math.hypot(p[0]-s*u[0],p[1]-s*u[1],p[2]-s*u[2]);
+  if(rho>FOSSA_R||Math.abs(s-s0)>.006)continue;
+  if(Math.abs(s-s0)<=FOSSA_HALF){d[idx]=L.FOSSA;membrane++}else{d[idx]=s<s0?L.LA_BLOOD:L.RA_BLOOD;opened++}}
+ return {centre:c,normal:u.map(v=>+v.toFixed(4)),radiusM:FOSSA_R,membraneM:2*FOSSA_HALF,membraneVoxels:membrane,openedVoxels:opened};
+}
 export class Tissue{
  constructor(meta,fine,coarse){
   this.meta=meta;this.fine=fine;this.coarse=coarse;this.landmarks=meta.landmarks;this.edits=[];this.effusionMM=0;
   const [nx,ny,nz]=fine.dims;this.fnx=nx;this.fny=ny;this.fnz=nz;this.fo=fine.origin;this.fh=fine.spacing;this.fi=1/fine.spacing;
   const [cx,cy,cz]=coarse.dims;this.cnx=cx;this.cny=cy;this.cnz=cz;this.co=coarse.origin;this.ci=1/coarse.spacing;
+  if(this.landmarks?.asdSecundum&&!meta.fossaThinned)this.fossa=thinFossa(this);
  }
  // nearest-voxel lookup → label (and distance outside the heart envelope, metres; Infinity when unknown)
  lookup(x,y,z){

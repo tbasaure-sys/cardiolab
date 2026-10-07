@@ -4,8 +4,8 @@ import {LABEL} from './tissue.mjs';
 
 const add=(a,b)=>a.map((v,i)=>v+b[i]),sub=(a,b)=>a.map((v,i)=>v-b[i]),mul=(a,k)=>a.map(v=>v*k);
 const norm=a=>Math.hypot(...a),unit=a=>mul(a,1/(norm(a)||1)),mid=(a,b)=>a.map((v,i)=>(v+b[i])/2);
-const WALLS=new Set([LABEL.LA_WALL,LABEL.RA_WALL,LABEL.LV_MYO,LABEL.RV_MYO,LABEL.FAT,LABEL.SOFT,LABEL.PERICARDIUM]);
-const ATRIAL=new Set([LABEL.LA_WALL,LABEL.RA_WALL]);
+const WALLS=new Set([LABEL.LA_WALL,LABEL.RA_WALL,LABEL.FOSSA,LABEL.LV_MYO,LABEL.RV_MYO,LABEL.FAT,LABEL.SOFT,LABEL.PERICARDIUM]);
+const ATRIAL=new Set([LABEL.LA_WALL,LABEL.RA_WALL,LABEL.FOSSA]);
 const VENTRICULAR=new Set([LABEL.LV_MYO,LABEL.RV_MYO]);
 const OUTSIDE=new Set([LABEL.SOFT,LABEL.FAT,LABEL.LUNG,LABEL.VESSEL_WALL]);
 

@@ -1,0 +1,69 @@
+{
+ "schema": "cardiolab.lesson/1",
+ "id": "cia",
+ "version": 1,
+ "title": "CIA ostium secundum: demostrar el defecto y su flujo",
+ "layer": "problemas",
+ "level": "intermedio",
+ "question": "¿Hay una comunicación interauricular tipo ostium secundum y qué evidencia la demuestra?",
+ "objective": "Demostrar el defecto en la fosa oval en dos planos con buena incidencia y su flujo con Doppler color, sin apoyarse en un hueco visto en apical.",
+ "prerequisites": ["recorrido-basico", "calidad-dropout-septal"],
+ "variant": {"id": "asd2"},
+ "provenance": {
+  "anatomy": "atlas + edición docente",
+  "image": "simulación",
+  "topology": "Corazón de referencia con un defecto esférico de ≈19 mm de diámetro centrado en la fosa oval (reparo asdSecundum del atlas), abierto en la pared auricular y la membrana de la fosa; cortocircuito de aurícula izquierda a derecha de baja velocidad. Conexiones venosas y auriculoventriculares normales.",
+  "sources": ["silvestry2015", "ase2024", "docencia"],
+  "teaching": "La elección de planos (subcostal cuatro cámaras y eje corto subcostal) y la exigencia de flujo en color siguen las recomendaciones de evaluación de la CIA; preguntas, distractores y criterios son diseño docente propio."
+ },
+ "limits": [
+  "Defecto esférico en un atlas adulto: no se modelan los bordes (rims) ni su medición, la forma oval real ni la variación del tamaño con el ciclo.",
+  "No se simulan las consecuencias hemodinámicas (dilatación de AD y VD, movimiento septal paradójico): el módulo enseña a demostrar el defecto, no a valorar su repercusión.",
+  "Los defectos de seno venoso y de seno coronario y los retornos venosos pulmonares anómalos no están representados (cobertura pendiente).",
+  "La ventana paraesternal derecha queda tapada por el pulmón en el atlas (sin decúbito lateral derecho): pendiente.",
+  "En el atlas adulto el haz subcostal incide sobre el septo con ≈56°; en el lactante la incidencia es más favorable."
+ ],
+ "windows": {"available": ["subcostal", "apical", "psax"]},
+ "entry": {
+  "structures": ["Aurícula izquierda", "Aurícula derecha"],
+  "questions": ["¿Hay una CIA?", "¿Cómo demuestro un cortocircuito interauricular?"],
+  "problems": ["sc4c", "scSAX"]
+ },
+ "competencies": ["adquisicion", "reconocimiento", "optimizacion", "integracion"],
+ "steps": [
+  {"id": "sc4c", "stage": "orientar", "title": "Subcostal cuatro cámaras", "from": {"view": "sc4c"}, "goal": {"view": "sc4c", "min": 70, "anchors": ["asdSecundum"]},
+   "caption": "Subcostal cuatro cámaras, marcador a las 3: el septo interauricular cruza el sector entre ambas aurículas con mejor incidencia que en apical.",
+   "predict": {"prompt": "¿Dónde esperas el defecto de una CIA tipo ostium secundum?", "options": ["En la zona media del septo interauricular, la fosa oval", "En la porción baja del septo, junto a las válvulas auriculoventriculares", "En la desembocadura de la vena cava superior"], "answer": "En la zona media del septo interauricular, la fosa oval", "why": "El ostium secundum es un defecto de la fosa oval; junto a las válvulas AV sería un ostium primum y junto a la cava, un seno venoso."},
+   "hints": ["Busca el hígado como ventana y ambas aurículas en el campo cercano.", "Inclina poco a poco hasta que el septo interauricular cruce el centro."],
+   "competencies": ["adquisicion", "reconocimiento"]},
+  {"id": "color", "stage": "optimizar", "title": "Color sobre el septo", "color": {"on": true, "at": "asdSecundum", "nyquist": 0.45},
+   "caption": "Caja de color pequeña sobre el septo y escala baja: el cortocircuito es lento y continuo.",
+   "confirm": {"prompt": "¿Qué dirección tiene el flujo a través del defecto?", "options": ["De la aurícula izquierda a la derecha", "De la aurícula derecha a la izquierda", "No hay flujo: solo se ve el hueco en 2D"], "answer": "De la aurícula izquierda a la derecha", "why": "Con presiones normales la aurícula izquierda tiene más presión y el flujo va hacia la derecha; un flujo derecha-izquierda obliga a buscar hipertensión pulmonar u obstrucción derecha."},
+   "explain": {"prompt": "¿Por qué una caja de color pequeña?", "options": ["Aumenta la frecuencia de cuadros y la resolución del color sobre la zona de interés", "Hace que el flujo sea más rápido", "Elimina el dropout del 2D"], "answer": "Aumenta la frecuencia de cuadros y la resolución del color sobre la zona de interés", "why": "El color se calcula línea a línea: menos líneas, más cuadros por segundo."},
+   "competencies": ["optimizacion", "reconocimiento"]},
+  {"id": "scsax", "stage": "mover", "title": "Segundo plano: eje corto subcostal", "maneuver": {"verb": "rotar", "direction": "antihorario", "amount": 75, "keeps": "Septo interauricular en el centro"},
+   "to": {"view": "scSAX"}, "goal": {"view": "scSAX", "min": 65, "anchors": ["asdSecundum"], "tol": 0.01},
+   "caption": "Rota el marcador hacia la cabeza conservando el septo interauricular: un defecto real persiste en el plano ortogonal y se relaciona con la vena cava inferior.",
+   "predict": {"prompt": "Si el defecto es real, ¿qué esperas en el plano ortogonal?", "options": ["El defecto persiste en el mismo sitio del septo", "El defecto desaparece: solo existe en un plano", "El defecto se desplaza hacia las válvulas"], "answer": "El defecto persiste en el mismo sitio del septo", "why": "Una estructura real se ve en planos que la cortan; un artefacto depende del ángulo del haz."},
+   "hints": ["No deslices: rota con el septo en el centro.", "El marcador va de las 3 hacia las 12."],
+   "rescue": [{"when": "Sin ventana subcostal (gas, apósitos, dolor)", "say": "Usa la apical con color y escala baja, sabiendo que el 2D apical no distingue defecto de dropout. Si el color no es concluyente, declara la evidencia insuficiente.", "to": {"view": "a4c"}}],
+   "competencies": ["adquisicion"]},
+  {"id": "decidir", "stage": "confirmar", "title": "¿Qué basta y qué no?",
+   "caption": "La conclusión se apoya en el 2D con buena incidencia en dos planos y en el flujo, no en un hueco aislado.",
+   "confirm": {"prompt": "¿Cuál de estos hallazgos NO basta por sí solo para diagnosticar la CIA?", "options": ["Un hueco del septo interauricular en apical 4C", "Defecto visible en subcostal en dos planos con flujo izquierda-derecha", "Flujo en color a través de la fosa oval con el 2D concordante"], "answer": "Un hueco del septo interauricular en apical 4C", "why": "En apical el septo es paralelo al haz y el dropout imita un defecto."},
+   "competencies": ["integracion"]},
+  {"id": "guardar", "stage": "evidencia", "title": "Clip de la evidencia", "from": {"view": "sc4c"}, "color": {"on": true, "at": "asdSecundum", "nyquist": 0.45}, "evidence": {"kind": "clip", "seconds": 3},
+   "caption": "Guarda un clip subcostal con el color sobre el septo: muestra el defecto y su flujo en la misma imagen.",
+   "competencies": ["integracion"]}
+ ],
+ "sufficiency": {
+  "criteria": [
+   {"id": "sc4c", "kind": "goal", "step": "sc4c", "label": "Fosa oval en el plano subcostal", "why": "Plano con mejor incidencia sobre el septo"},
+   {"id": "ortogonal", "kind": "goal", "step": "scsax", "label": "Defecto confirmado en un segundo plano ortogonal"},
+   {"id": "color", "kind": "measure", "measure": "colorOn", "equals": true, "label": "Flujo demostrado con Doppler color"},
+   {"id": "direccion", "kind": "answer", "step": "color", "label": "Dirección del cortocircuito identificada"},
+   {"id": "clip", "kind": "evidence", "step": "guardar", "evidence": "clip", "label": "Clip subcostal con color guardado"}
+  ],
+  "insufficient": "Sin dos planos con buena incidencia y flujo concordante no puedes afirmar ni descartar la CIA: decláralo y propone otra ventana o estudio."
+ }
+}

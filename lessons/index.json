@@ -1,0 +1,19 @@
+{
+ "schema": "cardiolab.lessons-index/1",
+ "version": 1,
+ "lessons": ["recorrido-basico", "calidad-apical-acortada", "calidad-dropout-septal", "calidad-doppler-alineacion", "cia", "civ", "ductus"],
+ "generated": "Cualquier vista estándar tiene además una lección generada («No consigo esta vista»): vista-<id>.",
+ "tours": [
+  {"id": "sistematico", "title": "Recorrido sistemático", "lessons": ["recorrido-basico", "calidad-apical-acortada", "calidad-doppler-alineacion"]},
+  {"id": "cortocircuitos", "title": "Cortocircuitos", "lessons": ["calidad-dropout-septal", "cia", "civ", "ductus"]}
+ ],
+ "competencies": {
+  "orientacion": {"name": "Orientación (marcador, ejes, presentación)", "corrective": ["recorrido-basico"], "transfer": ["vista-sc4c", "vista-ssn"]},
+  "adquisicion": {"name": "Adquisición de planos", "corrective": ["recorrido-basico"], "transfer": ["calidad-apical-acortada", "ductus"]},
+  "reconocimiento": {"name": "Reconocimiento por conexiones y relaciones", "corrective": ["recorrido-basico"], "transfer": ["civ", "ductus"]},
+  "optimizacion": {"name": "Optimización (incidencia, color, Doppler)", "corrective": ["calidad-dropout-septal"], "transfer": ["calidad-doppler-alineacion", "cia"]},
+  "medicion": {"name": "Condiciones de medición", "corrective": ["calidad-doppler-alineacion"], "transfer": ["calidad-apical-acortada", "civ"]},
+  "integracion": {"name": "Integración de la evidencia", "corrective": ["calidad-dropout-septal"], "transfer": ["cia", "ductus"]}
+ },
+ "priorities": "El orden de los módulos siguientes se decidirá con el registro de uso (errores y tiempos por competencia), no con un ranking epidemiológico supuesto."
+}
