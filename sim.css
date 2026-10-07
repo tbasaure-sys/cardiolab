@@ -1,6 +1,6 @@
 /* Simulator, coach and congenital-disease panels */
-.panel-tabs{display:flex;gap:8px;flex-wrap:wrap}
-.panel-tabs button{font-size:13px;padding:8px 14px}
+.panel-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.panel-tabs button{font-size:13px;padding:8px 11px}
 .panel-tabs button.active,#course-toggle[aria-expanded=true]{background:#1c3c39;color:#bafcef;border-color:#458e83}
 .scan-meta{display:flex;gap:12px;align-items:center}
 #marker-clock{font:10px Consolas,monospace;color:#ffcf8a}
@@ -263,3 +263,28 @@ body.cabina .practice-shell.with-tutor #pose-controls .unit,body.cabina:not(.ech
 .view-card dd{margin:0;color:#c9d6dd}
 body.phone-dock .practice-main>.scan .view-card{display:none}
 .planes-on .beam-labels{display:none}
+/* Tutor (lesson-panel.mjs) */
+.lessons h2{font-size:13px;margin:16px 0 6px}.lessons h3{font-size:11px;color:var(--muted);margin:12px 0 4px;text-transform:uppercase;letter-spacing:.06em}
+.lessons details{border-top:1px solid var(--line);padding:8px 0}.lessons summary{cursor:pointer;font-size:12px;font-weight:600}
+.lesson-item{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:left;margin:5px 0;padding:8px 10px;background:#121c23}.lesson-item b{font-size:12px;font-weight:600}.lesson-item span{font-size:10px;color:var(--muted)}
+.lesson-item.primary-item{border-color:#4fa89a}
+.lessons .link{background:none;border:0;padding:0;color:var(--accent);cursor:pointer;font-size:11px;text-decoration:underline}
+.lessons .question{font-size:13px;line-height:1.5;color:#e8f2ef;border-left:3px solid var(--accent);padding-left:10px}
+.lessons .prov{color:#7f939f}
+.lessons .chip{display:inline-block;font-size:10px;padding:1px 7px;border-radius:9px;background:#1d2a33;color:#b9c7cf;margin-right:4px}
+.lessons .st-orientar{background:#1b3340}.lessons .st-mover{background:#3a3218}.lessons .st-confirmar{background:#1d3a32}.lessons .st-optimizar{background:#33223b}.lessons .st-rescatar{background:#3b2420}.lessons .st-evidencia{background:#203045}
+.lessons .dots{display:flex;gap:4px;list-style:none;padding:0;margin:10px 0}.lessons .dots li{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:9px;background:#18242c;color:var(--muted);margin:0}.lessons .dots li.done{background:#1d4a44;color:#d8fff7}.lessons .dots li.now{outline:2px solid var(--accent)}
+.lessons .step h2{font-size:15px;margin:6px 0}.lessons .maneuver{background:#141f26;padding:8px 10px;border-radius:5px}
+.lessons .q{border-top:1px solid var(--line);padding:8px 0}.lessons .opts{display:flex;flex-direction:column;gap:5px}.lessons .opts button{text-align:left;padding:8px 10px;line-height:1.4}
+.lessons .opts button.right{border-color:var(--accent);color:#d8fff7}.lessons .opts button.wrong{border-color:#c06a4f;color:#f1c3b4}.lessons .fb{font-size:11px;color:#dfbc96}
+.lessons .checks{list-style:none;padding:0}.lessons .checks li{font-size:12px;color:var(--muted)}.lessons .checks li.ok,.lessons .ok{color:var(--accent)}
+.lessons .task{border-top:1px solid var(--line);padding:8px 0}.lessons .task.ok p::after{content:' ✓';color:var(--accent)}
+.lessons .aids{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 0}.lessons .aids p{width:100%;margin:2px 0}
+.lessons .nav{display:flex;justify-content:space-between;gap:8px;margin-top:12px}
+.lessons .demo-bar{display:flex;gap:8px;align-items:center}.lessons .demo-bar input{flex:1;accent-color:var(--accent)}.lessons .demo-bar output{font:11px Consolas,monospace}
+.lessons .scenes{padding-left:0;list-style:none;margin:10px 0}.lessons .scenes li{font-size:11px;padding:4px 6px;border-radius:4px;cursor:pointer;margin:0}.lessons .scenes li.active{background:#172a2f;color:#d8fff7}
+.lessons .caption{font-size:12px;line-height:1.5;min-height:3em}.lessons .overlay .ask{background:#2a2414;padding:8px 10px;border-radius:5px}.lessons .overlay .answer{background:#143029;padding:8px 10px;border-radius:5px}.lessons .overlay p{margin:4px 0}
+.lessons .coverage{padding-left:0;list-style:none}.lessons .coverage li{font-size:11px;margin:5px 0}.lessons .st-representado{background:#1d4a44}.lessons .st-parcial{background:#4a3d1d}.lessons .st-pendiente{background:#4a2a24}
+.lessons .st{display:inline-block;font-size:9px;padding:0 6px;border-radius:8px;color:#eee}
+.lessons .domains dt{font-size:11px;color:var(--muted);margin-top:8px}.lessons .domains dd{margin:2px 0 0;font-size:12px}.lessons .bar{display:inline-block;width:110px;height:6px;background:#1d2a33;border-radius:3px;vertical-align:middle}.lessons .bar i{display:block;height:100%;background:var(--accent);border-radius:3px}
+.lessons #ls-home{display:block;margin-bottom:6px}

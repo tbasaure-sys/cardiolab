@@ -1,0 +1,35 @@
+{
+ "schema": "cardiolab.coverage/1",
+ "note": "Qué puede y qué no puede representar el atlas actual para el tutor. Estados: representado, parcial, pendiente. Revisión técnica sobre el atlas; no sustituye la revisión anatómica experta.",
+ "anatomy": [
+  {"id": "corazon-referencia", "name": "Corazón de referencia (situs solitus, levocardia, conexiones concordantes, arco izquierdo)", "status": "representado", "detail": "Atlas adulto BodyParts3D/Z-Anatomy escalado al paciente."},
+  {"id": "proporciones-pediatricas", "name": "Proporciones pediátricas (corazón/tórax, timo, grosor de pared, hígado como ventana amplia)", "status": "pendiente", "detail": "El atlas se escala de forma lineal: no cambia la forma ni las proporciones entre edades."},
+  {"id": "situs-abdominal", "name": "Referencias abdominales para el situs (aorta abdominal, vena cava inferior, hígado, estómago en el corte transversal subcostal)", "status": "pendiente", "detail": "El volumen de tejido no incluye la aorta abdominal ni el estómago con la resolución necesaria: no se puede enseñar el situs desde el corte subcostal transverso."},
+  {"id": "retornos-venosos", "name": "Retornos venosos pulmonares y sistémicos (venas pulmonares en la AI, vena cava superior, seno coronario)", "status": "parcial", "detail": "La vena cava inferior está representada (reparos ivcJunction, ivcLow); las venas pulmonares, la cava superior y el seno coronario no tienen reparos verificados. Sin variantes de retorno anómalo."},
+  {"id": "coronarias", "name": "Origen de las arterias coronarias", "status": "pendiente", "detail": "Sin reparos coronarios en el atlas."},
+  {"id": "arco", "name": "Lateralidad del arco, ramas y anillos vasculares", "status": "parcial", "detail": "Arco izquierdo con istmo (archTop, ductAortic); no hay arco derecho ni variantes de ramas."},
+  {"id": "fosa-oval", "name": "Fosa oval como membrana fina", "status": "representado", "detail": "Se adelgaza al cargar (≈1,6 mm, reflexión casi especular) para reproducir el dropout apical; es una edición docente del atlas."},
+  {"id": "decubito-respiracion", "name": "Decúbito lateral, respiración y desplazamiento del pulmón", "status": "pendiente", "detail": "El pulmón es fijo: las ventanas que dependen del decúbito (paraesternal derecha, apical baja) no se pueden rescatar cambiando la posición."},
+  {"id": "postquirurgico", "name": "Anatomía posquirúrgica (parches, conductos, Fontan, Glenn)", "status": "pendiente", "detail": "Fuera del alcance de la primera entrega."}
+ ],
+ "windows": [
+  {"id": "derecha-paraesternal", "name": "Paraesternal derecha (septo interauricular perpendicular al haz)", "status": "pendiente", "forViews": ["sc4c"], "detail": "Desde x≈−45 mm, z≈−5 mm el haz cruza el septo con ≈13° de incidencia, pero el haz central atraviesa ≈5 mm de pulmón derecho; sin decúbito lateral derecho simulado no hay imagen."},
+  {"id": "paraesternal-alta-ductal", "name": "Corte ductal (paraesternal alto)", "status": "representado", "forViews": ["psaxAV"], "detail": "Definido como el plano que contiene la válvula pulmonar y el extremo pulmonar del ductus, desde el contacto paraesternal corto (rotar antihorario ~70° e inclinar craneal ~16°). El contacto del segundo espacio intercostal no se representa como ventana propia."},
+  {"id": "subcostal-sagital", "name": "Subcostal sagital / bicava", "status": "parcial", "forViews": ["scSAX"], "detail": "El eje corto subcostal muestra la cava inferior entrando en la AD y la fosa oval; la cava superior no tiene reparo verificado."},
+  {"id": "supraesternal-corto", "name": "Supraesternal eje corto (arteria pulmonar derecha bajo el arco, venas pulmonares «en cangrejo»)", "status": "pendiente", "forViews": ["ssn"], "detail": "Sin reparos de venas pulmonares ni de la arteria pulmonar derecha bajo el arco."},
+  {"id": "subcostal-transverso", "name": "Subcostal transverso abdominal (situs)", "status": "pendiente", "forViews": ["sc4c", "scSAX"], "detail": "Ver situs-abdominal."},
+  {"id": "apical-alternativa", "name": "Apical desde otro espacio intercostal", "status": "representado", "forViews": ["a4c", "a2c"], "detail": "El deslizamiento entre espacios se simula; la ocultación por pulmón es fija."},
+  {"id": "paraesternal-ductal-alternativa", "name": "Supraesternal como alternativa al corte ductal", "status": "representado", "forViews": ["psaxAV", "ssn"], "detail": "El extremo aórtico del ductus está en el plano supraesternal de referencia."}
+ ],
+ "variants": [
+  {"id": "asd2", "status": "parcial", "detail": "Defecto esférico en la fosa oval; sin bordes, sin repercusión hemodinámica."},
+  {"id": "vsdpm", "status": "parcial", "detail": "Defecto bajo la válvula aórtica; el eje corto aórtico de referencia pasa a ≈10 mm del defecto (pendiente de revisión experta)."},
+  {"id": "pda", "status": "parcial", "detail": "Tubo recto docente entre istmo y rama pulmonar izquierda; sin anatomía del prematuro."},
+  {"id": "vsdm", "status": "parcial", "detail": "Defecto muscular en el reparo vsdMuscular; candidato al siguiente módulo (barrido del eje corto)."}
+ ],
+ "measurements": [
+  {"id": "doppler-angulo", "status": "representado", "detail": "El ángulo haz–flujo del Doppler pulsado/continuo se calcula sobre el campo de flujo simulado."},
+  {"id": "volumenes-vi", "status": "pendiente", "detail": "Sin trazado de volúmenes."},
+  {"id": "presion-arterial", "status": "pendiente", "detail": "Sin presión arterial simulada: los cálculos de Bernoulli son ejercicios de razonamiento."}
+ ]
+}

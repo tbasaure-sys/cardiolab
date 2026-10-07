@@ -1,0 +1,69 @@
+{
+ "schema": "cardiolab.lesson/1",
+ "id": "civ",
+ "version": 1,
+ "title": "CIV perimembranosa: localizar, demostrar el flujo y no sobrinterpretar la velocidad",
+ "layer": "problemas",
+ "level": "intermedio",
+ "question": "¿Hay una comunicación interventricular perimembranosa, dónde está y qué dice (y qué no dice) la velocidad del jet?",
+ "objective": "Situar el defecto en relación con la válvula aórtica en dos planos, demostrar el jet con color y medirlo con Doppler continuo alineado, integrando la velocidad con la presión arterial y otros datos.",
+ "prerequisites": ["recorrido-basico", "calidad-doppler-alineacion"],
+ "variant": {"id": "vsdpm"},
+ "provenance": {
+  "anatomy": "atlas + edición docente",
+  "image": "simulación",
+  "topology": "Corazón de referencia con un defecto de ≈13 mm de diámetro en el septo interventricular justo por debajo de la válvula aórtica (reparo vsdPerimembranous), prolongado hasta la cavidad del VD; cortocircuito sistólico VI→VD. Conexiones normales.",
+  "sources": ["ase2024", "lopez2010", "docencia"],
+  "teaching": "Planos y secuencia según la cobertura de la guía ASE 2024; la estimación de presión del VD por Bernoulli simplificada se presenta con sus condiciones. Preguntas y criterios: diseño docente propio."
+ },
+ "limits": [
+  "En este atlas el eje corto paraesternal a nivel aórtico de referencia pasa a ≈10 mm del defecto: la posición clásica «entre las 9 y las 12» junto a la tricúspide no se muestra en ese plano (pendiente de revisión anatómica experta).",
+  "El defecto es una esfera prolongada hacia el VD: no se modelan el tejido tricuspídeo accesorio, el prolapso de velos aórticos ni la extensión hacia la entrada o la salida.",
+  "La velocidad del jet es docente; el simulador no tiene presión arterial: el cálculo de la presión del VD es un ejercicio de razonamiento, no una medida.",
+  "No se simula la sobrecarga de volumen del VI ni la hipertensión pulmonar."
+ ],
+ "windows": {"available": ["plax", "apical", "psax"]},
+ "entry": {
+  "structures": ["Septo interventricular", "Válvula aórtica"],
+  "questions": ["¿Hay una CIV?", "¿Qué significa la velocidad del jet de una CIV?"],
+  "problems": ["plax", "a5c"]
+ },
+ "competencies": ["adquisicion", "reconocimiento", "medicion", "integracion"],
+ "steps": [
+  {"id": "plax", "stage": "orientar", "title": "Eje largo: bajo la aorta", "from": {"view": "plax"}, "goal": {"view": "plax", "min": 70, "anchors": ["vsdPerimembranous"]},
+   "caption": "Paraesternal largo: sigue el septo interventricular hasta la pared anterior de la aorta. El defecto perimembranoso está justo por debajo de la válvula aórtica.",
+   "predict": {"prompt": "¿Dónde buscas una CIV perimembranosa en el eje largo?", "options": ["Justo por debajo de la válvula aórtica, donde el septo continúa con la pared anterior de la aorta", "En el tercio apical del septo", "Entre ambas aurículas"], "answer": "Justo por debajo de la válvula aórtica, donde el septo continúa con la pared anterior de la aorta", "why": "La porción membranosa del septo está bajo la válvula aórtica; el septo trabecular apical es el sitio de las CIV musculares."},
+   "competencies": ["reconocimiento", "adquisicion"]},
+  {"id": "color", "stage": "optimizar", "title": "Color: el jet sistólico", "color": {"on": true, "at": "vsdPerimembranous"},
+   "caption": "Coloca la caja de color sobre el septo bajo la aorta: en sístole aparece un jet del VI al VD, en mosaico si es de alta velocidad.",
+   "confirm": {"prompt": "¿En qué fase del ciclo y en qué dirección va el jet?", "options": ["En sístole, del VI al VD", "En diástole, del VD al VI", "Continuo, de la aorta a la pulmonar"], "answer": "En sístole, del VI al VD", "why": "En sístole la presión del VI supera a la del VD; un flujo continuo aorta-pulmonar sugiere ductus, no CIV."},
+   "competencies": ["reconocimiento", "optimizacion"]},
+  {"id": "cw", "stage": "optimizar", "title": "Doppler continuo alineado con el jet", "doppler": {"mode": "cw", "at": "vsdPerimembranous"},
+   "caption": "Alinea el cursor continuo con el jet que muestra el color y busca la envolvente más nítida y rápida.",
+   "explain": {"prompt": "La velocidad máxima del jet es alta y bien alineada. ¿Qué te dice?", "options": ["Que hay un gradiente sistólico alto entre VI y VD: con la presión arterial sistólica permite estimar la presión del VD, si no hay obstrucción del tracto de salida izquierdo", "Que el defecto es grande y hay que cerrarlo", "Que la presión pulmonar es alta"], "answer": "Que hay un gradiente sistólico alto entre VI y VD: con la presión arterial sistólica permite estimar la presión del VD, si no hay obstrucción del tracto de salida izquierdo", "why": "ΔP ≈ 4v² (Bernoulli simplificada) es una diferencia de presiones: necesita la presión del VI (presión arterial sin obstrucción) y un haz alineado, y no mide el tamaño del defecto."},
+   "rescue": [{"when": "No consigues alinear el cursor con el jet", "say": "Una velocidad subestimada por mal ángulo haría creer que la presión del VD es alta: declara la medida como no fiable en lugar de corregir el ángulo en la consola."}],
+   "competencies": ["medicion", "integracion"]},
+  {"id": "a5c", "stage": "orientar", "title": "Segundo plano: apical cinco cámaras", "from": {"view": "a5c"}, "goal": {"view": "a5c", "min": 70, "anchors": ["vsdPerimembranous"]},
+   "caption": "Apical cinco cámaras: el tracto de salida del VI y la válvula aórtica entran en el plano y el defecto queda junto a ellos.",
+   "confirm": {"prompt": "¿Qué aporta este segundo plano?", "options": ["Confirma que el defecto está en el septo junto al tracto de salida aórtico, no en el septo trabecular", "Mide mejor la velocidad porque el haz siempre está alineado con una CIV", "Descarta una CIA"], "answer": "Confirma que el defecto está en el septo junto al tracto de salida aórtico, no en el septo trabecular", "why": "La localización se demuestra por relaciones en más de un plano; el jet de una CIV suele ser casi perpendicular al haz apical."},
+   "competencies": ["reconocimiento"]},
+  {"id": "integrar", "stage": "confirmar", "title": "Integrar antes de concluir",
+   "caption": "Localización en dos planos, jet en color y velocidad alineada: cada dato responde una parte de la pregunta.",
+   "confirm": {"prompt": "¿Qué conclusión es defendible con esta evidencia?", "options": ["CIV perimembranosa con cortocircuito VI→VD; la velocidad alta sugiere un defecto restrictivo si la presión arterial es normal", "CIV grande no restrictiva porque el jet es en mosaico", "Hipertensión pulmonar por la velocidad del jet"], "answer": "CIV perimembranosa con cortocircuito VI→VD; la velocidad alta sugiere un defecto restrictivo si la presión arterial es normal", "why": "El mosaico es aliasing por velocidad, no tamaño; una velocidad alta indica un gradiente alto, es decir, presión del VD baja."},
+   "competencies": ["integracion"]},
+  {"id": "guardar", "stage": "evidencia", "title": "Evidencia", "from": {"view": "plax"}, "color": {"on": true, "at": "vsdPerimembranous"}, "evidence": {"kind": "clip", "seconds": 3},
+   "caption": "Guarda un clip del eje largo con el color sobre el defecto y el espectro continuo con el ángulo anotado.",
+   "competencies": ["integracion"]}
+ ],
+ "sufficiency": {
+  "criteria": [
+   {"id": "plax", "kind": "goal", "step": "plax", "label": "Defecto en el plano del eje largo bajo la aorta"},
+   {"id": "segundo", "kind": "goal", "step": "a5c", "label": "Localización confirmada en un segundo plano"},
+   {"id": "color", "kind": "measure", "measure": "colorOn", "equals": true, "label": "Jet demostrado con color"},
+   {"id": "fase", "kind": "answer", "step": "color", "label": "Fase y dirección del jet"},
+   {"id": "cw", "kind": "answer", "step": "cw", "field": "explain", "label": "Velocidad interpretada con sus condiciones"},
+   {"id": "clip", "kind": "evidence", "step": "guardar", "evidence": "clip", "label": "Clip con color guardado"}
+  ],
+  "insufficient": "La evidencia no basta para situar el defecto o interpretar la velocidad: falta un plano, el color o un Doppler alineado."
+ }
+}

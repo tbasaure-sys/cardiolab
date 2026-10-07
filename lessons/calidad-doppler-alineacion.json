@@ -1,0 +1,59 @@
+{
+ "schema": "cardiolab.lesson/1",
+ "id": "calidad-doppler-alineacion",
+ "version": 1,
+ "title": "Doppler mal alineado: velocidad del llenado mitral",
+ "layer": "calidad",
+ "level": "intermedio",
+ "question": "¿La velocidad de llenado mitral que mido con Doppler pulsado es fiable?",
+ "objective": "Alinear el haz con el flujo antes de medir, reconocer la subestimación por ángulo y no sacar conclusiones de un número aislado.",
+ "prerequisites": ["recorrido-basico", "Curso guiado: laboratorio de ángulo"],
+ "provenance": {
+  "anatomy": "atlas",
+  "image": "simulación",
+  "topology": "Corazón de referencia; campo de flujo docente construido a partir de las referencias del atlas.",
+  "sources": ["quinones2002", "lopez2010", "ase2024", "docencia"],
+  "teaching": "Velocidades docentes, no normativas; preguntas y criterios de alineación (≤20°) son diseño docente propio basado en la relación coseno."
+ },
+ "limits": [
+  "Las velocidades del simulador son docentes: no compares su valor absoluto con tablas de normalidad.",
+  "El ángulo de insonación se calcula sobre el campo de flujo simulado; en el paciente la dirección del chorro no se conoce de antemano."
+ ],
+ "windows": {"available": ["plax", "apical"]},
+ "entry": {
+  "structures": ["Válvula mitral"],
+  "questions": ["¿Puedo fiarme de esta velocidad Doppler?", "¿Desde qué ventana mido el flujo mitral?"],
+  "problems": []
+ },
+ "competencies": ["optimizacion", "medicion"],
+ "steps": [
+  {"id": "plax", "stage": "orientar", "title": "PW mitral desde el paraesternal", "from": {"view": "plax"}, "doppler": {"mode": "pw", "at": "mitralValve"},
+   "caption": "Volumen de muestra en la punta de los velos mitrales desde el paraesternal largo: el haz cruza el flujo de llenado casi de través.",
+   "predict": {"prompt": "Si el haz forma unos 60° con el flujo, ¿qué velocidad mide el Doppler?", "options": ["Alrededor de la mitad de la real (cos 60° = 0,5)", "La velocidad real", "El doble de la real"], "answer": "Alrededor de la mitad de la real (cos 60° = 0,5)", "why": "El Doppler mide la componente de la velocidad a lo largo del haz: v·cos θ."},
+   "competencies": ["medicion"]},
+  {"id": "apical", "stage": "orientar", "title": "Cambiar a la ventana apical", "from": {"view": "a4c"}, "doppler": {"mode": "pw", "at": "mitralValve"}, "goal": {"view": "a4c", "min": 70},
+   "caption": "Desde el ápex, el haz sigue el eje del flujo de llenado: coloca el volumen de muestra en la punta de los velos.",
+   "competencies": ["adquisicion"]},
+  {"id": "alinear", "stage": "optimizar", "title": "Alinear con el flujo",
+   "caption": "Ajusta el haz hasta que el ángulo con el flujo sea pequeño; la envolvente debe ser nítida y la velocidad máxima no debe aumentar más.",
+   "rescue": [{"when": "La ventana apical no es accesible", "say": "La corrección de ángulo supone conocer la dirección real del flujo: no la uses para rescatar un mal alineamiento. Declara la medida como no fiable."}],
+   "explain": {"prompt": "¿Por qué no basta con corregir el ángulo en la consola?", "options": ["La corrección supone conocer la dirección real del flujo, que en el paciente no se ve", "La corrección de ángulo solo funciona en color", "Porque cambia la escala"], "answer": "La corrección supone conocer la dirección real del flujo, que en el paciente no se ve", "why": "Alinear el haz con el flujo evita depender de una suposición sobre la dirección del chorro."},
+   "competencies": ["optimizacion", "medicion"]},
+  {"id": "interpretar", "stage": "confirmar", "title": "Interpretar sin un número aislado",
+   "caption": "Una velocidad alineada sigue siendo un dato: interpreta con la anatomía, el ritmo, la carga y otras mediciones.",
+   "confirm": {"prompt": "Mides una velocidad alta y bien alineada. ¿Qué haces?", "options": ["La integro con la anatomía, la forma del espectro y otras mediciones antes de hablar de obstrucción", "Diagnostico obstrucción porque supera un umbral", "La descarto porque el simulador es docente"], "answer": "La integro con la anatomía, la forma del espectro y otras mediciones antes de hablar de obstrucción", "why": "La velocidad depende del flujo, la carga y la frecuencia cardíaca además de la anatomía."},
+   "competencies": ["integracion"]},
+  {"id": "guardar", "stage": "evidencia", "title": "Guardar el espectro alineado", "evidence": {"kind": "frame"},
+   "caption": "Guarda el cuadro con el espectro alineado y el ángulo anotado.",
+   "competencies": ["integracion"]}
+ ],
+ "sufficiency": {
+  "criteria": [
+   {"id": "angulo", "kind": "measure", "measure": "dopplerAngle", "max": 20, "label": "Ángulo haz–flujo ≤ 20° en la medición", "why": "Por encima de 20° la subestimación supera el 6 %"},
+   {"id": "ventana", "kind": "goal", "step": "apical", "label": "Medición desde una ventana alineada con el flujo"},
+   {"id": "prediccion", "kind": "answer", "step": "plax", "field": "predict", "label": "Efecto del ángulo predicho"},
+   {"id": "cuadro", "kind": "evidence", "step": "guardar", "evidence": "frame", "label": "Espectro alineado guardado"}
+  ],
+  "insufficient": "La velocidad no es fiable: el haz no está alineado con el flujo o falta la evidencia."
+ }
+}

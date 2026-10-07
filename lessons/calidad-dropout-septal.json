@@ -1,0 +1,66 @@
+{
+ "schema": "cardiolab.lesson/1",
+ "id": "calidad-dropout-septal",
+ "version": 1,
+ "title": "Septo interauricular: ¿defecto o dropout?",
+ "layer": "calidad",
+ "level": "intermedio",
+ "question": "En la apical cuatro cámaras el septo interauricular parece interrumpido: ¿hay un defecto o es pérdida de señal (dropout)?",
+ "objective": "Distinguir dropout de defecto cambiando la incidencia del haz y buscando flujo con Doppler color, y no diagnosticar una CIA desde un único plano paralelo al septo.",
+ "prerequisites": ["recorrido-basico"],
+ "provenance": {
+  "anatomy": "atlas",
+  "image": "simulación",
+  "topology": "Corazón de referencia o con CIA tipo ostium secundum (variante asd2 del simulador), según el caso.",
+  "sources": ["silvestry2015", "ase2024", "docencia"],
+  "teaching": "La fosa oval del atlas (≈6 mm) se adelgaza al cargar a una membrana de ≈1,6 mm con reflexión casi solo especular: así el simulador reproduce el dropout. Casos y preguntas: diseño docente propio."
+ },
+ "limits": [
+  "En este atlas adulto el haz subcostal incide sobre el septo con ≈56° (en el lactante es casi perpendicular): el subcostal mejora la incidencia pero no la hace ideal.",
+  "La ventana paraesternal derecha, que daría incidencia casi perpendicular, queda tapada por el pulmón en el atlas (no se simula el decúbito lateral derecho): pendiente.",
+  "El defecto simulado es esférico; no se modelan bordes (rims) ni la dilatación de cavidades derechas."
+ ],
+ "cases": [
+  {"id": "normal", "variant": {"id": "normal"}, "label": "Septo íntegro", "overrides": {"decidir": {"confirm": {"answer": "Septo continuo en subcostal y sin flujo a través: en apical era dropout"}}}},
+  {"id": "cia", "variant": {"id": "asd2"}, "label": "CIA ostium secundum", "overrides": {"decidir": {"confirm": {"answer": "Interrupción confirmada en subcostal con flujo de aurícula izquierda a derecha: hay defecto"}}}}
+ ],
+ "windows": {"available": ["apical", "subcostal"]},
+ "entry": {
+  "structures": ["Aurícula izquierda", "Aurícula derecha"],
+  "questions": ["¿Es una CIA o dropout?", "¿Por qué el septo interauricular «desaparece» en apical?"],
+  "problems": []
+ },
+ "competencies": ["optimizacion", "reconocimiento", "integracion"],
+ "steps": [
+  {"id": "apical", "stage": "orientar", "title": "El hueco en apical", "from": {"view": "a4c"},
+   "caption": "En apical cuatro cámaras el septo interauricular corre casi paralelo al haz. Su parte más fina, la fosa oval, puede no devolver eco.",
+   "predict": {"prompt": "¿Por qué una membrana fina paralela al haz puede no verse aunque esté íntegra?", "options": ["Refleja sobre todo de forma especular: si el haz la roza, el eco no vuelve a la sonda", "Porque la sangre de la aurícula la atraviesa", "Porque el Doppler color la oculta"], "answer": "Refleja sobre todo de forma especular: si el haz la roza, el eco no vuelve a la sonda", "why": "Una interfaz lisa refleja como un espejo; la señal vuelve a la sonda cuando el haz incide de frente."},
+   "confirm": {"prompt": "Desde este plano, ¿puedes decidir si hay CIA?", "options": ["No: con el haz paralelo, dropout y defecto se parecen", "Sí: un hueco en apical es una CIA", "Sí: si no hay hueco en apical, el septo es normal"], "answer": "No: con el haz paralelo, dropout y defecto se parecen", "why": "Un hallazgo de un solo plano con mala incidencia no basta; hace falta otra incidencia y Doppler."},
+   "competencies": ["reconocimiento"]},
+  {"id": "subcostal", "stage": "orientar", "title": "Cambiar la incidencia: subcostal", "from": {"view": "sc4c"}, "goal": {"view": "sc4c", "min": 70, "anchors": ["asdSecundum"]},
+   "caption": "Cambia a la ventana subcostal: el haz incide sobre el septo con más ángulo y la membrana devuelve eco.",
+   "rescue": [{"when": "Sin ventana subcostal (abdomen, gas, apósitos)", "say": "Prueba la paraesternal corta a nivel aórtico y el color sobre el septo; declara si la evidencia sigue siendo insuficiente. La paraesternal derecha está pendiente en este atlas.", "to": {"view": "psaxAV"}}],
+   "hints": ["Busca el septo entre ambas aurículas con el marcador a las 3.", "Inclina poco a poco hasta que el septo interauricular cruce el centro de la imagen."],
+   "competencies": ["adquisicion"]},
+  {"id": "color", "stage": "optimizar", "title": "Doppler color sobre el septo", "color": {"on": true, "at": "asdSecundum", "nyquist": 0.45},
+   "caption": "Coloca la caja de color sobre el septo y baja la escala: un cortocircuito interauricular es de baja velocidad.",
+   "explain": {"prompt": "¿Por qué bajar la escala de color aquí?", "options": ["El flujo a través de una CIA es lento: con escala alta puede no mostrarse", "Para que aparezca aliasing en todo el septo", "Para mejorar la resolución del 2D"], "answer": "El flujo a través de una CIA es lento: con escala alta puede no mostrarse", "why": "La escala debe ajustarse a la velocidad esperada del flujo que se busca; no hay un valor universal."},
+   "competencies": ["optimizacion"]},
+  {"id": "decidir", "stage": "confirmar", "title": "Decidir con la evidencia",
+   "caption": "Integra el 2D con mejor incidencia y el color antes de concluir.",
+   "confirm": {"prompt": "Con el subcostal y el color, ¿cuál es la conclusión?", "options": ["Septo continuo en subcostal y sin flujo a través: en apical era dropout", "Interrupción confirmada en subcostal con flujo de aurícula izquierda a derecha: hay defecto", "No se puede concluir nada sin cateterismo"], "answer": "Septo continuo en subcostal y sin flujo a través: en apical era dropout", "why": "La conclusión exige concordancia entre 2D con incidencia adecuada y flujo."},
+   "competencies": ["integracion", "reconocimiento"]},
+  {"id": "guardar", "stage": "evidencia", "title": "Clip de la evidencia", "evidence": {"kind": "clip", "seconds": 3},
+   "caption": "Guarda un clip subcostal con el color sobre el septo: es la evidencia de tu conclusión.",
+   "competencies": ["integracion"]}
+ ],
+ "sufficiency": {
+  "criteria": [
+   {"id": "incidencia", "kind": "goal", "step": "subcostal", "label": "Septo interauricular visto desde una ventana con mejor incidencia", "why": "El plano apical no permite distinguir"},
+   {"id": "color", "kind": "measure", "measure": "colorOn", "equals": true, "label": "Doppler color sobre el septo"},
+   {"id": "conclusion", "kind": "answer", "step": "decidir", "label": "Conclusión concordante con 2D y color"},
+   {"id": "clip", "kind": "evidence", "step": "guardar", "evidence": "clip", "label": "Clip subcostal con color guardado"}
+  ],
+  "insufficient": "Con un único plano apical no puedes afirmar ni descartar una CIA."
+ }
+}

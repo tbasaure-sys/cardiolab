@@ -4,7 +4,7 @@
 // Walls and cavities come from the tissue volume (engine.probe, reference anatomy); labels from the atlas mesh cuts.
 import {LABEL} from './tissue.mjs';
 
-const WALL=new Set([LABEL.LV_MYO,LABEL.RV_MYO,LABEL.LA_WALL,LABEL.RA_WALL,LABEL.PAPILLARY,LABEL.VESSEL_WALL]);
+const WALL=new Set([LABEL.LV_MYO,LABEL.RV_MYO,LABEL.LA_WALL,LABEL.RA_WALL,LABEL.FOSSA,LABEL.PAPILLARY,LABEL.VESSEL_WALL]);
 const LIVER=LABEL.LIVER,BONE=LABEL.BONE;
 const INK='#34322d',PAPER='#ebe9e2';
 // labels: chambers and great vessels only (valves, coronaries and papillary muscles would crowd the sheet)

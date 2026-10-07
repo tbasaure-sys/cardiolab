@@ -1,0 +1,77 @@
+{
+ "schema": "cardiolab.lesson/1",
+ "id": "ductus",
+ "version": 1,
+ "title": "Ductus arterioso: seguir el conducto y leer su flujo",
+ "layer": "problemas",
+ "level": "avanzado",
+ "question": "¿Hay un ductus arterioso persistente y qué dirección tiene su flujo?",
+ "objective": "Seguir el conducto desde la aorta (supraesternal) y desde la arteria pulmonar (corte ductal paraesternal alto), distinguirlo de la rama pulmonar izquierda por su trayecto y demostrar un flujo continuo con color y Doppler.",
+ "prerequisites": ["recorrido-basico", "calidad-doppler-alineacion"],
+ "variant": {"id": "pda"},
+ "provenance": {
+  "anatomy": "atlas + edición docente",
+  "image": "simulación",
+  "topology": "Corazón de referencia con un conducto tubular de ≈7 mm de diámetro entre el istmo aórtico (reparo ductAortic) y el origen de la rama pulmonar izquierda (reparo ductPulmonary); flujo continuo aorta→pulmonar. El corte ductal se calcula como el plano que contiene la válvula pulmonar y el extremo pulmonar del conducto, visto desde el contacto paraesternal corto.",
+  "sources": ["ase2024", "docencia"],
+  "teaching": "Ventanas según la cobertura de la guía ASE 2024; el corte ductal se define aquí por sus reparos, no por una posición de sonda copiada. Preguntas y criterios: diseño docente propio."
+ },
+ "limits": [
+  "El atlas es adulto (ligamento arterioso): el conducto es un tubo recto docente, sin la forma cónica, la longitud ni la tortuosidad reales, ni la anatomía del prematuro.",
+  "El corte ductal se obtiene desde el contacto paraesternal corto del atlas; la ventana paraesternal izquierda alta (segundo espacio) del neonato no está representada como contacto propio.",
+  "No se simulan cambios de dirección del flujo por resistencia pulmonar elevada (flujo bidireccional o derecha-izquierda).",
+  "El arco del atlas es izquierdo; no hay arco derecho ni ductus del lado derecho (cobertura pendiente)."
+ ],
+ "windows": {"available": ["ssn", "psax"]},
+ "entry": {
+  "structures": ["Arco aórtico", "Arteria pulmonar"],
+  "questions": ["¿Hay un ductus?", "¿Cómo distingo el ductus de la rama pulmonar izquierda?"],
+  "problems": ["ssn"]
+ },
+ "competencies": ["adquisicion", "reconocimiento", "optimizacion", "integracion"],
+ "steps": [
+  {"id": "ssn", "stage": "orientar", "title": "Supraesternal: extremo aórtico", "from": {"view": "ssn"}, "goal": {"view": "ssn", "min": 70, "anchors": ["ductAortic"]},
+   "caption": "Supraesternal en el plano del arco: el extremo aórtico del ductus está en el istmo, más allá de la subclavia izquierda, en la cara inferior del arco.",
+   "predict": {"prompt": "¿Dónde nace el ductus en la aorta?", "options": ["En el istmo, en la cara inferior del arco distal a la subclavia izquierda", "En la raíz aórtica, junto a los senos", "En el tronco braquiocefálico"], "answer": "En el istmo, en la cara inferior del arco distal a la subclavia izquierda", "why": "El ductus une el istmo aórtico con el origen de la rama pulmonar izquierda."},
+   "competencies": ["reconocimiento", "adquisicion"]},
+  {"id": "psax", "stage": "orientar", "title": "Eje corto a nivel aórtico", "from": {"view": "psaxAV"},
+   "caption": "Paraesternal corto a nivel aórtico: la arteria pulmonar rodea la aorta por delante. Desde aquí se busca el extremo pulmonar del ductus.",
+   "competencies": ["orientacion"]},
+  {"id": "rotar", "stage": "mover", "title": "Rotar hacia el tronco pulmonar", "maneuver": {"verb": "rotar", "direction": "antihorario", "amount": 70, "keeps": "Válvula pulmonar"},
+   "to": {"view": "psaxAV", "maneuvers": [{"verb": "rotar", "direction": "antihorario", "amount": 73}]},
+   "caption": "Conservando la válvula pulmonar, rota en sentido antihorario: el tronco pulmonar se alarga en el plano.",
+   "predict": {"prompt": "Al rotar conservando la válvula pulmonar, ¿qué entra en el plano?", "options": ["El tronco pulmonar a lo largo, hacia su bifurcación", "Las cuatro cámaras", "El arco aórtico completo"], "answer": "El tronco pulmonar a lo largo, hacia su bifurcación", "why": "El plano gira alrededor del haz central y se alinea con el eje del tronco pulmonar."},
+   "hints": ["Mantén la válvula pulmonar en el centro.", "Antihorario visto desde el mango."],
+   "competencies": ["adquisicion"]},
+  {"id": "ductal", "stage": "mover", "title": "Inclinar hacia craneal: corte ductal", "maneuver": {"verb": "inclinar", "direction": "craneal", "amount": 16, "keeps": "Tronco pulmonar a lo largo"},
+   "to": {"plane": {"window": "psax", "contact": "psaxAV", "through": ["pulmonaryValve", "ductPulmonary"], "aim": 0.5}},
+   "goal": {"anchors": ["pulmonaryValve", "ductPulmonary"], "tol": 0.006},
+   "caption": "Inclina el haz hacia craneal siguiendo el tronco pulmonar: en la bifurcación, el conducto sale hacia arriba y atrás, hacia la aorta descendente.",
+   "confirm": {"prompt": "¿Qué distingue el ductus de la rama pulmonar izquierda?", "options": ["Su trayecto: continúa hasta la aorta descendente", "Su tamaño: el ductus siempre es más grande", "Su brillo en 2D"], "answer": "Su trayecto: continúa hasta la aorta descendente", "why": "Ambos salen de la bifurcación; solo el ductus llega a la aorta."},
+   "rescue": [{"when": "La ventana paraesternal alta queda tapada por pulmón", "say": "Vuelve al supraesternal y busca el flujo en el istmo con color; si tampoco se ve, declara que el ductus no se ha podido evaluar.", "to": {"view": "ssn"}}],
+   "hints": ["No deslices: inclina desde el mismo contacto.", "Sigue el tronco pulmonar hasta donde se divide."],
+   "competencies": ["adquisicion", "reconocimiento"]},
+  {"id": "color", "stage": "optimizar", "title": "Color en el extremo pulmonar", "color": {"on": true, "at": "ductPulmonary"},
+   "caption": "Caja de color sobre la bifurcación: el chorro del ductus entra en el tronco pulmonar y vuelve hacia la válvula, hacia la sonda.",
+   "confirm": {"prompt": "¿Qué patrón temporal tiene el flujo de un ductus con resistencia pulmonar baja?", "options": ["Continuo, en sístole y en diástole, de la aorta a la pulmonar", "Solo sistólico, del VD a la aorta", "Solo diastólico, de la pulmonar a la aorta"], "answer": "Continuo, en sístole y en diástole, de la aorta a la pulmonar", "why": "La presión aórtica supera a la pulmonar durante todo el ciclo."},
+   "competencies": ["reconocimiento", "optimizacion"]},
+  {"id": "doppler", "stage": "optimizar", "title": "Doppler del flujo ductal", "doppler": {"mode": "cw", "at": "ductPulmonary"},
+   "caption": "Alinea el cursor con el chorro en el extremo pulmonar: el espectro es continuo, con su máximo al final de la sístole.",
+   "explain": {"prompt": "¿Qué permite (y qué no) la velocidad del flujo ductal?", "options": ["Estimar el gradiente aorta-pulmonar si el haz está alineado; integrada con la presión arterial orienta sobre la presión pulmonar, pero no mide el tamaño del ductus", "Medir el diámetro del ductus", "Decidir el cierre del ductus por sí sola"], "answer": "Estimar el gradiente aorta-pulmonar si el haz está alineado; integrada con la presión arterial orienta sobre la presión pulmonar, pero no mide el tamaño del ductus", "why": "Es una diferencia de presiones; el tamaño y la repercusión se valoran con el 2D, las cavidades izquierdas y la clínica."},
+   "competencies": ["medicion", "integracion"]},
+  {"id": "guardar", "stage": "evidencia", "title": "Evidencia", "color": {"on": true, "at": "ductPulmonary"}, "evidence": {"kind": "clip", "seconds": 3},
+   "caption": "Guarda un clip del corte ductal con color y el espectro continuo.",
+   "competencies": ["integracion"]}
+ ],
+ "sufficiency": {
+  "criteria": [
+   {"id": "aortico", "kind": "goal", "step": "ssn", "label": "Extremo aórtico (istmo) en el plano supraesternal"},
+   {"id": "ductal", "kind": "goal", "step": "ductal", "label": "Conducto seguido desde la arteria pulmonar"},
+   {"id": "trayecto", "kind": "answer", "step": "ductal", "label": "Distinguido de la rama pulmonar izquierda por su trayecto"},
+   {"id": "color", "kind": "measure", "measure": "colorOn", "equals": true, "label": "Flujo demostrado con color"},
+   {"id": "patron", "kind": "answer", "step": "color", "label": "Flujo continuo aorta→pulmonar reconocido"},
+   {"id": "clip", "kind": "evidence", "step": "guardar", "evidence": "clip", "label": "Clip con color guardado"}
+  ],
+  "insufficient": "Sin seguir el conducto hasta la aorta y sin flujo concordante, el ductus no está demostrado."
+ }
+}
