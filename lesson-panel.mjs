@@ -72,6 +72,7 @@ export function mountLessons(api){
   const caseId=spec.cases?.length?(mode==='examen'?pickCase(spec,seed):spec.cases.find(c=>c.variant?.id!=='normal')?.id||spec.cases[0].id):null;
   if(caseId)spec=withCase(spec,caseId);
   run={spec,id,mode,seed,caseId,step:0,record:{goals:{},answers:{},evidence:[],hints:{},showMe:{},measures:{},errors:[],rescued:{},stepMs:{},ms:0},t0:performance.now(),stepT0:performance.now(),hintIx:0,stable:0,blocked:null,files:[]};
+  api.refreshCard?.();
   if(mode==='demostracion')return demo();
   enterStep();
  }
@@ -85,7 +86,7 @@ export function mountLessons(api){
   const compiled=compileLesson(run.spec,ctx,{seed:run.seed});run.compiled=compiled;run.t=0;run.playing=true;run.last=null;
   host.innerHTML=`${header()}<div class="demo"><div class="demo-bar"><button id="ls-play" class="primary">Pausa</button><input id="ls-seek" type="range" min="0" max="${compiled.duration}" step="0.1" value="0" aria-label="Tiempo de la lección"><output id="ls-time">0:00 / ${fmtT(compiled.duration)}</output></div>
    <ol class="scenes">${compiled.scenes.map((s,i)=>`<li data-scene="${i}"><span class="chip st-${s.stage}">${STAGE_NAMES[s.stage]}</span> ${esc(s.title)}</li>`).join('')}</ol>
-   <div id="ls-caption" class="caption" aria-live="polite"></div><div id="ls-overlay" class="overlay"></div>
+   <div id="ls-now" class="now" aria-live="polite"></div>
    <details><summary>Exportar microlección</summary><p class="micro">Vídeo con subtítulos incrustados, subtítulos WebVTT, lámina de escenas, lista de comprobación, fuentes y línea de tiempo (JSON), todo generado desde la especificación y la semilla ${run.seed}.</p>
    <div class="seg"><button data-fmt="16:9" class="active">16:9</button><button data-fmt="9:16">9:16</button></div><button id="ls-export" class="primary">Exportar</button><p class="micro" id="ls-export-status"></p></details>
    ${limitsHtml()}</div>`;
@@ -96,17 +97,23 @@ export function mountLessons(api){
   $('ls-export').onclick=async()=>{run.playing=false;$('ls-play').textContent='Reproducir';const b=$('ls-export');b.disabled=true;run.exporting=true;
    try{const {exportMicroLesson}=await import('./lesson-export.mjs');await exportMicroLesson({api,spec:run.spec,ctx,seed:run.seed,format:fmt,sources:catalog.sources,status:t=>{$('ls-export-status').textContent=t}})}
    catch(e){console.error(e);$('ls-export-status').textContent='No se pudo exportar: '+e.message}finally{b.disabled=false;if(run)run.exporting=false}};
-  let last=performance.now(),lastApply=0,busyVariant=false;
-  const frame=async now=>{if(!run||run.mode!=='demostracion')return;raf=requestAnimationFrame(frame);if(run.exporting){last=now;return}const dt=Math.min(.1,(now-last)/1000);last=now;
-   if(run.playing&&!busyVariant){run.t=Math.min(compiled.duration,run.t+dt);if(run.t>=compiled.duration){run.playing=false;$('ls-play').textContent='Repetir'}}
-   const s=seek(compiled,run.t);$('ls-seek').value=String(run.t.toFixed(1));$('ls-time').textContent=`${fmtT(run.t)} / ${fmtT(compiled.duration)}`;
+  // the clock only runs while the image shows the current moment: the probe state is applied, then time waits until
+  // the plane is sliced and its echo frame drawn, so text and image never drift apart on a slow machine
+  let last=performance.now(),busyVariant=false,applied=null,shown=null;
+  const frame=async now=>{if(!run||run.mode!=='demostracion')return;raf=requestAnimationFrame(frame);if(run.exporting){last=now;return}const raw=(now-last)/1000;last=now;
+   let s=seek(compiled,run.t);const key=JSON.stringify(s.state);
+   const dt=Math.min(s.moving?.1:.5,raw); // short steps while the probe moves, so each drawn image is one step
+   if(key!==applied&&!busyVariant&&(applied===null||api.settled())){applied=key;api.apply(s.state)}
+   const inSync=key===applied&&!busyVariant&&api.settled();
+   if(run.playing&&inSync){const sc=compiled.scenes[s.scene];let nt=Math.min(compiled.duration,run.t+dt);if(run.t<sc.tMove0&&nt>sc.tMove0)nt=sc.tMove0;run.t=nt;if(run.t>=compiled.duration){run.playing=false;$('ls-play').textContent='Repetir'}s=seek(compiled,run.t)}
+   $('ls-seek').value=String(run.t.toFixed(1));$('ls-time').textContent=`${fmtT(run.t)} / ${fmtT(compiled.duration)}`;
    const prev=run.last;run.last=s;
-   if(!prev||prev.scene!==s.scene){host.querySelectorAll('[data-scene]').forEach(li=>li.classList.toggle('active',Number(li.dataset.scene)===s.scene));$('ls-caption').innerHTML=`<b>${esc(s.title)}</b> ${esc(s.caption)}`;
+   if(!prev||prev.scene!==s.scene){host.querySelectorAll('[data-scene]').forEach(li=>li.classList.toggle('active',Number(li.dataset.scene)===s.scene));
     const vk=JSON.stringify(s.variant||{id:'normal'});if(vk!==run.variantKey){run.variantKey=vk;busyVariant=true;api.setVariant(s.variant||{id:'normal'}).finally(()=>busyVariant=false)}
     api.color(s.color);api.doppler(s.doppler)}
-   if(prev?.overlay!==s.overlay)$('ls-overlay').innerHTML=overlayHtml(s.overlay);
-   api.lockPhase(s.phase);api.setCaption(s.overlay?.kind==='predict'||s.overlay?.kind==='confirm'?s.overlay.prompt:s.overlay?.kind==='answer'?'→ '+s.overlay.text:s.caption);
-   if(now-lastApply>90&&(!prev||JSON.stringify(prev.state)!==JSON.stringify(s.state))){lastApply=now;api.apply(s.state)}
+   // one text at a time, the one that belongs to what the image shows now: the question, its answer or the caption
+   const nowKey=s.scene+'|'+(s.overlay?s.overlay.kind+s.overlay.t0:'');if(nowKey!==shown){shown=nowKey;$('ls-now').innerHTML=s.overlay?overlayHtml(s.overlay):`<p><b>${esc(s.title)}.</b> ${esc(s.caption)}</p>`}
+   api.lockPhase(s.phase);
    if(s.doppler&&prev&&prev.moving&&!s.moving)api.doppler(s.doppler);if(s.color&&prev&&prev.moving&&!s.moving)api.color(s.color);
   };raf=requestAnimationFrame(frame);
  }
@@ -122,7 +129,7 @@ export function mountLessons(api){
   if(run.mode==='examen'&&avail.length>1){const others=avail.filter(w=>w!==own);return {preset:shuffled(others,run.seed^hashString(st.id))[0]}}
   return own?{preset:own}:null}
  async function enterStep(){
-  const st=cur();run.stepT0=performance.now();run.hintIx=0;run.stable=0;run.answered={};run.aidText='';run.blocked=null;api.setTarget(null);api.setCaption(null);api.lockPhase(null);
+  const st=cur();run.stepT0=performance.now();run.hintIx=0;run.stable=0;run.answered={};run.aidText='';run.blocked=null;api.setTarget(null);api.lockPhase(null);
   await api.setVariant(st.variant||run.spec.variant||{id:'normal'});
   if(st.from&&!st.goal)api.apply(resolveState(st.from,ctx),{animate:true}); // the scenario of this step (e.g. the shortened apical)
   else if(st.goal&&st.from&&run.step===0||st.goal&&st.from&&st.stage==='orientar'){const s0=startStateFor(st);if(s0)api.apply(resolveState(s0,ctx),{animate:false})}
@@ -140,7 +147,7 @@ export function mountLessons(api){
   host.innerHTML=`${header()}<ol class="dots">${run.spec.steps.map((s,i)=>`<li class="${i<run.step?'done':i===run.step?'now':''}" title="${esc(s.title)}">${STAGE_NAMES[s.stage][0]}</li>`).join('')}</ol>
   <div class="step"><span class="chip st-${st.stage}">${STAGE_NAMES[st.stage]} · ${run.step+1}/${n}</span><h2>${esc(st.title)}</h2>
   ${exam?(st.goal?`<p>Objetivo: ${esc(goalNames(st.goal))}.</p>`:`<p>${esc(st.caption)}</p>`):`<p>${esc(st.caption)}</p>`}
-  ${!exam&&st.maneuver?`<p class="maneuver"><b>Maniobra dominante: ${esc(v.name)} ${st.maneuver.verb==='barrer'?'':esc(st.maneuver.direction)} ~${st.maneuver.amount} ${v.unit}</b>${st.maneuver.keeps?` · conserva: ${esc(st.maneuver.keeps)}`:''}<br><span class="micro">${esc(v.physical)}</span></p>`:''}
+  ${!exam&&st.maneuver?`<p class="maneuver" title="${esc(v.physical)}"><b>${esc(v.name)} ${st.maneuver.verb==='barrer'?'':esc(st.maneuver.direction)} ~${st.maneuver.amount} ${v.unit}</b>${st.maneuver.keeps?` · conserva: ${esc(st.maneuver.keeps)}`:''}</p>`:''}
   ${question('predict',st.predict,st)}
   ${needsMove?`<div id="ls-goal" class="goal"${preFirst?' hidden':''}></div>`:''}
   ${st.color?`<div class="task" id="ls-color"><p>Doppler color${st.color.at?` sobre ${esc(ANCHOR_NAMES[st.color.at]||st.color.at)}`:''}${st.color.nyquist?` · escala baja (≈${String(st.color.nyquist).replace('.',',')} m/s)`:''}.</p>${exam?'':'<button id="ls-color-aid">Colocarlo por mí</button>'}<span class="ok-mark"></span></div>`:''}
@@ -192,7 +199,7 @@ export function mountLessons(api){
   const ev=!st.evidence||r.evidence.some(e=>e.step===st.id);b.disabled=!(goalOk&&qs&&ev)}
  function next(){const st=cur();run.record.stepMs[st.id]??=performance.now()-run.stepT0;if(run.step<run.spec.steps.length-1){run.step++;enterStep()}else finish()}
  function finish(){
-  clearInterval(timer);api.setTarget(null);api.blockWindows(null);api.imageOnly(false);api.setCaption(null);
+  clearInterval(timer);api.setTarget(null);api.blockWindows(null);api.imageOnly(false);
   const {spec,record}=run;record.ms=performance.now()-run.t0;const suff=evaluateSufficiency(spec,record),score=scoreAttempt(spec,record);
   const recs=recommend(record,catalog.index.competencies,{exclude:[spec.id]});
   const log=readLog();log.push({schema:'cardiolab.tutor-attempt/1',lesson:spec.id,version:spec.version||1,mode:run.mode,seed:run.seed,caseId:run.caseId,at:new Date().toISOString().slice(0,10),ms:Math.round(record.ms),stepMs:Object.fromEntries(Object.entries(record.stepMs).map(([k,v])=>[k,Math.round(v)])),hints:record.hints,showMe:record.showMe,rescued:record.rescued,errors:record.errors,sufficient:suff.sufficient,missing:suff.missing.map(m=>m.id)});writeLog(log);
@@ -210,6 +217,6 @@ export function mountLessons(api){
   $('ls-again').onclick=()=>open(run.id,{mode:run.mode});$('ls-exam').onclick=()=>open(run.id,{mode:'examen'});
  }
  function stop(){cancelAnimationFrame(raf);clearInterval(timer)}
- function leaveRun(){stop();if(!run)return;api.setTarget(null);api.blockWindows(null);api.imageOnly(false);api.setCaption(null);api.lockPhase(null);api.doppler(null);api.color(null);api.setVariant({id:'normal'});run=null}
+ function leaveRun(){stop();if(!run)return;api.setTarget(null);api.blockWindows(null);api.imageOnly(false);api.lockPhase(null);api.doppler(null);api.color(null);api.setVariant({id:'normal'});run=null;api.refreshCard?.()}
  return {ready,open:(id,o)=>ready.then(()=>open(id,o)),leave(){leaveRun();if(catalog)home()},get run(){return run&&{id:run.id,mode:run.mode,step:run.step,seed:run.seed,caseId:run.caseId,record:run.record,t:run.t}},seekTo:t=>{if(run?.mode==='demostracion'){run.t=t;run.playing=false}}};
 }

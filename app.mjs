@@ -33,7 +33,7 @@ let beam=null,planeMap=null,mainValves=null,sketch=createSketch(),manifest,meshe
 let frozen=false,sweeping=false,sweepStart=0,sweepBase=0,recording=null,dragging=false,latestRequestedAt=0,frameCount=0;
 let tutor=null,pediatricDisplay=true,instrument=null,references=null,videoImage=null,echoSource='sim',resumeAfterFreeze=false,imageOnly=false;const display=initialDisplay();
 // simulated B-mode: engine, cardiac phase, cine cache of scan-converted images
-const engine=createSimEngine();engine.set({bodyScale:BODY.k});display.freq=patient.freq;let phase=0,phaseLock=null,tutorCaption=null,blockedWindows=null,lessonPanel=null,beatSpeed=1,heartRate=patient.hr,lastTick=performance.now(),lastPoseChange=0,simQuick=false,simViews=null,coach=null,chd=null,targetPose=null,lesion=null,overlayContours=false;
+const engine=createSimEngine();engine.set({bodyScale:BODY.k});display.freq=patient.freq;let phase=0,phaseLock=null,blockedWindows=null,lessonPanel=null,beatSpeed=1,heartRate=patient.hr,lastTick=performance.now(),lastPoseChange=0,simQuick=false,simViews=null,coach=null,chd=null,targetPose=null,lesion=null,overlayContours=false;
 const scanCache=new WeakMap();let scanCacheKey='';
 const latencies=[],poseLog=[],controls=[];let lastInputAt=0;let projection={cx:0,cy:30,scale:1},scanWidth=600,scanHeight=400;
 const status=(text,error=false)=>{$('status').textContent=text;$('status').classList.toggle('error',error)};
@@ -261,13 +261,11 @@ function drawSim(){
  drawColorBox(p,cx,cy,scale,ySign);drawDopplerCursor(p,cx,cy,scale,ySign);drawCalipers();if(dop.mode)drawSpectrum(w,h,hImg);else drawECG(12,h-34,w-24,28);
  drawTutorOverlay(w,hImg,sector);
 }
-// lesson tutor on the image: a window that fails in this case (gas, lung, dressing) shows no image; the lesson caption
-// sits at the bottom of the 2D image so that recordings carry it
+// lesson tutor on the image: only a window that fails in this case (gas, lung, dressing) is drawn; the lesson text
+// stays in the panel, so the image carries no text that could run ahead of or behind it
 function drawTutorOverlay(w,h,sector){
  if(blockedWindows?.includes(state.preset)){ctx.save();ctx.fillStyle='#05080b';ctx.fill(sector);ctx.fillStyle='#e0a24a';ctx.font='13px Segoe UI, sans-serif';ctx.textAlign='center';ctx.fillText('Ventana no disponible en este caso',w/2,h*.42);ctx.fillStyle='#94a5b2';ctx.font='11px Segoe UI, sans-serif';ctx.fillText('(gas, pulmón o apósito: busca una ventana alternativa)',w/2,h*.42+17);ctx.restore()}
- if(tutorCaption){ctx.save();ctx.font='12px Segoe UI, sans-serif';const lines=wrapText(ctx,tutorCaption,w-40).slice(0,3),y0=h-62-lines.length*16;ctx.fillStyle='rgba(5,8,11,.78)';ctx.fillRect(10,y0-14,w-20,lines.length*16+10);ctx.fillStyle='#eaf6f3';ctx.textAlign='left';lines.forEach((l,i)=>ctx.fillText(l,20,y0+i*16));ctx.restore()}
 }
-function wrapText(g,text,maxW){const out=[];let line='';for(const word of String(text).split(/\s+/)){const t=line?line+' '+word:word;if(g.measureText(t).width>maxW&&line){out.push(line);line=word}else line=t}if(line)out.push(line);return out}
 // ---------------------------------------------------------------- spectral Doppler (PW / CW)
 const dop={mode:null,theta:0,depth:.55,baseline:.5,scale:null,spec:null,key:'',pending:false,caliper:null,beat:0};
 let specCanvas=null;
@@ -495,7 +493,7 @@ const LESION_AT={asd2:'asdSecundum',asd1:'asdPrimum',vsdpm:'vsdPerimembranous',v
 // what the view shows). Both stay hidden while the answer is being tested (heart hidden, or «Leer la imagen» open).
 async function goToView(id){const t=simViews?.[id];if(!t||!ready||imageOnly)return;const {solveState}=await import('./views.mjs');
  const sol=solveState(t,PRESET_OF_WINDOW[VIEW_INFO[id].window]);applyState({...sol.state,mode:state.mode,depth:physical(t.depth)},{animate:true});status(`${VIEW_INFO[id].name} · ${VIEW_CARD[id]?.probe||''}`)}
-function updateViewCard(){const el=$('view-card'),hide=imageOnly||openPanel==='drills';
+function updateViewCard(){const el=$('view-card'),hide=imageOnly||openPanel==='drills'||(openPanel==='lessons'&&!!lessonPanel?.run); // during a lesson the panel names the view
  planeMap?.setEnabled(!hide&&$('plane-map').checked);
  const near=!hide&&active&&simViews?nearestView(active.pose,simViews):null;planeMap?.setCurrent(near?.score>=55?near.id:null);
  if(!near){el.hidden=true;return}const info=VIEW_INFO[near.id],card=VIEW_CARD[near.id];el.hidden=false;
@@ -541,7 +539,7 @@ function tutorApi(){return {
  doppler:d=>{if(!d?.mode){if(dop.mode)setDopMode(dop.mode);return}if(dop.mode!==d.mode)setDopMode(d.mode);if(d.at&&engine.landmarks?.[d.at])aimDopplerAtPoint(engine.landmarks[d.at])},
  measures:()=>({colorOn:simEcho()&&!!engine.params.color.on,dopplerMode:dop.mode||null,dopplerAngle:dop.mode==='pw'&&dop.spec?.angle!=null?Math.round(dop.spec.angle):null,vPeak:dop.spec?.vPeak??null,window:state.preset}),
  setTarget:p=>setTargetPose(p),imageOnly:on=>setImageOnly(on),lockPhase:p=>{phaseLock=p==null?null:((p%1)+1)%1;if(phaseLock!=null){phase=phaseLock;dop.beat=phaseLock}},
- setCaption:t=>{tutorCaption=t||null;renderScan()},blockWindows:list=>{blockedWindows=list?.length?[...list]:null;renderScan()},
+ refreshCard:()=>queueMicrotask(updateViewCard),settled:()=>!!active&&active.id===revision&&!busy&&(!simEcho()||engine.cached>0),blockWindows:list=>{blockedWindows=list?.length?[...list]:null;renderScan()},
  captureFrame:()=>new Promise(r=>{compositeFrame();composite.toBlob(r,'image/png')}),recordClip:s=>recordComposite(s),download:(blob,name)=>download(blob,name),
  waitApplied,renderEcho:renderEchoStill,resetCameras:()=>{beam?.setFollow(false);views.forEach(resetCamera)},
  // the 3D views drawn at a fixed size and pixel ratio (export): the pixels do not depend on the page layout
