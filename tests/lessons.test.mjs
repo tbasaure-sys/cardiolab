@@ -108,3 +108,19 @@ test('no scene of any lesson sits on a window blocked by lung or bone (the image
   for(let r=.003;r<p.depth*.7;r+=.001){const l=t.tissueAt(...[0,1,2].map(i=>p.origin[i]+b[i]*r));if(l===LABEL.LUNG||l===LABEL.BONE){n++;break}}}return n/41};
  for(const spec of Object.values(lessons))for(const s of compileLesson(spec,ctx).scenes){const f=blocked(poseFromState(s.to));assert.ok(f<=.7,`${spec.id}/${s.step}: ${Math.round(f*100)} % de las líneas tapadas`)}
 });
+
+test('ductus: the ductal cut, the simulated flow and the text agree with each other and with the cited review',async()=>{
+ const {markerClock}=await import('../views.mjs'),{waves}=await import('../flow.mjs');const spec=lessons.ductus;
+ // the ductal view is near-sagittal with the marker toward the head (high left parasternal ductal view, van Laere 2018)
+ const p=poseFromState(resolveState(spec.steps.find(s=>s.id==='ductal').to,ctx)),h=markerClock(p.u);
+ assert.ok(h>=10.5||h<=1.5,`marcador a las ${h.toFixed(1)} h`);assert.ok(Math.abs(p.n[0])>.8,'plano casi sagital');
+ // the simulated shunt is aorta→pulmonary in the whole cycle and restrictive (max:min < 2), as the lesson states
+ const prof=[...Array(200).keys()].map(i=>.55+.35*waves.S(i/200)+.1*waves.E(i/200)),min=Math.min(...prof),max=Math.max(...prof);
+ assert.ok(min>0&&max/min<2,`Vmax:Vmin ${(max/min).toFixed(2)}`);assert.match(spec.provenance.topology,/restrictivo/);
+ // the text claims no flow timing the simulator does not produce, and the lesson cannot be passed without the spectral
+ // direction and without recognising what is missing before any closure decision
+ const text=JSON.stringify(spec.steps);assert.doesNotMatch(text,/final de la sístole/);
+ const ids=spec.sufficiency.criteria.map(c=>c.id);for(const id of ['direccion','limites'])assert.ok(ids.includes(id),id);
+ assert.match(spec.sufficiency.insufficient,/no basta para valorar su repercusión/);
+ assert.equal(sources.vanlaere2018?.fullTextReviewed,true);assert.ok(spec.provenance.sources.includes('vanlaere2018'));
+});
