@@ -1,6 +1,6 @@
 {
  "files": 124,
- "bytes": 74096400,
+ "bytes": 74108432,
  "largest": [
   "assets/anatomy.bin",
   6189936
@@ -11,7 +11,7 @@
   "bmode-worker.mjs": "8266a62db4212efeff4d3caf7c4081b719f46aa306f635832b14c334c29df582",
   "bmode.mjs": "a5bbea9577c8cc622935e04febb232bbd06c1886958d5c88c4409eaddd3312b3",
   "cabina.mjs": "01094ea381cff22c77baec2d976a86a89286c45fef2ab61e328a7f0c89a874db",
-  "chd-data.mjs": "10a2c01204e652ac8489544602c85aff7ed176a8a8f88c469d69d1be580ad2f7",
+  "chd-data.mjs": "1c6b2ae4a8156f2c016c9a9c6dda8fe94f0ec1caecb4ad039810ebb115b7bdc5",
   "chd-panel.mjs": "4dc558590d47fc27069613808b149691c550e1e74155de0ad74e9740c66d7066",
   "coach.mjs": "9013300cd36c066a35bf39a18d7c2d2a085ec66f1af4575f4f89b7d42a017000",
   "course-data.mjs": "1f33cebfabe076a202a819ee8717ab3fcda597bd8852e238795455be69749f89",
@@ -41,7 +41,7 @@
   "tests/bmode.test.mjs": "587a95c4e466d0a240386271d55b7bfec3a8ce7bfbfc13f269eccad78cfb08b7",
   "tests/drills.test.mjs": "b0e294b0c45e9e30551b12b7121ef61bd0f26f9c95300cbb3813502d1bd83965",
   "tests/lesson-export.test.mjs": "1e98a36ca9396fe50384aae4bd18d9b62b8d832beebb063767c77f8db53cc9d5",
-  "tests/lessons.test.mjs": "f71e4874d2e48d67e0ba3550d3c469a2bd139421f8ab3ab2726370afd7fd7d8f",
+  "tests/lessons.test.mjs": "90f43c23492021459553a361cf850306fb2458bcf5ca0500c3fdbf8751a8b51f",
   "tests/motion.test.mjs": "1621352e8a4ab85a2011410329660c3d71d07e8dd09688c1c4d506269c370ee8",
   "tests/probe-motion.test.mjs": "018b2414e4debe14e9643431a8a6818ba91c1b0b67eb7e9b618b665f1166a824",
   "tests/relay.test.mjs": "b7a4feb5a2024e91d515032a36da90fb11cee339f7dba4c9ff29932dd3a79aee",
