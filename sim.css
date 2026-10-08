@@ -283,7 +283,7 @@ body.phone-dock .practice-main>.scan .view-card{display:none}
 .lessons .nav{display:flex;justify-content:space-between;gap:8px;margin-top:12px}
 .lessons .demo-bar{display:flex;gap:8px;align-items:center}.lessons .demo-bar input{flex:1;accent-color:var(--accent)}.lessons .demo-bar output{font:11px Consolas,monospace}
 .lessons .scenes{padding-left:0;list-style:none;margin:10px 0}.lessons .scenes li{font-size:11px;padding:4px 6px;border-radius:4px;cursor:pointer;margin:0}.lessons .scenes li.active{background:#172a2f;color:#d8fff7}
-.lessons .caption{font-size:12px;line-height:1.5;min-height:3em}.lessons .overlay .ask{background:#2a2414;padding:8px 10px;border-radius:5px}.lessons .overlay .answer{background:#143029;padding:8px 10px;border-radius:5px}.lessons .overlay p{margin:4px 0}
+.lessons .now{font-size:12px;line-height:1.5;min-height:4em;margin:8px 0}.lessons .now p{margin:0}.lessons .now .ask{background:#2a2414;padding:8px 10px;border-radius:5px}.lessons .now .answer{background:#143029;padding:8px 10px;border-radius:5px}.lessons .now .ask p,.lessons .now .answer p{margin:4px 0}
 .lessons .coverage{padding-left:0;list-style:none}.lessons .coverage li{font-size:11px;margin:5px 0}.lessons .st-representado{background:#1d4a44}.lessons .st-parcial{background:#4a3d1d}.lessons .st-pendiente{background:#4a2a24}
 .lessons .st{display:inline-block;font-size:9px;padding:0 6px;border-radius:8px;color:#eee}
 .lessons .domains dt{font-size:11px;color:var(--muted);margin-top:8px}.lessons .domains dd{margin:2px 0 0;font-size:12px}.lessons .bar{display:inline-block;width:110px;height:6px;background:#1d2a33;border-radius:3px;vertical-align:middle}.lessons .bar i{display:block;height:100%;background:var(--accent);border-radius:3px}
