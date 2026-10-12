@@ -5,7 +5,9 @@ import * as THREE from './node_modules/three/build/three.module.js';
 
 export const WINDOW_COLORS={plax:'#5aa9ff',psax:'#3fd18b',apical:'#ffae42',subcostal:'#c58bff',ssn:'#ff6b7a'};
 
-export function mountPlaneMap({view,targets,info,onGo}){
+// With many views the map would bury the heart: it shows the core views, and once the probe is near a view, every view
+// of that window (its sweep).
+export function mountPlaneMap({view,targets,info,onGo,core=null}){
  const group=new THREE.Group();group.visible=false;view.scene.add(group);
  const layer=document.createElement('div');layer.className='plane-labels';layer.hidden=true;view.host.append(layer);
  const items=[],v3=new THREE.Vector3();let enabled=false,current=null,sized=false;
@@ -22,21 +24,24 @@ export function mountPlaneMap({view,targets,info,onGo}){
   const label=document.createElement('button');label.className='plane-label';label.textContent=meta.short;label.style.setProperty('--c',WINDOW_COLORS[meta.window]||'#9fb3c1');
   label.title=`${meta.name} · clic: ir a esta vista`;label.onclick=()=>onGo(id);layer.append(label);
   // the name sits on the fan's outer rim, along its central beam: around the heart rather than piled on its centre
-  items.push({id,fan,line,label,anchor:at(0,reach*.97)})}
+  items.push({id,window:meta.window,fan,line,label,anchor:at(0,reach*.97)})}
+ const shown=it=>{if(!core)return true;const cw=current&&info[current]?.window;return cw?it.window===cw:core.includes(it.id)};
+ function applyFocus(){for(const it of items){const on=shown(it);it.fan.visible=on;it.line.visible=on;it.hidden=!on}}
  function frame(){
   if(!enabled)return;const cam=view.camera,w=view.host.clientWidth,h=view.host.clientHeight,placed=[];
   // labels on each plane's rim, nudged down when they would overlap a label already placed
   // label sizes are measured once (reading them every frame after moving labels would force a layout per label)
   if(!sized){for(const it of items){it.bw=it.label.offsetWidth||40;it.bh=it.label.offsetHeight||16}sized=items[0]?.bw>0}
   const moves=[];
-  for(const it of items){v3.set(...it.anchor).project(cam);if(v3.z>1){moves.push([it,null]);continue}
+  for(const it of items){v3.set(...it.anchor).project(cam);if(v3.z>1||it.hidden){moves.push([it,null]);continue}
    let x=(v3.x*.5+.5)*w,y=(-v3.y*.5+.5)*h;const bw=it.bw,bh=it.bh;
    for(let k=0;k<6;k++){const hit=placed.find(p=>Math.abs(p[0]-x)<(bw+p[2])/2&&Math.abs(p[1]-y)<bh);if(!hit)break;y=hit[1]+bh+1}
    placed.push([x,y,bw]);moves.push([it,`translate(${Math.round(x-bw/2)}px,${Math.round(y-bh/2)}px)`])}
   for(const [it,t] of moves){if(!t){it.label.hidden=true;continue}it.label.hidden=false;if(it.t!==t){it.t=t;it.label.style.transform=t}}
  }
- function setCurrent(id){if(id===current)return;current=id;for(const it of items){const on=it.id===id;it.fan.material.opacity=on?.24:.10;it.line.material.opacity=on?.95:.45;it.label.classList.toggle('current',on)}}
+ function setCurrent(id){if(id===current)return;current=id;for(const it of items){const on=it.id===id;it.fan.material.opacity=on?.24:.10;it.line.material.opacity=on?.95:.45;it.label.classList.toggle('current',on)}applyFocus()}
  // while the map is on, the beam map's structure names step back (the structures stay highlighted)
  function setEnabled(on){enabled=!!on;sized=false;group.visible=enabled;layer.hidden=!enabled;view.host.classList.toggle('planes-on',enabled)}
+ applyFocus();
  return {frame,setEnabled,setCurrent,get enabled(){return enabled}};
 }

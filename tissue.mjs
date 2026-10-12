@@ -75,12 +75,30 @@ function thinFossa(t){
   if(Math.abs(s-s0)<=FOSSA_HALF){d[idx]=L.FOSSA;membrane++}else{d[idx]=s<s0?L.LA_BLOOD:L.RA_BLOOD;opened++}}
  return {centre:c,normal:u.map(v=>+v.toFixed(4)),radiusM:FOSSA_R,membraneM:2*FOSSA_HALF,membraneVoxels:membrane,openedVoxels:opened};
 }
+// Landmarks derived from the label volume at load (the atlas file lists only the hand-placed ones): chamber centres,
+// superior vena cava, pulmonary veins, coronary sinus, branch pulmonary arteries and their bifurcation, ascending and
+// descending aorta at the level of the heart. Used to build the extra standard views (views.mjs). One pass over the volume.
+export function deriveLandmarks(t){
+ const d=t.fine.data,[nx,ny,nz]=t.fine.dims,h=t.fh,o=t.fo,lm=t.landmarks,L=LABEL,mv=lm.mitralValve,pv=lm.pulmonaryValve;
+ const acc={},add=(k,x,y,z)=>{const a=acc[k]??=[0,0,0,0];a[0]+=x;a[1]+=y;a[2]+=z;a[3]++};
+ for(let k=0;k<nz;k++){const z=o[2]+k*h;for(let j=0;j<ny;j++){const y=o[1]+j*h;for(let i=0;i<nx;i++){const l=d[((k*ny+j)*nx+i)*2];if(l<20||l>29)continue;const x=o[0]+i*h;
+  switch(l){
+   case L.RA_BLOOD:add('raCentre',x,y,z);break;case L.LA_BLOOD:add('laCentre',x,y,z);break;case L.RV_BLOOD:add('rvCentre',x,y,z);break;case L.LV_BLOOD:add('lvCentre',x,y,z);break;
+   case L.CAVA_BLOOD:if(z>.03)add('svc',x,y,z);if(z>.03&&z<.055)add('svcJunction',x,y,z);if(z<-.04&&z>-.075)add('ivcHepatic',x,y,z);break;
+   case L.PV_BLOOD:if(x<lm.asdSecundum[0]+.01)add('pvRight',x,y,z);else add('pvLeft',x,y,z);break;
+   case L.CS_BLOOD:add('coronarySinus',x,y,z);break;
+   case L.PA_BLOOD:if(x<-.025)add('rpa',x,y,z);else if(x<-.005)add('rpaProximal',x,y,z);if(x>.03&&y>.02)add('lpa',x,y,z);if(Math.abs(z-.05)<.005&&Math.abs(x-.009)<.012)add('paBifurcation',x,y,z);break;
+   case L.AO_BLOOD:if(Math.abs(z-mv[2])<.015&&y>.03)add('descendingAorta',x,y,z);if(z>pv[2]+.008&&z<pv[2]+.04&&y<.02)add('ascendingAorta',x,y,z);break;
+  }}}}
+ const out={};for(const [k,a] of Object.entries(acc))if(a[3]>20)out[k]=[a[0]/a[3],a[1]/a[3],a[2]/a[3]];return out;
+}
 export class Tissue{
  constructor(meta,fine,coarse){
   this.meta=meta;this.fine=fine;this.coarse=coarse;this.landmarks=meta.landmarks;this.edits=[];this.effusionMM=0;
   const [nx,ny,nz]=fine.dims;this.fnx=nx;this.fny=ny;this.fnz=nz;this.fo=fine.origin;this.fh=fine.spacing;this.fi=1/fine.spacing;
   const [cx,cy,cz]=coarse.dims;this.cnx=cx;this.cny=cy;this.cnz=cz;this.co=coarse.origin;this.ci=1/coarse.spacing;
   if(this.landmarks?.asdSecundum&&!meta.fossaThinned)this.fossa=thinFossa(this);
+  if(this.landmarks?.pulmonaryValve&&!this.landmarks.svc)Object.assign(this.landmarks,deriveLandmarks(this));
  }
  // nearest-voxel lookup → label (and distance outside the heart envelope, metres; Infinity when unknown)
  lookup(x,y,z){

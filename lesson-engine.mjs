@@ -4,7 +4,7 @@
 // Pure (no DOM): the browser panel, the tests and the exporter share it. Deterministic: same spec, seed and time give
 // the same state (seek). No branch is specific to a diagnosis: lessons are data.
 import {poseFromState,defaultState,PRESETS,physical,dot,sub,rad} from './geometry.mjs';
-import {VIEW_INFO,VIEW_CARD,planeAgreement,solveState,markerClock} from './views.mjs';
+import {VIEW_INFO,VIEW_CARD,SWEEPS,planeAgreement,solveState,markerClock} from './views.mjs';
 
 export const SCHEMA='cardiolab.lesson/1';
 export const STAGES=['orientar','mover','confirmar','optimizar','rescatar','evidencia'];
@@ -240,6 +240,31 @@ export function lessonForView(id,{coverage=null}={}){
    {id:'guardar',stage:'evidencia',title:'Guardar la evidencia',caption:'Guarda un cuadro de la vista con su orientación.',evidence:{kind:'frame'},competencies:['integracion']}
   ],
   sufficiency:{criteria:[{id:'plano',kind:'goal',step:'plano',label:`${info.short} conseguida (marcador del lado correcto)`},{id:'identidad',kind:'answer',step:'confirmar',label:'Identidad comprobada por relaciones'},{id:'cuadro',kind:'evidence',step:'guardar',evidence:'frame',label:'Cuadro guardado'}],insufficient:'Sin el plano y su comprobación, la vista no está documentada.'}};
+}
+
+// ---------------------------------------------------------------- a lesson for each guided sweep (views.mjs SWEEPS)
+// The dominant maneuver of each step is read from the probe change between consecutive reference views (rotation if
+// the marker turns, otherwise the tilt toward the patient axis the beam moves along), so the words match the motion.
+export function dominantManeuver(a,b){const d=physicalDelta(a,b);
+ if(Math.abs(d.rotation)>20)return {verb:'rotar',direction:d.rotation>0?'horario':'antihorario',amount:Math.max(5,Math.round(Math.abs(d.rotation)/5)*5)};
+ if(d.beamDeg>3){const [k]=Object.entries(d.beam).sort((x,y)=>y[1]-x[1])[0];return {verb:'inclinar',direction:k,amount:Math.max(3,Math.round(d.beamDeg))}}
+ const sx=Math.abs(d.slide.x),sz=Math.abs(d.slide.z);return sx>sz?{verb:'deslizar',direction:d.slide.x>0?'izquierda del paciente':'derecha del paciente',amount:Math.max(2,Math.round(sx))}:{verb:'deslizar',direction:d.slide.z>0?'craneal':'caudal',amount:Math.max(2,Math.round(sz))};
+}
+export function lessonForSweep(id,ctx){
+ const sw=SWEEPS.find(s=>s.id===id);if(!sw)throw Error(`Barrido desconocido: ${id}`);const ids=sw.views.filter(v=>VIEW_INFO[v]&&ctx.views[v]);
+ const states=ids.map(v=>resolveState({view:v},ctx)),others=Object.keys(VIEW_INFO).filter(v=>!ids.includes(v)&&VIEW_INFO[v].window!==sw.window);
+ const steps=ids.map((v,i)=>{const info=VIEW_INFO[v],card=VIEW_CARD[v];
+  if(!i)return {id:v,stage:'orientar',title:info.name,from:{view:v},goal:{view:v,min:65},caption:`${card?.probe||''} ${info.goal}`.trim(),competencies:['orientacion','adquisicion']};
+  const m=dominantManeuver(states[i-1],states[i]),pool=[...ids.filter(x=>x!==v).map(x=>VIEW_INFO[x].checks[0]),VIEW_INFO[others[hashString(id+v)%others.length]].checks[0]];
+  const opts=shuffled([info.checks[0],...shuffled(pool,hashString(v)).filter(x=>x!==info.checks[0]).slice(0,2)],hashString(id+v+'p'));
+  return {id:v,stage:'mover',title:`${VERBS[m.verb].name}: ${info.short}`,maneuver:{...m,keeps:'El contacto de la sonda'},to:{view:v},goal:{view:v,min:65},
+   caption:`${VERBS[m.verb].name} ${m.verb==='barrer'?'':m.direction} ~${m.amount} ${VERBS[m.verb].unit}: ${info.goal}`,
+   predict:{prompt:`Antes de ${m.verb}: ¿qué debería aparecer en el plano?`,options:opts,answer:info.checks[0],why:info.goal},competencies:['adquisicion','reconocimiento']}});
+ steps.push({id:'clip',stage:'evidencia',title:'Guardar el barrido',caption:'Guarda un clip mientras repites el barrido completo, despacio y sin perder el contacto.',evidence:{kind:'clip',seconds:4},competencies:['integracion']});
+ return {schema:SCHEMA,id,version:1,title:sw.name,layer:'adquisicion',level:'intermedio',generated:true,question:`¿Qué estructuras entran y salen del plano durante el ${sw.name.toLowerCase()}?`,objective:sw.how,
+  provenance:{anatomy:'atlas',image:'simulación',sources:['ase2024','docencia'],teaching:'Lección generada a partir de las vistas del barrido; la maniobra de cada paso se calcula del cambio de la sonda entre vistas consecutivas.'},
+  limits:['Atlas adulto escalado: las proporciones y algunas vistas difieren del lactante.'],windows:{available:[sw.window]},entry:{problems:ids},competencies:['adquisicion','reconocimiento'],steps,
+  sufficiency:{criteria:[...steps.filter(s=>s.stage==='mover').map(s=>({id:'v-'+s.id,kind:'goal',step:s.id,label:`${VIEW_INFO[s.id].short} alcanzada en el barrido`})),{id:'clip',kind:'evidence',step:'clip',evidence:'clip',label:'Clip del barrido guardado'}],insufficient:'El barrido no está completo: falta algún nivel o el clip.'}};
 }
 
 // ---------------------------------------------------------------- export artefacts (text)

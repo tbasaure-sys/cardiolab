@@ -86,7 +86,9 @@ export function buildViews(lm,obstruct=null){
   views.a4c=planePose({c:apex,n:n4,window:APEX_W,target:c4,markerToward:pLeft,depth:.17,obstruct:o,span:.03});views.a4c.meta={center:c4,landmarks:{'Ápex VI':apex,'Válvula mitral':mv,'Válvula tricúspide':tv}};
   const n5=unit(cross(sub(av,apex),sub(c4,apex)));
   // five-chamber: from the same apical window as the four-chamber, tilted anteriorly toward the outflow tract
-  views.a5c=planePose({c:apex,n:n5,window:views.a4c.origin,target:mid(av,mv),markerToward:pLeft,depth:.17,obstruct:o,span:.012});views.a5c.meta={center:av,landmarks:{'Ápex VI':apex,'Válvula aórtica':av,'Válvula mitral':mv}};
+  // five-chamber: the four-chamber tilted anteriorly onto the LV outflow tract and aortic valve (same contact, same marker)
+  {const b=views.a4c,tgt=av;let nn=unit(cross(b.u,sub(tgt,b.origin)));let dd=unit(sub(tgt,b.origin));dd=unit(sub(dd,mul(nn,dot(dd,nn))));let uu=unit(cross(dd,nn));if(dot(uu,b.u)<0)uu=mul(uu,-1);
+   views.a5c={origin:b.origin,u:uu,d:dd,n:unit(cross(uu,dd)),depth:.17,sector:80};void n5;}views.a5c.meta={center:av,landmarks:{'Ápex VI':apex,'Válvula aórtica':av,'Válvula mitral':mv}};
   const axis=long;let best=null;
   for(const sgn of [1,-1]){const n2=rotate(n4,axis,sgn*rad(62));const p=planePose({c:apex,n:n2,window:APEX_W,target:mv,markerToward:head,depth:.17,obstruct:o,span:.03});const off=Math.abs(dot(sub(tv,p.origin),p.n));if(!best||off>best.off)best={p,off}}
   views.a2c=best.p;views.a2c.meta={center:mv,landmarks:{'Ápex VI':apex,'Válvula mitral':mv}};
@@ -110,6 +112,46 @@ export function buildViews(lm,obstruct=null){
   let best=null;for(let ix=-.02;ix<=.02+1e-9;ix+=.002)for(let iz=0;iz<=.02+1e-9;iz+=.002){const org=surface(SSN[0]+ix,SSN[2]+iz) /* never below the notch (manubrium) */,n=unit(cross(sub(asc,org),sub(desc,org))),tgt=add(arch,[0,0,-.012]);const cost=(o?o(org,tgt,n):0)+norm(sub(org,SSN))*40;if(!best||cost<best.cost)best={cost,org,n,tgt}}
   let d=unit(sub(best.tgt,best.org));d=unit(sub(d,mul(best.n,dot(d,best.n))));let u=unit(cross(d,best.n));if(dot(u,head)<0)u=mul(u,-1);
   views.ssn={origin:best.org,u,d,n:unit(cross(u,d)),depth:.18,sector:80};views.ssn.meta={center:arch,landmarks:{'Arco aórtico':arch,'Aorta ascendente':asc,'Istmo aórtico':desc}};}
+ // ---------------------------------------------------------------- extended pediatric views (derived landmarks)
+ // A pose from a fixed contact point: the plane (normal n) contains the probe; the beam points at `target`.
+ const poseAt=(org,n,target,markerToward,depth,sector=80)=>{n=unit(n);let d=unit(sub(target,org));d=unit(sub(d,mul(n,dot(d,n))));let u=unit(cross(d,n));if(dot(u,markerToward)<0)u=mul(u,-1);return {origin:org,u,d,n:unit(cross(u,d)),depth,sector}};
+ // a sweep step: same contact and same marker as `base`, the beam tilted until the plane contains `target` (pure tilt)
+ const tiltOf=(base,target,depth=base.depth)=>poseAt(base.origin,cross(base.u,sub(target,base.origin)),target,base.u,depth,base.sector);
+ const has=(...k)=>k.every(x=>lm[x]);
+ const HIGH=surface(PARA[0]+.004,PARA[2]+.034);
+ // parasternal long-axis sweep: tilted toward the right hip (RV inflow: RA, tricuspid valve, RV) and toward the left
+ // shoulder (RV outflow: infundibulum, pulmonary valve, main PA)
+ if(has('raCentre')){views.plaxRVIn=tiltOf(views.plax,mid(tv,lm.raCentre),.14);views.plaxRVIn.meta={center:tv,landmarks:{'Válvula tricúspide':tv,'Aurícula derecha':lm.raCentre,...(lm.coronarySinus?{'Seno coronario':lm.coronarySinus}:{})}}}
+ if(has('paBifurcation')){views.plaxRVOut=tiltOf(views.plax,pv,.13);views.plaxRVOut.meta={center:pv,landmarks:{'Válvula pulmonar':pv,'Tronco pulmonar':mid(pv,lm.paBifurcation)}}}
+ // short axis at the apex: the LV cavity tapering beyond the papillary muscles
+ {const apexLevel=add(mv,mul(sub(apex,mv),.78));views.psaxApex=psax(apexLevel,long,.12);views.psaxApex.meta={center:apexLevel,landmarks:{'VI apical':apexLevel}}}
+ // high left parasternal short axis: main PA and its branches («pantalón» de la bifurcación), transverse plane
+ if(has('rpaProximal','paBifurcation')){const n=unit(cross(sub(lm.rpaProximal,pv),sub(lm.ductPulmonary,pv)));
+  views.psaxBranch=planePose({c:lm.paBifurcation,n,window:HIGH,target:lm.paBifurcation,markerToward:add(head,pLeft),depth:.13,obstruct:o,span:.03});
+  views.psaxBranch.meta={center:lm.paBifurcation,landmarks:{'Válvula pulmonar':pv,'Rama pulmonar derecha':lm.rpaProximal,'Rama pulmonar izquierda':lm.ductPulmonary}}}
+ // ductal view: a near-sagittal plane through the pulmonary valve and the origin of the left pulmonary artery, marker to
+ // the head. In this adult atlas it is reached from the short-axis contact (the same cut as the ductus lesson).
+ {const org=views.psaxAV.origin,tgt=mid(pv,lm.ductPulmonary),d=unit(sub(tgt,org));let n=unit(cross(d,sub(lm.ductPulmonary,pv)));
+  views.ductal=poseAt(org,n,tgt,head,.14);views.ductal.meta={center:lm.ductPulmonary,landmarks:{'Válvula pulmonar':pv,'Origen de la rama izquierda':lm.ductPulmonary}}}
+ // apical RV-focused four-chamber: the RV long axis (tricuspid → RV apex) centred
+ if(has('rvCentre')){const n=unit(cross(sub(lm.rvApex,tv),sub(mv,tv)));
+  // from the four-chamber contact (moving laterally lands on lung in this atlas): the plane through the tricuspid valve and the RV apex
+  // same contact and plane as the four-chamber, the beam rocked onto the RV and turned a few degrees so its free wall
+  // and apex are complete (RV-focused); lateral contacts land on lung in this atlas
+  const b=views.a4c,org=b.origin,n2=rotate(b.n,b.d,rad(-8));views.a4cRV=poseAt(org,n2,mid(tv,lm.rvCentre),pLeft,.17);void n;
+  views.a4cRV.meta={center:lm.rvCentre,landmarks:{'Válvula tricúspide':tv,'Ápex VD':lm.rvApex,'Válvula mitral':mv}}}
+ // apical sweep, posterior: the four-chamber tilted back to the coronary sinus in the AV groove
+ if(has('coronarySinus')){views.a4cCS=tiltOf(views.a4c,lm.coronarySinus);views.a4cCS.meta={center:lm.coronarySinus,landmarks:{'Seno coronario':lm.coronarySinus,'Válvula tricúspide':tv}}}
+ // subcostal coronal sweep, anterior: LV outflow tract and aortic valve (subcostal «cinco cámaras»)
+ views.scLVOT=tiltOf(views.sc4c,add(av,mul(sub(av,mv),.4)));views.scLVOT.meta={center:av,landmarks:{'Válvula aórtica':av,'Válvula mitral':mv}};
+ // subcostal sagittal sweep from the short axis (marker to the head): toward the left, RV outflow and pulmonary valve;
+ // toward the right, both venae cavae entering the RA (bicaval)
+ if(has('rvCentre'))views.scRVOT=tiltOf(views.scSAX,mid(pv,lm.rvCentre),.18),views.scRVOT.meta={center:pv,landmarks:{'Válvula pulmonar':pv,'Tracto de salida del VD':mid(pv,lm.rvCentre)}};
+ if(has('svcJunction','raCentre'))views.scBicaval=tiltOf(views.scSAX,lm.svcJunction,.21),views.scBicaval.meta={center:lm.raCentre,landmarks:{'Vena cava superior':lm.svcJunction,'Aurícula derecha':lm.raCentre}};
+ // suprasternal short axis: transverse arch in section with the right pulmonary artery beneath it (marker to the
+ // patient's left); tilted further back, the left atrium with the pulmonary veins («cangrejo»)
+ if(has('rpa','ascendingAorta')){const org=views.ssn.origin,axis=unit(sub(lm.ductAortic,lm.ascendingAorta)),d=unit(sub(lm.rpa,org)),n=unit(sub(axis,mul(d,dot(d,axis))));
+  views.ssnSAX=poseAt(org,n,mid(lm.rpa,lm.rpaProximal),pLeft,.17);views.ssnSAX.meta={center:lm.rpaProximal,landmarks:{'Rama pulmonar derecha':lm.rpaProximal,'Arco aórtico':lm.archTop,...(lm.laCentre?{'Aurícula izquierda':lm.laCentre}:{})}}}
  // landmarks and centre are used for scoring: keep them on the ideal plane itself (project the near ones, drop far ones)
  for(const v of Object.values(views)){
   const proj=p=>sub(p,mul(v.n,dot(sub(p,v.origin),v.n)));v.meta.center=proj(v.meta.center);
@@ -130,7 +172,18 @@ export const VIEW_INFO={
  a3c:{name:'Apical tres cámaras',short:'A3C',window:'apical',clock:'11',goal:'Eje largo apical: VI, AI y tracto de salida con válvula aórtica.',checks:['Mitral y aórtica en el mismo corte','Ápex en el vértice'],pitfall:'Es el mismo plano anatómico del eje largo paraesternal, visto desde el ápex.'},
  sc4c:{name:'Subcostal cuatro cámaras',short:'SC4C',window:'subcostal',clock:'3',goal:'Las cuatro cámaras desde abajo, con el septo interauricular perpendicular al haz.',checks:['Septo interauricular visible y perpendicular al haz','Hígado como ventana acústica'],pitfall:'Es la mejor vista para el septo interauricular: en apical el haz es paralelo al septo y aparece un falso «hueco».'},
  scSAX:{name:'Subcostal eje corto',short:'SC-SAX',window:'subcostal',clock:'12',goal:'Desde la cuatro cámaras subcostal, rota 90° hacia la cabeza para barrer de la vena cava a los tractos de salida.',checks:['Vena cava inferior entrando a la AD'],pitfall:'Barre lentamente: cada inclinación muestra un nivel distinto.'},
- ssn:{name:'Supraesternal eje largo del arco',short:'SSN',window:'ssn',clock:'12–1',goal:'El arco aórtico completo: aorta ascendente, vasos del cuello y aorta descendente.',checks:['Arco completo en un solo corte','Istmo visible'],pitfall:'Clave para coartación y ductus: sin esta ventana el estudio pediátrico está incompleto.'}
+ ssn:{name:'Supraesternal eje largo del arco',short:'SSN',window:'ssn',clock:'12–1',goal:'El arco aórtico completo: aorta ascendente, vasos del cuello y aorta descendente.',checks:['Arco completo en un solo corte','Istmo visible'],pitfall:'Clave para coartación y ductus: sin esta ventana el estudio pediátrico está incompleto.'},
+ plaxRVIn:{name:'Paraesternal · entrada del VD',short:'PLAX-EVD',window:'plax',clock:'10–11',goal:'AD, válvula tricúspide y VD en un mismo corte: desde el eje largo, el haz inclinado hacia la cadera derecha.',checks:['Válvula tricúspide en el centro, entre AD y VD','No se ven la aorta ni la mitral'],pitfall:'Si aparece la aorta, todavía estás en el eje largo: inclina más hacia la cadera derecha.'},
+ plaxRVOut:{name:'Paraesternal · salida del VD',short:'PLAX-SVD',window:'plax',clock:'10–11',goal:'Infundíbulo, válvula pulmonar y tronco pulmonar: desde el eje largo, el haz inclinado hacia el hombro izquierdo.',checks:['Válvula pulmonar en el centro','Tronco pulmonar que se aleja hacia la bifurcación'],pitfall:'Buena alineación para el Doppler del tracto de salida y de la válvula pulmonar.'},
+ psaxApex:{name:'Paraesternal eje corto · ápex',short:'PSAX-AP',window:'psax',clock:'1–2',goal:'VI pequeño y circular más allá de los papilares: los segmentos apicales y el septo trabecular.',checks:['VI circular sin músculos papilares','VD pequeño o ausente'],pitfall:'Es el último nivel del barrido del eje corto; con color, busca CIV musculares apicales.'},
+ psaxBranch:{name:'Paraesternal alto · ramas pulmonares',short:'PSAX-RP',window:'psax',clock:'2–3',goal:'El tronco pulmonar y su bifurcación en ramas derecha e izquierda, desde un espacio intercostal más alto que el eje corto.',checks:['Tronco pulmonar que se divide en dos ramas','La rama derecha pasa por detrás de la aorta ascendente'],pitfall:'Sube un espacio intercostal desde el eje corto aórtico; es la vista de las ramas pulmonares.'},
+ ductal:{name:'Paraesternal alto · vista ductal',short:'DUCTAL',window:'psax',clock:'11–12',goal:'Tronco pulmonar a lo largo hasta el origen de la rama izquierda, donde se busca el ductus, con el marcador hacia la cabeza.',checks:['Válvula pulmonar y tronco a lo largo','Origen de la rama pulmonar izquierda'],pitfall:'En el neonato es un plano sagital paraesternal izquierdo alto; en este atlas adulto se alcanza desde el contacto del eje corto.'},
+ a4cRV:{name:'Apical 4C centrada en el VD',short:'A4C-VD',window:'apical',clock:'1–2',goal:'El VD en el centro del sector, con su pared libre y su ápex completos: el plano para valorar el tamaño del VD.',checks:['VD más ancho que en la cuatro cámaras estándar','Pared libre del VD completa hasta su ápex'],pitfall:'El tamaño aparente del VD cambia mucho con el plano: no lo compares entre vistas distintas.'},
+ a4cCS:{name:'Apical 4C posterior · seno coronario',short:'A4C-SC',window:'apical',clock:'2–3',goal:'La cuatro cámaras inclinada hacia posterior: el seno coronario recorre el surco auriculoventricular y desemboca en la AD.',checks:['Seno coronario a lo largo del surco auriculoventricular','Las válvulas auriculoventriculares ya no se ven completas'],pitfall:'Es el extremo posterior del barrido apical: anterior verás la salida del VI (cinco cámaras).'},
+ scLVOT:{name:'Subcostal · salida del VI',short:'SC-TSVI',window:'subcostal',clock:'3',goal:'La subcostal cuatro cámaras inclinada hacia anterior: tracto de salida del VI y válvula aórtica.',checks:['Válvula aórtica y tracto de salida del VI','Las cámaras posteriores pasan a segundo plano'],pitfall:'Es un paso del barrido coronal subcostal: de posterior (aurículas) a anterior (salidas ventriculares).'},
+ scRVOT:{name:'Subcostal eje corto · salida del VD',short:'SC-TSVD',window:'subcostal',clock:'12–1',goal:'Desde el eje corto subcostal, inclinando hacia la izquierda del paciente: infundíbulo, válvula pulmonar y tronco.',checks:['Válvula pulmonar','Infundíbulo del VD'],pitfall:'En lactantes con mala ventana paraesternal, el tracto de salida del VD se ve bien desde aquí.'},
+ scBicaval:{name:'Subcostal · bicava',short:'SC-BICAVA',window:'subcostal',clock:'12–1',goal:'Desde el eje corto subcostal, inclinando hacia la derecha: la vena cava superior y la inferior entrando en la AD, con el septo interauricular.',checks:['Vena cava superior entrando en la AD','Septo interauricular a lo largo'],pitfall:'Es la vista de la porción superior del septo (seno venoso, no simulado en este atlas).'},
+ ssnSAX:{name:'Supraesternal eje corto',short:'SSN-EC',window:'ssn',clock:'3',goal:'Desde el eje largo del arco, rota 90°: la aorta en corte transversal y la rama pulmonar derecha por debajo; más hacia posterior, la AI con las venas pulmonares.',checks:['Aorta en corte transversal (círculo) arriba','Rama pulmonar derecha a lo largo, por debajo'],pitfall:'En el atlas las venas pulmonares son parciales: el «cangrejo» completo no se puede reproducir.'}
 };
 
 // ---------------------------------------------------------------- scoring
@@ -146,8 +199,28 @@ export const VIEW_CARD={
  a3c:{probe:'Desde la apical 2C, sigue rotando antihorario (marcador a las 11 h).',shows:['VI (septo anterior y pared inferolateral)','tracto de salida del VI','válvula aórtica','válvula mitral','AI']},
  sc4c:{probe:'Bajo el apéndice xifoides, sonda casi plana apuntando al hombro izquierdo; marcador a las 3 h.',shows:['Hígado','cuatro cámaras','septo interauricular perpendicular al haz (ideal para CIA)']},
  scSAX:{probe:'Desde la subcostal 4C, rota 90° (marcador hacia la cabeza, 12 h).',shows:['Vena cava inferior','AD','septo interauricular (vista bicava)','barrido de las cavidades en eje corto']},
- ssn:{probe:'Hueco supraesternal con el cuello extendido; marcador a las 12–1 h, en el plano del arco.',shows:['Arco aórtico','troncos supraaórticos','aorta descendente e istmo','rama pulmonar derecha']}
+ ssn:{probe:'Hueco supraesternal con el cuello extendido; marcador a las 12–1 h, en el plano del arco.',shows:['Arco aórtico','troncos supraaórticos','aorta descendente e istmo','rama pulmonar derecha']},
+ plaxRVIn:{probe:'Desde el eje largo paraesternal, inclina el haz hacia la cadera derecha del paciente; el marcador no cambia.',shows:['AD','válvula tricúspide','VD','seno coronario y vena cava inferior cerca de la AD']},
+ plaxRVOut:{probe:'Desde el eje largo paraesternal, inclina el haz hacia el hombro izquierdo; el marcador no cambia.',shows:['Infundíbulo del VD','válvula pulmonar','tronco pulmonar']},
+ psaxApex:{probe:'Eje corto paraesternal, inclinado hacia el ápex más allá de los papilares.',shows:['VI apical circular','septo trabecular','segmentos apicales']},
+ psaxBranch:{probe:'Paraesternal izquierdo alto (un espacio por encima del eje corto), plano transversal; marcador hacia el hombro izquierdo.',shows:['Tronco pulmonar','bifurcación','rama pulmonar derecha','rama pulmonar izquierda','aorta ascendente en corte']},
+ ductal:{probe:'Paraesternal izquierdo alto en plano sagital, marcador hacia la cabeza (en este atlas, desde el contacto del eje corto).',shows:['Válvula pulmonar','tronco pulmonar','origen de la rama izquierda','sitio del ductus']},
+ a4cRV:{probe:'Desde la apical 4C, desliza un poco hacia lateral y orienta el haz para centrar el VD.',shows:['VD completo','pared libre del VD','válvula tricúspide','ápex del VD']},
+ a4cCS:{probe:'Desde la apical 4C, inclina el haz hacia posterior (hacia la espalda).',shows:['Seno coronario','surco auriculoventricular','AD']},
+ scLVOT:{probe:'Desde la subcostal 4C, inclina el haz hacia anterior; el marcador sigue a las 3 h.',shows:['Tracto de salida del VI','válvula aórtica','aorta ascendente']},
+ scRVOT:{probe:'Desde el eje corto subcostal (marcador hacia la cabeza), inclina el haz hacia la izquierda del paciente.',shows:['Infundíbulo del VD','válvula pulmonar','tronco pulmonar']},
+ scBicaval:{probe:'Desde el eje corto subcostal (marcador hacia la cabeza), inclina el haz hacia la derecha del paciente.',shows:['Vena cava inferior','vena cava superior','AD','septo interauricular']},
+ ssnSAX:{probe:'Desde el eje largo supraesternal, rota 90° en sentido horario (marcador hacia la izquierda del paciente).',shows:['Aorta en corte transversal','rama pulmonar derecha','AI y venas pulmonares al inclinar hacia posterior']}
 };
+// Guided sweeps: one window, one dominant maneuver repeated, structures entering and leaving the plane in order.
+export const SWEEPS=[
+ {id:'barrido-plax',name:'Barrido paraesternal largo',window:'plax',views:['plaxRVIn','plax','plaxRVOut'],how:'Inclinar: de la cadera derecha (entrada del VD) al hombro izquierdo (salida del VD), sin mover el contacto ni el marcador.'},
+ {id:'barrido-psax',name:'Barrido del eje corto, de la base al ápex',window:'psax',views:['psaxAV','psaxMV','psaxPM','psaxApex'],how:'Inclinar el haz desde la base hacia el ápex: válvula aórtica → mitral → papilares → ápex.'},
+ {id:'barrido-apical',name:'Barrido apical, de posterior a anterior',window:'apical',views:['a4cCS','a4c','a5c'],how:'Inclinar: posterior (seno coronario) → cuatro cámaras → anterior (salida del VI).'},
+ {id:'barrido-subcostal-coronal',name:'Barrido subcostal coronal',window:'subcostal',views:['sc4c','scLVOT'],how:'Con el marcador a las 3 h, inclinar de posterior (aurículas, septo interauricular) a anterior (salida del VI).'},
+ {id:'barrido-subcostal-sagital',name:'Barrido subcostal sagital',window:'subcostal',views:['scBicaval','scSAX','scRVOT'],how:'Con el marcador hacia la cabeza, inclinar de la derecha (venas cavas) a la izquierda (salida del VD).'},
+ {id:'barrido-supraesternal',name:'Supraesternal: eje largo y eje corto',window:'ssn',views:['ssn','ssnSAX'],how:'Rotar 90° desde el plano del arco al plano transversal.'}
+];
 // nearest standard view to a pose (best plane agreement), or null when nothing is close
 export function nearestView(pose,targets){let best=null;for(const [id,t] of Object.entries(targets||{})){if(!VIEW_INFO[id]||!t?.meta)continue;const a=planeAgreement(pose,t);if(!best||a.score>best.score)best={id,score:a.score}}return best&&best.score>=25?best:null}
 export function planeAgreement(pose,target){

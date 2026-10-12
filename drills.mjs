@@ -11,7 +11,7 @@ export const KINDS={view:'¿Qué vista es?',structure:'¿Qué estructura marca l
 const KIND_SHORT={view:'Vistas',structure:'Estructuras',maneuver:'Maniobras',knob:'Ajustes'};
 const PRESET_OF={plax:'plax',psax:'psax',apical:'apical',subcostal:'subcostal',ssn:'ssn'};
 // views learners mistake for each other: preferred distractors
-export const CONFUSED={plax:['a3c','psaxAV','a5c'],psaxAV:['psaxMV','scSAX','plax'],psaxMV:['psaxPM','psaxAV','a2c'],psaxPM:['psaxMV','a2c','sc4c'],a4c:['sc4c','a5c','a2c'],a5c:['a4c','a3c','plax'],a2c:['a4c','a3c','psaxPM'],a3c:['plax','a5c','a2c'],sc4c:['a4c','scSAX','a5c'],scSAX:['psaxAV','sc4c','ssn'],ssn:['scSAX','psaxAV','plax']};
+export const CONFUSED={plax:['a3c','psaxAV','a5c'],psaxAV:['psaxMV','scSAX','plax'],psaxMV:['psaxPM','psaxAV','a2c'],psaxPM:['psaxMV','a2c','sc4c'],a4c:['sc4c','a5c','a2c'],a5c:['a4c','a3c','plax'],a2c:['a4c','a3c','psaxPM'],a3c:['plax','a5c','a2c'],sc4c:['a4c','scSAX','a5c'],scSAX:['psaxAV','sc4c','ssn'],ssn:['scSAX','psaxAV','plax'],plaxRVIn:['plax','a4c','plaxRVOut'],plaxRVOut:['plax','psaxAV','plaxRVIn'],psaxApex:['psaxPM','psaxMV','a2c'],psaxBranch:['psaxAV','ductal','ssnSAX'],ductal:['psaxBranch','plaxRVOut','ssn'],a4cRV:['a4c','a4cCS','sc4c'],a4cCS:['a4c','a4cRV','a2c'],scLVOT:['sc4c','a5c','scRVOT'],scRVOT:['scSAX','plaxRVOut','scLVOT'],scBicaval:['scSAX','sc4c','ssnSAX'],ssnSAX:['ssn','psaxBranch','scBicaval']};
 export const STRUCTURES=[LABEL.LV_BLOOD,LABEL.RV_BLOOD,LABEL.LA_BLOOD,LABEL.RA_BLOOD,LABEL.AO_BLOOD,LABEL.PA_BLOOD,LABEL.LV_MYO,LABEL.RV_MYO,LABEL.LIVER];
 // deliberately mis-set images; the student names the one control that fixes them
 export const KNOBS=[
