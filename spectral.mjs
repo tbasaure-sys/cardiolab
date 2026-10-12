@@ -26,7 +26,7 @@ export function renderSpectrum(tissue,flow,motion,{pose,theta=0,gateDepth=.08,ga
   for(let r=.006/K;r<pose.depth;r+=(fast?.002:.001)/K)for(const a0 of CW_LAT)for(const e0 of CW_ELE){const a=a0/K,e=e0/K;const k=1-r/fd,off=a*k+a*.2*(1-k)*.25;
    pts.push([o[0]+b[0]*r+lat[0]*off+n[0]*e,o[1]+b[1]*r+lat[1]*off+n[1]*e,o[2]+b[2]*r+lat[2]*off+n[2]*e])}}
  // attenuation / shadowing along the line: points behind bone or lung contribute nothing
- const reach=pts.map(p=>{const l=tissue.tissueAt(p[0],p[1],p[2]);return l});
+ const reach=pts.map(p=>{const r=tissue.remodel?tissue.remodel.inverse(p):p;return tissue.tissueAt(r[0],r[1],r[2])});
  let pwLoss=0;const alive=new Uint8Array(pts.length);
  if(mode==='cw'){const bl=new Set();for(let i=0;i<pts.length;i++){const lane=i%CW_LANES;if(reach[i]===3||reach[i]===2)bl.add(lane);alive[i]=bl.has(lane)?0:1}}
  else{// PW: transmission to the gate averaged over the aperture (~12 mm converging on the gate). Thin cartilage
@@ -35,11 +35,11 @@ export function renderSpectrum(tissue,flow,motion,{pose,theta=0,gateDepth=.08,ga
   for(const a0 of [-.006,-.003,0,.003,.006]){const a=a0/K,s0=[o[0]+lat[0]*a,o[1]+lat[1]*a,o[2]+lat[2]*a],dv=[gate[0]-s0[0],gate[1]-s0[1],gate[2]-s0[2]],L=Math.hypot(...dv);let t=1;
    for(let r=.004/K;r<L-.003/K&&t>.001;r+=.002/K){const f=r/L,l=tissue.tissueAt(s0[0]+dv[0]*f,s0[1]+dv[1]*f,s0[2]+dv[2]*f);if(l===3)t*=.6;else if(l===2)t*=.12}T+=t/5}
   pwLoss=1-T;alive.fill(T<.08?0:1)}
- const hist=new Float32Array(cols*bins),q=[0,0,0],v=[0,0,0];let vPeak=0,angle=null,peakAbs=0;
+ const hist=new Float32Array(cols*bins),q=[0,0,0],v=[0,0,0],rq=[0,0,0],remodel=tissue.remodel||null;let vPeak=0,angle=null,peakAbs=0;
  for(let c=0;c<cols;c++){
   const t=(c+.5)/cols,s=ventricularContraction(t);
   for(let i=0;i<pts.length;i++){
-   if(!alive[i])continue;let p=pts[i];
+   if(!alive[i])continue;let p=pts[i];if(remodel){p=remodel.inverse(p,rq)}
    if(motion&&s){tissue.lookup(p[0],p[1],p[2]);const dd=tissue.lastDistance;const fall=dd<=.002?1:dd>=.014?0:1-(dd-.002)/.012;if(fall>0){motion.inverse(p,s,q,fall);p=q}}
    if(!flow.velocity(p[0],p[1],p[2],t,v))continue;
    const vr=-(v[0]*b[0]+v[1]*b[1]+v[2]*b[2]),mag=Math.hypot(v[0],v[1],v[2]);

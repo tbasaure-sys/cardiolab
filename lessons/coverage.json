@@ -23,8 +23,8 @@
   {"id": "paraesternal-ductal-alternativa", "name": "Supraesternal como alternativa al corte ductal", "status": "representado", "forViews": ["psaxAV", "ssn"], "detail": "El extremo aórtico del ductus está en el plano supraesternal de referencia."}
  ],
  "variants": [
-  {"id": "asd2", "status": "parcial", "detail": "Defecto esférico en la fosa oval; sin bordes, sin repercusión hemodinámica."},
-  {"id": "vsdpm", "status": "parcial", "detail": "Defecto bajo la válvula aórtica; el eje corto aórtico de referencia pasa a ≈10 mm del defecto (pendiente de revisión experta)."},
+  {"id": "asd2", "status": "parcial", "detail": "Defecto esférico en la fosa oval; sin bordes. En «Estudio por gravedad» su tamaño y la resistencia pulmonar mueven un modelo docente de cortocircuito que dilata AD y VD (deformación reversible del volumen acústico) y cambia flujos y velocidades."},
+  {"id": "vsdpm", "status": "parcial", "detail": "Defecto bajo la válvula aórtica; el eje corto aórtico de referencia pasa a ≈10 mm del defecto (pendiente de revisión experta). En «Estudio por gravedad»: restrictivo → no restrictivo, dilatación de AI y VI, presión del VD y engrosamiento de su pared según el modelo docente."},
   {"id": "pda", "status": "parcial", "detail": "Tubo recto docente entre el istmo y el origen de la rama pulmonar izquierda (7 mm en el atlas adulto, escalado con el paciente: ≈2,4 mm en el recién nacido a término del simulador). Solo cortocircuito aorta→pulmonar restrictivo. Pendiente: anatomía y tamaño del prematuro, morfologías del conducto, flujo bidireccional o derecha-izquierda, signos de repercusión hemodinámica (gasto del VI, AI:Ao, flujo diastólico en la rama pulmonar izquierda y en la aorta posductal) y paciente prematuro."},
   {"id": "vsdm", "status": "parcial", "detail": "Defecto muscular en el reparo vsdMuscular; candidato al siguiente módulo (barrido del eje corto)."}
  ],
@@ -32,6 +32,7 @@
   {"id": "doppler-angulo", "status": "representado", "detail": "El ángulo haz–flujo del Doppler pulsado/continuo se calcula sobre el campo de flujo simulado."},
   {"id": "volumenes-vi", "status": "pendiente", "detail": "Sin trazado de volúmenes."},
   {"id": "presion-arterial", "status": "pendiente", "detail": "Sin presión arterial simulada: los cálculos de Bernoulli son ejercicios de razonamiento."},
-  {"id": "repercusion-ductal", "status": "pendiente", "detail": "Sin modo M ni Doppler de la rama pulmonar izquierda, la aorta posductal, las arterias mesentéricas o cerebrales: no se puede valorar la repercusión hemodinámica de un ductus."}
+  {"id": "repercusion-ductal", "status": "pendiente", "detail": "Sin modo M ni Doppler de la rama pulmonar izquierda, la aorta posductal, las arterias mesentéricas o cerebrales: no se puede valorar la repercusión hemodinámica de un ductus."},
+  {"id": "estudio-gravedad", "status": "parcial", "detail": "Qp/Qs, presiones y dilataciones salen de un modelo docente de circuito con supuestos declarados (study.mjs, shunt-model.mjs); las bandas son del modelo, no umbrales clínicos. Sin Z-scores de cavidades: solo se verificó el coeficiente PHN del anillo mitral; el tamaño se da como % sobre el normal del mismo paciente. El atlas 3D y el corte anatómico no muestran la dilatación (solo la imagen eco)."}
  ]
 }

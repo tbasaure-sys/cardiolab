@@ -129,12 +129,15 @@ function sliceLeaflet(P,idx,pose){
 
 // Deform leaflets for a phase and slice them with the probe plane. Returns [{valve, leaflet, segments, t}] in plane
 // coordinates (t: position of each segment along the leaflet, 0 hinge … 1 free edge).
-export function sliceValves(valves,pose,phase,motion,s){
+function warpPositions(L,warp){const P=L.positions,o=L._warped&&L._warped.length===P.length?L._warped:(L._warped=new Float32Array(P.length)),q=[0,0,0],r=[0,0,0];
+ for(let i=0;i<P.length;i+=3){q[0]=P[i];q[1]=P[i+1];q[2]=P[i+2];warp.forward(q,r);o[i]=r[0];o[i+1]=r[1];o[i+2]=r[2]}return o}
+// warp (optional): chamber remodelling (remodel.mjs); the leaflets follow the enlarged annuli
+export function sliceValves(valves,pose,phase,motion,s,warp=null){
  const out=[],tmp=[0,0,0];
  for(const v of valves){
   const open=phase==null?0:valveOpening(phase,v.kind==='av'?'av':'semilunar');
   let center=v.C;if(motion&&s){const back=motion.inverse(v.C,s,tmp,v.kind==='av'?1:.5);center=[2*v.C[0]-back[0],2*v.C[1]-back[1],2*v.C[2]-back[2]]}
-  for(const L of v.leaflets){shapeLeaflet(v,L,open,center);const c=sliceLeaflet(L.positions,L.indices,pose);if(c.segments.length)out.push({valve:v.id,leaflet:L.name,...c})}
+  for(const L of v.leaflets){shapeLeaflet(v,L,open,center);const c=sliceLeaflet(warp?warpPositions(L,warp):L.positions,L.indices,pose);if(c.segments.length)out.push({valve:v.id,leaflet:L.name,...c})}
  }
  return out;
 }
