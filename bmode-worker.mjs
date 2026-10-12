@@ -23,13 +23,13 @@ self.onmessage=async e=>{
   }
   // messages that arrive while the volume is still loading wait for it (never dropped)
   if(!tissue){if(!initDone)throw Error('Simulador sin inicializar');await initDone}
-  if(m.type==='variant'){tissue.reset();variant=m.spec||{id:'normal'};const info=applyVariant(tissue,variant);setValveVariant(valves,tissue,valveVariant(variant));flow.jets=lesionJets(tissue,variant);info.jets=flow.jets.length;self.postMessage({type:'variant',id:m.id,info});return}
+  if(m.type==='variant'){tissue.reset();variant=m.spec||{id:'normal'};const info=applyVariant(tissue,variant);setValveVariant(valves,tissue,valveVariant(variant));flow.jets=lesionJets(tissue,variant);flow.scale=variant.params?.hemo?.flowScale||null;info.jets=flow.jets.length;self.postMessage({type:'variant',id:m.id,info});return}
   if(m.type==='render'){
    const t0=performance.now(),p=m.params,phase=p.phase??0,s=p.beating?ventricularContraction(phase):0;
    // leaflets cut across the slice thickness too (as the tissue): the central cut and two ±1.1 mm (physical, at 6 MHz; thinner at higher frequency) away, weaker
    const leaflets=[];if(p.valves!==false){const po=m.pose,e=.0011*(6/(p.freq||6))/(p.bodyScale||1);
     for(const [k,w] of [[0,1],[-1,.6],[1,.6]]){const pose=k?{...po,origin:po.origin.map((v,i)=>v+po.n[i]*e*k)}:po;
-     for(const v of sliceValves(valves,pose,p.beating?phase:0,motion,s))leaflets.push({segments:v.segments,t:v.t,strength:.012*w})}}
+     for(const v of sliceValves(valves,pose,p.beating?phase:0,motion,s,tissue.remodel))leaflets.push({segments:v.segments,t:v.t,strength:.012*w})}}
    const frame=engine.render(tissue,{seed:Math.round((p.phase||0)*997),pose:m.pose,lines:p.lines,samples:p.samples,bodyScale:p.bodyScale,freq:p.freq,gain:p.gain,tgc:p.tgc,dynamicRange:p.dynamicRange,focus:p.focus,harmonic:p.harmonic,motion,contraction:s,overlays:leaflets,color:p.color&&p.color.on?{flow,phase,roi:p.color.roi,nyquist:p.color.nyquist}:null});
    const data=frame.data.slice(),color=frame.color;
    self.postMessage({type:'frame',id:m.id,key:m.key,phaseIndex:m.phaseIndex,frame:{lines:frame.lines,samples:frame.samples,depth:frame.depth,sector:frame.sector,data,color},ms:performance.now()-t0},color?[data.buffer,color.buffer]:[data.buffer]);
@@ -37,9 +37,11 @@ self.onmessage=async e=>{
   }
   if(m.type==='spectrum'){const spec={...m.spec};if(spec.optimize){spec.theta=optimizeAim(tissue,flow,motion,spec,spec.optimize);delete spec.optimize}const sp=renderSpectrum(tissue,flow,motion,spec);self.postMessage({type:'spectrum',id:m.id,spectrum:sp},[sp.data.buffer]);return}
   if(m.type==='views'){const views=buildViews(tissue.landmarks,fanObstruction(tissue,LABEL.LUNG,LABEL.BONE));self.postMessage({type:'views',id:m.id,views});return}
+  if(m.type==='warp'){self.postMessage({type:'warp',id:m.id,points:m.points.map(p=>tissue.remodel?tissue.remodel.forward(p):p)});return} // reference landmark → where it is in the remodelled heart
   if(m.type==='probe'){ // label under one or several points (for teaching: "what am I looking at?")
-   if(m.points){self.postMessage({type:'probe',id:m.id,labels:m.points.map(p=>tissue.tissueAt(...p))});return}
-   const l=tissue.tissueAt(...m.point);self.postMessage({type:'probe',id:m.id,label:l});return;
+   const at=p=>{const q=tissue.remodel?tissue.remodel.inverse(p):p;return tissue.tissueAt(q[0],q[1],q[2])};
+   if(m.points){self.postMessage({type:'probe',id:m.id,labels:m.points.map(at)});return}
+   const l=at(m.point);self.postMessage({type:'probe',id:m.id,label:l});return;
   }
  }catch(error){self.postMessage({type:'error',id:m.id,message:String(error&&error.message||error)})}
 };

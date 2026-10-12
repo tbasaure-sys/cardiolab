@@ -43,7 +43,7 @@ export function createBMode(){
  // Positions along the ray (r, dr) are in atlas units, like the anatomy; bodyScale (K) converts them to physical
  // metres for everything acoustic (attenuation, wavelength, speckle size, beam width, reverberations).
  function render(tissue,opts){
-  const {pose,lines=176,freq=4,gain=1,tgc=[50,50,50,50,50,50,50,50],dynamicRange=52,focus=.55,motion=null,contraction=0,overlays=[],color=null}=opts,seed=((opts.seed|0)*2654435761)>>>19,K=opts.bodyScale||1,H=opts.harmonic!==false;
+  const {pose,lines=176,freq=4,gain=1,tgc=[50,50,50,50,50,50,50,50],dynamicRange=52,focus=.55,motion=null,contraction=0,overlays=[],color=null}=opts,remodel=tissue.remodel||null,seed=((opts.seed|0)*2654435761)>>>19,K=opts.bodyScale||1,H=opts.harmonic!==false;
   const depth=pose.depth,samples=opts.samples||Math.min(960,Math.round(depth*K/.00025)),dr=depth/samples,drp=dr*K,N=lines*samples;ensure(N);re.fill(0,0,N);im.fill(0,0,N);trans.fill(0,0,N);
   const sector=pose.sector*Math.PI/180,o=pose.origin,u=pose.u,d=pose.d;
   // slice thickness (elevation): the image integrates a few millimetres on both sides of the plane, thinnest at the
@@ -72,6 +72,8 @@ export function createBMode(){
    for(const [eo,ew] of ELEV){I=1;prevZ=1.63;prevLab=-1;inLung=false;lungAt=0;entered=false;
    for(let k=0;k<samples;k++){
     const r=(k+.5)*dr,e=eo?eo*elevAt(r):0;p[0]=o[0]+bx*r+nv[0]*e;p[1]=o[1]+by*r+nv[1]*e;p[2]=o[2]+bz*r+nv[2]*e;
+    // chamber remodelling (volume overload): back to the reference anatomy before the heart's own motion is undone
+    if(remodel)remodel.inverse(p,p);
     let x=p[0],y=p[1],z=p[2];
     if(motion&&contraction){
      // only the heart moves: fade the deformation out over ~12 mm outside the cardiac envelope

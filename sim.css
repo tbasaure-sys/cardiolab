@@ -288,3 +288,25 @@ body.phone-dock .practice-main>.scan .view-card{display:none}
 .lessons .st{display:inline-block;font-size:9px;padding:0 6px;border-radius:8px;color:#eee}
 .lessons .domains dt{font-size:11px;color:var(--muted);margin-top:8px}.lessons .domains dd{margin:2px 0 0;font-size:12px}.lessons .bar{display:inline-block;width:110px;height:6px;background:#1d2a33;border-radius:3px;vertical-align:middle}.lessons .bar i{display:block;height:100%;background:var(--accent);border-radius:3px}
 .lessons #ls-home{display:block;margin-bottom:6px}
+/* Estudio por gravedad (study.mjs) */
+.study-figure{background:#0a1015;border:1px solid var(--line);border-radius:10px;padding:10px 12px 6px;margin-bottom:12px}
+.study-figure[hidden]{display:none}body.study-open .workspace{display:none}
+.st-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px}.st-head b{font-size:14px;color:#e8f2ef}.st-head button{margin-left:auto;padding:2px 9px}
+.st-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.st-grid figure{margin:0;background:#05080b;border:1px solid #1b2730;border-radius:6px;overflow:hidden;display:flex;flex-direction:column}
+.st-grid figcaption{font:11px Consolas,monospace;color:#9fb2bd;padding:5px 8px;border-bottom:1px solid #141e25;letter-spacing:.02em}
+.st-grid canvas{width:100%;height:clamp(170px,calc((100vh - 470px) / 2),300px);display:block}.st-foot{margin:6px 2px 0;color:#6d8290}
+@media(max-width:850px){.st-grid{grid-template-columns:1fr}.st-grid canvas{height:240px}}
+#chd-study .st-actions{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+#chd-study input[type=range]{width:100%;accent-color:var(--accent)}
+.st-bands{position:relative;height:5px;border-radius:3px;overflow:hidden;background:#1d2a33;margin-top:3px}.st-bands i{position:absolute;top:0;height:100%}
+.k-none{background:#3a4a55}.k-small{background:#2f8a78}.k-moderate{background:#c8a24a}.k-large{background:#c0614f}.k-reverse{background:#7a5bd0}
+.st-chip{display:inline-block;font-size:11px;padding:3px 8px;border-radius:10px;color:#fff;line-height:1.4}
+.st-strip dl{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;margin:10px 0;font-size:12px}.st-strip dt{color:var(--muted)}.st-strip dd{margin:0}
+.st-strip dd div{font-size:11px;color:#b9c7cf;margin-top:2px}.st-strip small{display:block;font-size:9px;color:#6d8290}
+.st-bar{position:relative;display:block;height:6px;border-radius:3px;background:#1d2a33;margin:5px 0 2px}.st-bar i{position:absolute;top:0;height:100%}
+.st-bar .b-ok{background:#2f8a78}.st-bar .b-mid{background:#c8a24a}.st-bar .b-hi{background:#c0614f}.st-bar .b-rev{background:#7a5bd0}
+.st-bar b{position:absolute;top:-3px;width:3px;height:12px;margin-left:-1px;background:#fff;border-radius:2px}.st-bar em{position:absolute;top:-3px;width:1px;height:12px;background:#ffe398}
+.st-how p{font-size:11px;line-height:1.5;color:#b9c7cf}
+/* while the study figure is open on a phone, the live image gives way to it */
+body.phone-dock.study-open .practice-main>.scan{display:none}
+body.phone-dock .practice-main>.study-figure{order:1}

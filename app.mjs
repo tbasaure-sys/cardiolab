@@ -25,6 +25,7 @@ import {mountCabina} from './cabina.mjs';
 import {buildValves,sliceValves} from './valves.mjs';
 import {createSketch} from './sketch.mjs';
 import {mountLessons} from './lesson-panel.mjs';
+import {mountStudy} from './study.mjs';
 
 // patient size first: every default depth below is scaled to it
 const PATIENT_KEY='cardiolab.patient.v1';let patient=(()=>{try{return PATIENT_BY_ID[localStorage.getItem(PATIENT_KEY)]}catch{return null}})()||PATIENT_BY_ID.child;setBodyScale(bodyScale(patient));
@@ -33,7 +34,7 @@ let beam=null,planeMap=null,mainValves=null,sketch=createSketch(),manifest,meshe
 let frozen=false,sweeping=false,sweepStart=0,sweepBase=0,recording=null,dragging=false,latestRequestedAt=0,frameCount=0;
 let tutor=null,pediatricDisplay=true,instrument=null,references=null,videoImage=null,echoSource='sim',resumeAfterFreeze=false,imageOnly=false;const display=initialDisplay();
 // simulated B-mode: engine, cardiac phase, cine cache of scan-converted images
-const engine=createSimEngine();engine.set({bodyScale:BODY.k});display.freq=patient.freq;let phase=0,phaseLock=null,blockedWindows=null,lessonPanel=null,beatSpeed=1,heartRate=patient.hr,lastTick=performance.now(),lastPoseChange=0,simQuick=false,simViews=null,coach=null,chd=null,targetPose=null,lesion=null,overlayContours=false;
+const engine=createSimEngine();engine.set({bodyScale:BODY.k});display.freq=patient.freq;let phase=0,study=null,phaseLock=null,blockedWindows=null,lessonPanel=null,beatSpeed=1,heartRate=patient.hr,lastTick=performance.now(),lastPoseChange=0,simQuick=false,simViews=null,coach=null,chd=null,targetPose=null,lesion=null,overlayContours=false;
 const scanCache=new WeakMap();let scanCacheKey='';
 const latencies=[],poseLog=[],controls=[];let lastInputAt=0;let projection={cx:0,cy:30,scale:1},scanWidth=600,scanHeight=400;
 const status=(text,error=false)=>{$('status').textContent=text;$('status').classList.toggle('error',error)};
@@ -559,8 +560,11 @@ engine.ready.then(async()=>{
  const ySign=w=>scanYSign(PRESET_OF_WINDOW[w]||'plax',pediatricDisplay);
  coach=mountCoach({...common,host:$('coach'),setTarget:setTargetPose,ySign,imageOnly:setImageOnly});
  drills=mountDrills({...common,host:$('drills'),ySign,setTgc:setTgcAll,visible:()=>openPanel==='drills'});
- chd=mountCHD({...common,host:$('chd'),onVariant:(spec,reveal)=>{chdVariantKey=spec.id+JSON.stringify(spec.params||{});setLesionMarker(reveal?lesionPosition(spec.id):null);requestSim(false);requestSpectrum()},colorOnLesion:id=>focusColorOn(lesionPosition(id)),cwOnLesion:id=>cwOnLesion(id)});
+ chd=mountCHD({...common,host:$('chd'),study:()=>study,onVariant:(spec,reveal)=>{chdVariantKey=spec.id+JSON.stringify(spec.params||{});setLesionMarker(reveal?lesionPosition(spec.id):null);requestSim(false);requestSpectrum()},colorOnLesion:id=>focusColorOn(lesionPosition(id)),cwOnLesion:id=>cwOnLesion(id)});
  planeMap=mountPlaneMap({view:views[1],targets:simViews,info:VIEW_INFO,onGo:goToView});
+ study=mountStudy({host:chd.host,figure:$('study-figure'),engine,views:simViews,landmarks:()=>engine.landmarks,patient:()=>patient,ySign:w=>scanYSign(w,pediatricDisplay),freq:()=>display.freq,bodyScale:()=>BODY.k,
+  onVariant:spec=>{chdVariantKey=spec.id+JSON.stringify(spec.params||{});setLesionMarker(null);requestSim(false);requestSpectrum()},status:t=>status(t),goLive:p=>{setEchoMode();goToView(p.view||'psaxAV')}});
+ if(window.echoLab)echoLab.study=study;
  {const api=tutorApi();lessonPanel=mountLessons({host:$('lessons'),...api,visible:()=>openPanel==='lessons'});if(window.echoLab)echoLab.tutor=Object.assign(api,{panel:lessonPanel})}
  {let on=false;try{on=localStorage.getItem('cardiolab.planeMap.v1')==='1'}catch{}$('plane-map').checked=on;
   $('plane-map').onchange=()=>{try{localStorage.setItem('cardiolab.planeMap.v1',$('plane-map').checked?'1':'0')}catch{}updateViewCard()}}

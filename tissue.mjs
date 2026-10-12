@@ -129,7 +129,7 @@ export class Tissue{
   const lo=[0,1,2].map(i=>Math.min(a[i],b[i])-radius),hi=[0,1,2].map(i=>Math.max(a[i],b[i])+radius);
   return this.paint((x,y,z)=>{const t=Math.max(0,Math.min(1,((x-a[0])*ab[0]+(y-a[1])*ab[1]+(z-a[2])*ab[2])/L2));return (x-a[0]-t*ab[0])**2+(y-a[1]-t*ab[1])**2+(z-a[2]-t*ab[2])**2<=r2},[lo,hi],to,from);
  }
- reset(){const d=this.fine.data;while(this.edits.length){const c=this.edits.pop();for(let i=c.length-2;i>=0;i-=2)d[c[i]]=c[i+1]}this.effusionMM=0}
+ reset(){const d=this.fine.data;while(this.edits.length){const c=this.edits.pop();for(let i=c.length-2;i>=0;i-=2)d[c[i]]=c[i+1]}this.effusionMM=0;this.remodel=null}
 }
 
 // ------------------------------------------------------------------ cardiac motion (approximate)

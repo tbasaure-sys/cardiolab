@@ -1,6 +1,7 @@
 // Congenital and acquired variants applied to the tissue volume. Worker-safe (no DOM).
 // Each lesion is a reversible label edit on the atlas; sizes are in metres.
 import {LABEL} from './tissue.mjs';
+import {createRemodel,referenceShapes} from './remodel.mjs';
 
 const add=(a,b)=>a.map((v,i)=>v+b[i]),sub=(a,b)=>a.map((v,i)=>v-b[i]),mul=(a,k)=>a.map(v=>v*k);
 const norm=a=>Math.hypot(...a),unit=a=>mul(a,1/(norm(a)||1)),mid=(a,b)=>a.map((v,i)=>(v+b[i])/2);
@@ -69,6 +70,11 @@ function vsd(tissue,c,radius){let n=tissue.sphere(c,radius,LABEL.LV_BLOOD,VENTRI
 
 export function applyVariant(tissue,spec){
  const v=VARIANT_BY_ID[spec?.id]||VARIANT_BY_ID.normal,lm=tissue.landmarks,p={...(v.params||{}),...(spec?.params||{})};let changed=0;
+ // shunt haemodynamics (shunt-model.mjs): chambers enlarged by a reversible warp fitted on the reference anatomy, and
+ // the RV wall thickened when it works near systemic pressure
+ const shapes=referenceShapes(tissue);
+ if(p.hemo?.rvWallMM>.3)changed+=applyVariant(tissue,{id:'rvh',params:{mm:p.hemo.rvWallMM}}).changed;
+ tissue.remodel=p.hemo?createRemodel(shapes,p.hemo.gains):null;
  const long=unit(sub(lm.mitralValve,lm.lvApexCavity));
  switch(v.id){
   case 'asd2':changed=tissue.sphere(lm.asdSecundum,p.radius,LABEL.LA_BLOOD,ATRIAL);break;

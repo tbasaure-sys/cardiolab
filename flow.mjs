@@ -86,6 +86,8 @@ export function buildFlow(tissue){
     case 'PA':if(hasI)a=.9*S*(.6+.4*near(dIn[v],35));break;
     case 'CAVA':case 'PV':if(hasO)b=.3+.25*S+.2*E;break;
    }
+   // shunt haemodynamics (shunt-model.mjs): more flow through some compartments, in or out
+   const fs=flow.scale;if(fs){const si=fs[c.id],so=fs[c.id+'out']??si;if(si!=null)a*=si;if(so!=null)b*=so}
    // near the valves the stream converges on the orifice (outflow) or follows the inflow axis (AV valves)
    if(b&&(c.id==='LV'||c.id==='RV')){const vc=c.id==='LV'?lm.aorticValve:lm.pulmonaryValve;steer(go,-1,[vc[0]-x,vc[1]-y,vc[2]-z],.022)}
    if(a&&(c.id==='LV'||c.id==='RV')){const ax=c.id==='LV'?axis.mitral:axis.tricuspid;steer(gi,1,ax.n,.03,Math.hypot(x-ax.c[0],y-ax.c[1],z-ax.c[2]))}
@@ -93,14 +95,16 @@ export function buildFlow(tissue){
    if(a){out[0]+=gi[0]*a;out[1]+=gi[1]*a;out[2]+=gi[2]*a}
    if(b){out[0]-=go[0]*b;out[1]-=go[1]*b;out[2]-=go[2]*b}
   }
-  // lesion jets (shunts, stenoses) dominate where present
+  // lesion jets (shunts, stenoses) dominate where present: in a jet's core its velocity replaces the chamber flow
+  let jx=0,jy=0,jz=0,core=0;
   for(const j of flow.jets){
    const q0=x-j.c[0],q1=y-j.c[1],q2=z-j.c[2],al=q0*j.d[0]+q1*j.d[1]+q2*j.d[2];if(al<-j.back||al>j.len)continue;
    const r2=(q0-al*j.d[0])**2+(q1-al*j.d[1])**2+(q2-al*j.d[2])**2,w=j.w0+j.spread*Math.max(0,al);if(r2>9*w*w)continue;
    const lab=data[v*2];if(!(ci||j.labels.has(lab)))continue;blood=true;
-   const mag=j.peak*j.timing(t)*Math.exp(-r2/(w*w))*(al<0?Math.exp(al/(j.back*.5)):Math.exp(-al/j.decay));
-   out[0]+=j.d[0]*mag;out[1]+=j.d[1]*mag;out[2]+=j.d[2]*mag;
+   const prof=Math.exp(-r2/(w*w))*(al<0?Math.exp(al/(j.back*.5)):Math.exp(-al/j.decay)),mag=j.peak*j.timing(t)*prof;
+   jx+=j.d[0]*mag;jy+=j.d[1]*mag;jz+=j.d[2]*mag;core=Math.max(core,prof);
   }
+  if(core>0){const keep=1-Math.min(1,core);out[0]=out[0]*keep+jx;out[1]=out[1]*keep+jy;out[2]=out[2]*keep+jz}
   return blood;
  };
  return flow;
@@ -121,15 +125,17 @@ export function lesionJets(tissue,spec,size=1){
  const lm=tissue.landmarks,id=spec?.id;const L=LABEL;const jets=[];
  const across=(p,from,to,r=.016)=>{const a=centroidNear(tissue,from,p,r),b=centroidNear(tissue,to,p,r);return a&&b?b.map((v,i)=>v-a[i]):null};
  const radius=spec?.params?.radius||.005;
+ const H=spec?.params?.hemo; // velocities from the shunt model when present (m/s, signed: negative = right → left)
  if(id==='vsdpm'||id==='vsdm'){const p=id==='vsdpm'?lm.vsdPerimembranous:lm.vsdMuscular,d=across(p,[L.LV_BLOOD],[L.RV_BLOOD]);
   // small, restrictive defects: high velocity (mosaic); large ones lower velocity
-  if(d)jets.push(jet(p,d,{peak:Math.max(1.8,Math.min(4.8,4.8-(radius-.004)*520)),timing:holosystolic,w0:Math.max(.0015,radius*.45),len:.035}))}
- if(id==='asd2'||id==='asd1'){const p=id==='asd2'?lm.asdSecundum:lm.asdPrimum,d=across(p,[L.LA_BLOOD],[L.RA_BLOOD]);if(d)jets.push(jet(p,d,{peak:1.05,timing:atrial,w0:Math.max(.002,radius*.55),len:.03,spread:.2}))}
+  if(d)jets.push(jet(p,d,{peak:H?H.jet.sys:Math.max(1.8,Math.min(4.8,4.8-(radius-.004)*520)),timing:holosystolic,w0:Math.max(.0015,radius*.45),len:.035}))}
+ if(id==='asd2'||id==='asd1'){const p=id==='asd2'?lm.asdSecundum:lm.asdPrimum,d=across(p,[L.LA_BLOOD],[L.RA_BLOOD]);if(d)jets.push(jet(p,d,{peak:H?H.jet.sys:1.05,timing:atrial,w0:Math.max(.002,radius*.55),len:.03,spread:.2}))}
  if(id==='avsd'){const d1=across(lm.asdPrimum,[L.LA_BLOOD],[L.RA_BLOOD]);if(d1)jets.push(jet(lm.asdPrimum,d1,{peak:1.0,timing:atrial,w0:.004,len:.028,spread:.2}));
   const mv=lm.mitralValve,tv=lm.tricuspidValve,crux=mv.map((v,i)=>(v+tv[i])/2),d2=across(crux,[L.LV_BLOOD],[L.RV_BLOOD],.02);if(d2)jets.push(jet(crux,d2,{peak:2.2,timing:systolic,w0:.004,len:.03}))}
- if(id==='pda'){const a=lm.ductAortic,b=lm.ductPulmonary,d=b.map((v,i)=>v-a[i]);jets.push(jet(a,d,{peak:3.2,timing:continuous,w0:.0022,len:Math.hypot(...d)+.006,spread:.15,decay:.035}));
+ if(id==='pda'){const a=lm.ductAortic,b=lm.ductPulmonary,d=b.map((v,i)=>v-a[i]),tm=H?t=>(H.jet.dia+(H.jet.sys-H.jet.dia)*waves.S(t))/Math.max(.2,Math.abs(H.jet.sys)):continuous,pk=H?Math.max(.2,Math.abs(H.jet.sys)):3.2;
+  jets.push(jet(a,d,{peak:pk,timing:tm,w0:.0022,len:Math.hypot(...d)+.006,spread:.15,decay:.035}));
   // on entering the pulmonary artery the ductal jet runs back along the main PA toward the pulmonary valve (red in PSAX)
-  jets.push(jet(b,lm.pulmonaryValve.map((v,i)=>v-b[i]),{peak:3.0,timing:continuous,w0:.003,len:.04,back:.002,spread:.14,decay:.045}))}
+  jets.push(jet(b,lm.pulmonaryValve.map((v,i)=>v-b[i]),{peak:pk*.94,timing:tm,w0:.003,len:Math.max(.01,Math.hypot(...lm.pulmonaryValve.map((v,i)=>v-b[i]))-.003),back:.002,spread:.14,decay:.045}))}
  if(id==='coarct'){const c=centroidNear(tissue,[L.AO_BLOOD,L.VESSEL_WALL],lm.ductAortic,.012)||lm.ductAortic,d=c.map((v,i)=>v-lm.archTop[i]);jets.push(jet(c,d,{peak:3.0,timing:coarct,w0:.0025,len:.035,back:.006,spread:.1,decay:.03}))}
  if(id==='ebstein'){
   // tricuspid regurgitation from the displaced coaptation, inside the RV, back toward the right atrium; low velocity
