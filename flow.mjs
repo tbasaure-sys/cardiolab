@@ -4,11 +4,9 @@
 // phase-dependent amplitudes (E/A waves, ejection). Congenital lesions add shunt / stenosis jets.
 import {LABEL} from './tissue.mjs';
 
-const asym=(t,a,p,b)=>{t=((t%1)+1)%1;if(t<=a||t>=b)return 0;return t<p?Math.sin(Math.PI/2*(t-a)/(p-a))**2:Math.cos(Math.PI/2*(t-p)/(b-p))**1.6};
-export const waves={
- // asymmetric, like real flow: fast acceleration, slower deceleration (E deceleration time ≈ 140 ms at 90 lpm)
- E:t=>asym(t,.395,.465,.635),A:t=>asym(t,.82,.885,.97),S:t=>asym(t,.06,.15,.34)
-};
+// E/A/S waves at the patient's heart rate (cycle.mjs); `shapes` take the canonical model phase
+import {waves,shapes,modelPhase} from './cycle.mjs';
+export {waves};
 const unit=a=>{const l=Math.hypot(...a)||1;return a.map(v=>v/l)};
 
 // compartments: labels (voxels that carry this compartment's field), inflow/outflow seed rules
@@ -114,12 +112,11 @@ export function buildFlow(tissue){
 function centroidNear(tissue,labels,p,r){return tissue.centroid(labels,p,r)}
 const BLOODISH=new Set([LABEL.LV_BLOOD,LABEL.RV_BLOOD,LABEL.LA_BLOOD,LABEL.RA_BLOOD,LABEL.AO_BLOOD,LABEL.PA_BLOOD]);
 function jet(c,d,{peak,timing,len=.03,back=.004,w0=.003,spread=.12,decay=.02}){return {c,d:unit(d),peak,timing,len,back,w0,spread,decay,labels:BLOODISH}}
-const cyc=t=>((t%1)+1)%1;
 // restrictive VSD: holosystolic, from isovolumic contraction to isovolumic relaxation, rounded plateau
-const holosystolic=t=>{t=cyc(t);if(t<.02||t>.4)return .05;const up=Math.min(1,(t-.02)/.06),down=Math.min(1,(.4-t)/.06);return .05+.95*Math.sin(Math.PI/2*up)*Math.sin(Math.PI/2*down)*(.88+.12*waves.S(t))};
+const holosystolic=t=>{t=modelPhase(t);if(t<.02||t>.4)return .05;const up=Math.min(1,(t-.02)/.06),down=Math.min(1,(.4-t)/.06);return .05+.95*Math.sin(Math.PI/2*up)*Math.sin(Math.PI/2*down)*(.88+.12*shapes.S(t))};
 // dynamic outflow obstruction: late-peaking "dagger"
-const lateSystolic=t=>{t=cyc(t);if(t<.06||t>.36)return 0;const x=(t-.06)/.3;return x<.78?(x/.78)**2.2:Math.cos(Math.PI/2*(x-.78)/.22)};
-const systolic=t=>waves.S(t)+.08,continuous=t=>.55+.35*waves.S(t)+.1*waves.E(t),atrial=t=>.35+.4*waves.E(t)+.35*waves.A(t)+.2*waves.S(t),coarct=t=>waves.S(t)+.25*Math.max(0,1-(((t-.34)%1+1)%1)/.4);
+const lateSystolic=t=>{t=modelPhase(t);if(t<.06||t>.36)return 0;const x=(t-.06)/.3;return x<.78?(x/.78)**2.2:Math.cos(Math.PI/2*(x-.78)/.22)};
+const systolic=t=>waves.S(t)+.08,continuous=t=>.55+.35*waves.S(t)+.1*waves.E(t),atrial=t=>.35+.4*waves.E(t)+.35*waves.A(t)+.2*waves.S(t),coarct=t=>waves.S(t)+.25*Math.max(0,1-(((modelPhase(t)-.34)%1+1)%1)/.4);
 
 export function lesionJets(tissue,spec,size=1){
  const lm=tissue.landmarks,id=spec?.id;const L=LABEL;const jets=[];

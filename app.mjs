@@ -26,6 +26,8 @@ import {buildValves,sliceValves} from './valves.mjs';
 import {createSketch} from './sketch.mjs';
 import {mountLessons} from './lesson-panel.mjs';
 import {mountStudy} from './study.mjs';
+import {mountPhysics} from './physics.mjs';
+import {ecgValue,setHeartRate} from './cycle.mjs';
 
 // patient size first: every default depth below is scaled to it
 const PATIENT_KEY='cardiolab.patient.v1';let patient=(()=>{try{return PATIENT_BY_ID[localStorage.getItem(PATIENT_KEY)]}catch{return null}})()||PATIENT_BY_ID.child;setBodyScale(bodyScale(patient));
@@ -34,7 +36,7 @@ let beam=null,planeMap=null,mainValves=null,sketch=createSketch(),manifest,meshe
 let frozen=false,sweeping=false,sweepStart=0,sweepBase=0,recording=null,dragging=false,latestRequestedAt=0,frameCount=0;
 let tutor=null,pediatricDisplay=true,instrument=null,references=null,videoImage=null,echoSource='sim',resumeAfterFreeze=false,imageOnly=false;const display=initialDisplay();
 // simulated B-mode: engine, cardiac phase, cine cache of scan-converted images
-const engine=createSimEngine();engine.set({bodyScale:BODY.k});display.freq=patient.freq;let phase=0,study=null,phaseLock=null,blockedWindows=null,lessonPanel=null,beatSpeed=1,heartRate=patient.hr,lastTick=performance.now(),lastPoseChange=0,simQuick=false,simViews=null,coach=null,chd=null,targetPose=null,lesion=null,overlayContours=false;
+const engine=createSimEngine();engine.set({bodyScale:BODY.k,hr:patient.hr});setHeartRate(patient.hr);display.freq=patient.freq;let phase=0,study=null,phaseLock=null,blockedWindows=null,lessonPanel=null,beatSpeed=1,heartRate=patient.hr,lastTick=performance.now(),lastPoseChange=0,simQuick=false,simViews=null,coach=null,chd=null,targetPose=null,lesion=null,overlayContours=false;
 const scanCache=new WeakMap();let scanCacheKey='';
 const latencies=[],poseLog=[],controls=[];let lastInputAt=0;let projection={cx:0,cy:30,scale:1},scanWidth=600,scanHeight=400;
 const status=(text,error=false)=>{$('status').textContent=text;$('status').classList.toggle('error',error)};
@@ -203,7 +205,7 @@ scan.addEventListener('click',e=>{
 });
 // ---------------------------------------------------------------- simulated B-mode display
 function simProjection(w,h,p,ySign){const baseScale=Math.min((w-45)/(2*p.depth*Math.sin(rad(p.sector/2))),(h-72)/p.depth),scale=baseScale*display.zoom,cy=(ySign===1?28:h-44)+ySign*p.depth*.55*(baseScale-scale);return {cx:w/2,cy,scale,ySign}}
-function ecgValue(t){const g=(c,w,a)=>{const d=((t-c+.5)%1+1)%1-.5;return a*Math.exp(-d*d/(2*w*w))};return g(.9,.022,.13)+g(-.014,.005,-.12)+g(0,.007,1)+g(.018,.007,-.28)+g(.3,.04,.26)}
+// ECG from the beat timing at the patient's heart rate (cycle.mjs)
 function drawECG(x,y,w,h){ctx.save();ctx.strokeStyle='#2fe07a';ctx.lineWidth=1.2;ctx.beginPath();const span=2;for(let i=0;i<=w;i+=2){const t=phase-span+span*i/w,v=ecgValue(t);const yy=y+h*.72-v*h*.62;i?ctx.lineTo(x+i,yy):ctx.moveTo(x+i,yy)}ctx.stroke();
  ctx.fillStyle='#2fe07a';ctx.beginPath();ctx.arc(x+w,y+h*.72-ecgValue(phase)*h*.62,2.4,0,Math.PI*2);ctx.fill();ctx.font='10px Consolas';ctx.textAlign='right';ctx.fillText(`FC ${heartRate}${beatSpeed!==1?` · ${String(beatSpeed).replace('.',',')}×`:''}`,x+w,y+8);
  const sys=phase<.36;ctx.textAlign='left';ctx.fillStyle=sys?'#ffb454':'#7fb6ff';if(engine.params.beating)ctx.fillText(sys?'SÍSTOLE':'DIÁSTOLE',x,y+8);ctx.restore()}
@@ -439,7 +441,7 @@ function addCaliper(x,y){if(realEcho()||!active||active.id!==revision||!inSector
 // caliper distance in physical mm; with a named measurement, its PHN Z-score for this patient's BSA
 function caliperText(){const mm=distanceMM(...display.points)*BODY.k,k=display.measureKind,z=k?zScore(k,mm/10,bsaHaycock(patient.weight,patient.height)):null;return `${mm.toFixed(1).replace('.',',')} mm${z!=null?` · ${PHN[k].name} ${formatZ(z)} (${PHN_SOURCE.label})`:''}`}
 function setPatient(id){const p=PATIENT_BY_ID[id];if(!p)return;patient=p;try{localStorage.setItem(PATIENT_KEY,id)}catch{}
- setBodyScale(bodyScale(p));engine.set({bodyScale:BODY.k});heartRate=p.hr;display.freq=p.freq;display.points=[];crosshair=null;updatePatientUI();
+ setBodyScale(bodyScale(p));engine.set({bodyScale:BODY.k,hr:p.hr});setHeartRate(p.hr);heartRate=p.hr;display.freq=p.freq;display.points=[];crosshair=null;updatePatientUI();
  if(ready&&!frozen){stopSweep();state.depth=defaultState(state.preset).depth;syncControls();requestSlice()}else renderScan();
  dop.key='';requestSpectrum();instrument?.update();status(`Paciente: ${describePatient(p)}`)}
 function updatePatientUI(){$('patient').value=patient.id;$('patient-info').textContent=`${patient.age} · SC ${bsaHaycock(patient.weight,patient.height).toFixed(2).replace('.',',')} m² · FC ${patient.hr}`;$('patient').title=describePatient(patient)}
@@ -504,16 +506,16 @@ function updateViewCard(){const el=$('view-card'),hide=imageOnly||openPanel==='d
 function lesionPosition(id){const lm=engine.landmarks,k=LESION_AT[id];if(lm&&id==='lvh')return lm.aorticValve.map((v,i)=>v+(lm.mitralValve[i]-v)*.35); // subaortic outflow, where the septal bulge narrows it
  if(lm&&id==='ebstein'){const tv=lm.tricuspidValve,ax=lm.rvApex.map((v,i)=>v-tv[i]),l=Math.hypot(...ax);return tv.map((v,i)=>v+ax[i]/l*.019)} // displaced tricuspid coaptation
  if(!lm||!k)return null;if(Array.isArray(k))return k.map(n=>lm[n]).reduce((a,b)=>a.map((v,i)=>(v+b[i])/2));return lm[k]}
-const panels={lessons:$('lessons'),coach:$('coach'),drills:$('drills'),chd:$('chd')};let drills=null;let openPanel=null;
+const panels={lessons:$('lessons'),coach:$('coach'),drills:$('drills'),chd:$('chd'),physics:$('physics')};let drills=null,physics=null;let openPanel=null;
 function showPanel(name){
  if(name!=='course'&&!$('tutor').hidden)$('course-toggle').click();
  for(const [k,el] of Object.entries(panels)){const on=k===name&&openPanel!==name;el.hidden=!on;$('tab-'+k).classList.toggle('active',on);$('tab-'+k).setAttribute('aria-expanded',String(on))}
  const leaving=openPanel;openPanel=name==='course'||openPanel===name?null:name;
- if(leaving==='coach'&&openPanel!=='coach')coach?.stop();if(leaving==='drills'&&openPanel!=='drills')drills?.stop();if(leaving==='chd'&&openPanel!=='chd')chd?.leave();if(openPanel==='chd')chd?.enter();if(leaving==='lessons'&&openPanel!=='lessons')lessonPanel?.leave();
+ if(leaving==='coach'&&openPanel!=='coach')coach?.stop();if(leaving==='drills'&&openPanel!=='drills')drills?.stop();if(leaving==='chd'&&openPanel!=='chd')chd?.leave();if(openPanel==='chd')chd?.enter();if(leaving==='lessons'&&openPanel!=='lessons')lessonPanel?.leave();if(leaving==='physics'&&openPanel!=='physics')physics?.leave();if(openPanel==='physics')physics?.enter();
  $('practice-shell').classList.toggle('with-tutor',!!openPanel||!$('tutor').hidden);$('practice-shell').classList.toggle('with-drills',openPanel==='drills');updateViewCard();
 }
 for(const k of Object.keys(panels))$('tab-'+k).onclick=()=>{if(!coach||!chd||!drills||!lessonPanel){status('Preparando el simulador…');return}showPanel(k)};
-$('course-toggle').addEventListener('click',()=>{if(openPanel){for(const el of Object.values(panels))el.hidden=true;for(const k of Object.keys(panels))$('tab-'+k).classList.remove('active');if(openPanel==='coach')coach?.stop();if(openPanel==='drills')drills?.stop();if(openPanel==='chd')chd?.leave();if(openPanel==='lessons')lessonPanel?.leave();$('practice-shell').classList.remove('with-drills');openPanel=null}},true);
+$('course-toggle').addEventListener('click',()=>{if(openPanel){for(const el of Object.values(panels))el.hidden=true;for(const k of Object.keys(panels))$('tab-'+k).classList.remove('active');if(openPanel==='coach')coach?.stop();if(openPanel==='drills')drills?.stop();if(openPanel==='chd')chd?.leave();if(openPanel==='lessons')lessonPanel?.leave();if(openPanel==='physics')physics?.leave();$('practice-shell').classList.remove('with-drills');openPanel=null}},true);
 $('sim-overlay').onchange=()=>{overlayContours=$('sim-overlay').checked};
 $('beat-speed').onchange=()=>{const v=$('beat-speed').value;if(v==='off'){engine.set({beating:false});beatSpeed=0}else{engine.set({beating:true});beatSpeed=Number(v)}requestSim(false)};
 $('sources-top').onclick=()=>$('sources').click();
@@ -565,6 +567,9 @@ engine.ready.then(async()=>{
  study=mountStudy({host:chd.host,figure:$('study-figure'),engine,views:simViews,landmarks:()=>engine.landmarks,patient:()=>patient,ySign:w=>scanYSign(w,pediatricDisplay),freq:()=>display.freq,bodyScale:()=>BODY.k,
   onVariant:spec=>{chdVariantKey=spec.id+JSON.stringify(spec.params||{});setLesionMarker(null);requestSim(false);requestSpectrum()},status:t=>status(t),goLive:p=>{setEchoMode();goToView(p.view||'psaxAV')}});
  if(window.echoLab)echoLab.study=study;
+ physics=mountPhysics({host:$('physics'),figure:$('physics-figure'),engine,views:simViews,landmarks:()=>engine.landmarks,patient:()=>patient,ySign:w=>scanYSign(w,pediatricDisplay),freq:()=>display.freq,bodyScale:()=>BODY.k,status:t=>status(t),
+  normal:async()=>{if(chdVariantKey&&!chdVariantKey.startsWith('normal')){await engine.setVariant({id:'normal'});chdVariantKey='normal{}';setLesionMarker(null);requestSim(false);requestSpectrum()}}});
+ if(window.echoLab)echoLab.physics=physics;
  {const api=tutorApi();lessonPanel=mountLessons({host:$('lessons'),...api,visible:()=>openPanel==='lessons'});if(window.echoLab)echoLab.tutor=Object.assign(api,{panel:lessonPanel})}
  {let on=false;try{on=localStorage.getItem('cardiolab.planeMap.v1')==='1'}catch{}$('plane-map').checked=on;
   $('plane-map').onchange=()=>{try{localStorage.setItem('cardiolab.planeMap.v1',$('plane-map').checked?'1':'0')}catch{}updateViewCard()}}

@@ -151,17 +151,8 @@ export class Tissue{
 }
 
 // ------------------------------------------------------------------ cardiac motion (approximate)
-// Phase 0 = end-diastole (QRS). Systole ≈ 0–0.36, rapid filling 0.40–0.55, diastasis, atrial kick 0.82–0.95.
-export function ventricularContraction(t){
- t=((t%1)+1)%1;const s=t<.36?Math.sin(Math.PI*t/.72)**2:t<.55?Math.cos(Math.PI*(t-.36)/.38)**2*(t<.55?1:0):0;
- const kick=t>.8&&t<.97?-.12*Math.sin(Math.PI*(t-.8)/.17):0;return Math.max(-.15,s+kick);
-}
-export function valveOpening(t,kind){
- t=((t%1)+1)%1;const ramp=(a,b,c,d)=>t<a||t>d?0:t<b?(t-a)/(b-a):t<c?1:(d-t)/(d-c);
- if(kind==='semilunar')return ramp(.05,.09,.30,.35);
- // AV valves: E wave, partial closure in diastasis, A wave
- return Math.max(ramp(.38,.44,.52,.64)*1,ramp(.58,.66,.76,.8)*.45,ramp(.8,.85,.9,.97)*.8);
-}
+// Phase = fraction of the R–R interval from the QRS; the timing at the patient's heart rate lives in cycle.mjs.
+export {ventricularContraction,valveOpening} from './cycle.mjs';
 export class HeartMotion{
  constructor(landmarks){
   const A=landmarks.lvApex,mv=landmarks.mitralValve,tv=landmarks.tricuspidValve,base=[0,1,2].map(i=>(mv[i]+tv[i])/2);
@@ -173,7 +164,7 @@ export class HeartMotion{
   // epicardium the motion fades out over `fade`. A small global radial component moves the RV and atria.
   const T=landmarks.lvEndo;this.radial=T?.04:.16;
   if(T){const from=T.from,to=T.to,d=[0,1,2].map(i=>to[i]-from[i]),l=Math.hypot(...d),a=d.map(v=>v/l),e1=T.e1,e2=[a[1]*e1[2]-a[2]*e1[1],a[2]*e1[0]-a[0]*e1[2],a[0]*e1[1]-a[1]*e1[0]];
-   this.lv={from,a,e1,e2,L:l,NL:T.levels,NA:T.angles,cen:Float32Array.from(T.centre),ri:Float32Array.from(T.ri),re:Float32Array.from(T.re),endo:.32,fade:.008}}
+   this.lv={from,a,e1,e2,L:l,NL:T.levels,NA:T.angles,cen:Float32Array.from(T.centre),ri:Float32Array.from(T.ri),re:Float32Array.from(T.re),endo:.37,fade:.008}}
  }
  // LV wall thickening: current position (after the global motion is undone) → reference, in place on q
  _wall(q,s){const T=this.lv,f=T.from,x=q[0]-f[0],y=q[1]-f[1],z=q[2]-f[2],l=x*T.a[0]+y*T.a[1]+z*T.a[2];if(l<0||l>T.L)return;

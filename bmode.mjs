@@ -132,8 +132,14 @@ export function createBMode(){
   // yields many overlapping segments that must not pile up into a blob)
   if(overlays.length){
    if(!ovb||ovb.length<N)ovb=new Float32Array(N);ovb.fill(0,0,N);
+   const lam=.00154/freq/K; // wavelength in atlas units (phase of point reflectors)
    for(const ov of overlays){
     const segs=ov.segments,str=ov.strength??.02,tt=ov.t;
+    // ideal point reflectors (resolution phantom): equal amplitude, the physical round-trip phase 4πr/λ, written once
+    // into the echo field so that what the image shows of them is the system's point-spread function
+    if(ov.points){for(let i=0;i<segs.length;i+=4){const x=(segs[i]+segs[i+2])/2,y=(segs[i+1]+segs[i+3])/2,r=Math.hypot(x,y);if(y<=0||r>=depth)continue;
+      const jf=(Math.atan2(x,y)+sector/2)/sector*lines-.5,j=Math.round(jf),k=Math.round(r/dr-.5);if(j<0||j>=lines||k<0||k>=samples)continue;
+      const idx=j*samples+k,amp=str*trans[idx],ph=4*Math.PI*r/lam;re[idx]+=amp*Math.cos(ph);im[idx]+=amp*Math.sin(ph)}continue}
     for(let i=0;i<segs.length;i+=4){
      // leaflets are not uniform sheets: the body is thin and less bright, the free edge (coaptation zone, chordal
      // insertions) thicker and brighter; plus irregular brighter spots
@@ -206,7 +212,9 @@ export function createBMode(){
     w=((w+1)%2+2)%2-1;colorOut[j*samples+k]=Math.max(-127,Math.min(127,Math.round(w*127)));
    }
   }
-  return {lines,samples,depth,sector:pose.sector,data:out,lungLines:lungHits,color:colorOut,colorRoi:cv?{j0:cj0,j1:cj1,k0:ck0,k1:ck1}:null};
+  // linear envelope after the depth gain (opts.envelope): for measurements in dB (physics chapters, phantom)
+  let envelope=null;if(opts.envelope){envelope=new Float32Array(N);for(let j=0;j<lines;j++)for(let k=0;k<samples;k++){const i=j*samples+k;envelope[i]=E[i]*COMP[k]}}
+  return {lines,samples,depth,sector:pose.sector,data:out,envelope,lungLines:lungHits,color:colorOut,colorRoi:cv?{j0:cj0,j1:cj1,k0:ck0,k1:ck1}:null};
  }
  return {render};
 }
