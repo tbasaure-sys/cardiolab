@@ -3,9 +3,9 @@
 // Modes: demonstration (deterministic timeline, seek), practice with tiered hints, exam without aids (seeded start,
 // case and failed window). Results separate acquisition, recognition, reasoning and aid use; the usage log stays in
 // this browser (no personal data) and can be exported as JSON.
-import {SCHEMA,STAGES,LAYERS,DOMAINS,VERBS,compileLesson,seek,resolveState,evaluateGoal,evaluateSufficiency,scoreAttempt,recommend,
+import {SCHEMA,STAGES,LAYERS,DOMAINS,VERBS,lessonForSweep,compileLesson,seek,resolveState,evaluateGoal,evaluateSufficiency,scoreAttempt,recommend,
  lessonForView,withCase,pickCase,shuffled,rng,hashString,lessonContext,validateLesson} from './lesson-engine.mjs';
-import {VIEW_INFO,suggestManeuver} from './views.mjs';
+import {VIEW_INFO,SWEEPS,suggestManeuver} from './views.mjs';
 import {poseFromState} from './geometry.mjs';
 
 const LOG_KEY='cardiolab.tutor.log.v1',PREF_KEY='cardiolab.tutor.prefs.v1';
@@ -34,7 +34,7 @@ export function mountLessons(api){
   for(const [id,l] of Object.entries(lessons)){const e=validateLesson(l,{sources:sources.sources});if(e.length)console.warn('Lección',id,e)}
   catalog={index,sources:sources.sources,coverage,lessons};home();
  })().catch(e=>{host.innerHTML=`<span class="eyebrow">TUTOR</span><p class="pitfall">No se pudieron cargar las lecciones: ${esc(e.message)}</p>`});
- const getLesson=id=>id.startsWith('vista-')?lessonForView(id.slice(6),{coverage:catalog.coverage}):catalog.lessons[id];
+ const getLesson=id=>id.startsWith('vista-')?lessonForView(id.slice(6),{coverage:catalog.coverage}):id.startsWith('barrido-')?lessonForSweep(id,ctx):catalog.lessons[id];
 
  // ---------------------------------------------------------------- home: entry points
  function home(){
@@ -48,6 +48,7 @@ export function mountLessons(api){
   <div class="seg" role="radiogroup" aria-label="Modo">${Object.entries(MODE_NAMES).map(([k,v])=>`<button data-mode="${k}" class="${prefs.mode===k?'active':''}" role="radio" aria-checked="${prefs.mode===k}">${v.split(' ')[0]}</button>`).join('')}</div>
   <p class="micro" id="ls-mode-note">${modeNote(prefs.mode)}</p>
   <h2>Recorridos</h2>${index.tours.map(t=>`<details class="tour"><summary>${esc(t.title)} <span class="micro">${t.lessons.length} lecciones</span></summary>${t.lessons.map(id=>item(lessons[id])).join('')}</details>`).join('')}
+  <details class="tour"><summary>Barridos guiados <span class="micro">${SWEEPS.length}</span></summary>${SWEEPS.map(w=>`<button class="lesson-item" data-open="${w.id}"><b>${esc(w.name)}</b><span>${esc(w.how)}</span></button>`).join('')}</details>
   <label class="field"><span>Quiero ver esta estructura</span><select id="ls-structure"><option value="">Elige una estructura…</option>${structures.map(s=>`<option>${esc(s)}</option>`).join('')}</select></label><div id="ls-structure-out"></div>
   <label class="field"><span>Quiero responder esta pregunta</span><select id="ls-question"><option value="">Elige una pregunta…</option>${questions.map(([q,id],i)=>`<option value="${i}">${esc(q)}</option>`).join('')}</select></label>
   <label class="field"><span>No consigo esta vista</span><select id="ls-view"><option value="">Elige la vista…</option>${Object.entries(VIEW_INFO).map(([k,v])=>`<option value="${k}">${esc(v.name)}</option>`).join('')}</select></label><div id="ls-view-out"></div>

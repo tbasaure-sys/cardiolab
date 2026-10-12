@@ -6,7 +6,7 @@ import {poseFromState,defaultState,physical,BODY} from './geometry.mjs';
 import {scanConvert} from './bmode.mjs';
 
 const KEY='cardiolab.echo.coach.v1';
-const GROUPS=[['Paraesternal',['plax','psaxAV','psaxMV','psaxPM']],['Apical',['a4c','a5c','a2c','a3c']],['Subcostal',['sc4c','scSAX']],['Supraesternal',['ssn']]];
+const GROUPS=[['Paraesternal',['plax','plaxRVIn','plaxRVOut','psaxAV','psaxMV','psaxPM','psaxApex']],['Paraesternal alto',['psaxBranch','ductal']],['Apical',['a4c','a4cRV','a4cCS','a5c','a2c','a3c']],['Subcostal',['sc4c','scLVOT','scSAX','scBicaval','scRVOT']],['Supraesternal',['ssn','ssnSAX']]].map(([g,ids])=>[g,ids.filter(id=>VIEW_INFO[id])]);
 const PRESET_OF={plax:'plax',psax:'psax',apical:'apical',subcostal:'subcostal',ssn:'ssn'};
 const TEST='@test'; // suffix of best-result keys earned in test mode
 const fmt=s=>`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
