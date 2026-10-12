@@ -34,6 +34,8 @@
   {"id": "volumenes-vi", "status": "pendiente", "detail": "Sin trazado de volúmenes."},
   {"id": "presion-arterial", "status": "pendiente", "detail": "Sin presión arterial simulada: los cálculos de Bernoulli son ejercicios de razonamiento."},
   {"id": "repercusion-ductal", "status": "pendiente", "detail": "Sin modo M ni Doppler de la rama pulmonar izquierda, la aorta posductal, las arterias mesentéricas o cerebrales: no se puede valorar la repercusión hemodinámica de un ductus."},
+  {"id": "fisica-fantoma", "status": "representado", "detail": "Resolución axial y lateral (−6 dB), foco, profundidad útil y contraste de quistes medidos sobre un fantoma escaneado por el mismo motor (phantom.mjs, physics.mjs). Mide el simulador, no un equipo real."},
+  {"id": "ciclo-frecuencia", "status": "parcial", "detail": "Duración del periodo con válvulas AV cerradas según Sarnari 2009; diástasis y fusión E/A resultan de un supuesto del modelo (llenado rápido y contracción auricular escalados como la sístole). Volumen del VI medido sobre el modelo en movimiento (FE 56 %); volúmenes absolutos del atlas adulto escalado."},
   {"id": "estudio-gravedad", "status": "parcial", "detail": "Qp/Qs, presiones y dilataciones salen de un modelo docente de circuito con supuestos declarados (study.mjs, shunt-model.mjs); las bandas son del modelo, no umbrales clínicos. Sin Z-scores de cavidades: solo se verificó el coeficiente PHN del anillo mitral; el tamaño se da como % sobre el normal del mismo paciente. El atlas 3D y el corte anatómico no muestran la dilatación (solo la imagen eco)."}
  ]
 }

@@ -310,3 +310,17 @@ body.phone-dock .practice-main>.scan .view-card{display:none}
 /* while the study figure is open on a phone, the live image gives way to it */
 body.phone-dock.study-open .practice-main>.scan{display:none}
 body.phone-dock .practice-main>.study-figure{order:1}
+/* Física y fisiología (physics.mjs) */
+body.physics-open .workspace{display:none}body.phone-dock.physics-open .practice-main>.scan{display:none}body.phone-dock .practice-main>.physics-figure{order:1}
+.ph-grid{display:grid;grid-template-columns:repeat(var(--cols,2),minmax(0,1fr));gap:8px}.ph-grid figure{margin:0;background:#05080b;border:1px solid #1b2730;border-radius:6px;overflow:hidden;display:flex;flex-direction:column}
+.ph-grid figure{position:relative}.ph-grid .ph-cursor{position:absolute;left:0;width:1.5px;background:#ffe398;pointer-events:none;will-change:transform}.ph-grid figure.span-2{grid-column:span 2}.ph-grid figure.span-3{grid-column:span 3}
+.ph-grid figcaption{font:11px Consolas,monospace;color:#9fb2bd;padding:5px 8px;border-bottom:1px solid #141e25;letter-spacing:.02em}
+.ph-grid canvas{width:100%;height:clamp(140px,calc((100vh - 560px) / 2),250px);display:block}.ph-grid figure.tall canvas{height:clamp(240px,calc(100vh - 500px),460px)}
+.physics-figure .st-head button#ph-prev,.physics-figure .st-head button#ph-next{margin:0;padding:2px 9px}.physics-figure:focus{outline:none}
+@media(max-width:850px){.ph-grid{grid-template-columns:1fr}.ph-grid figure.span-2,.ph-grid figure.span-3{grid-column:auto}.ph-grid canvas{height:220px}.ph-grid figure.tall canvas{height:300px}}
+.physics .ph-chapters ol{margin:4px 0 10px;padding-left:0;list-style:none;counter-reset:ch}.physics .ph-chapters li{margin:3px 0}
+.physics .ph-chapters button{width:100%;text-align:left;font-size:12px;padding:6px 9px}.physics .ph-chapters button.active{background:#1c3c39;color:#bafcef;border-color:#458e83}
+.physics .ph-key{font-size:12px;line-height:1.5;background:#143029;padding:8px 10px;border-radius:5px}
+.physics .ph-controls .seg{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}.physics .ph-controls .seg button{font-size:11px;padding:4px 8px}.physics .ph-controls .seg button.active{background:#1c3c39;color:#bafcef}
+.physics .ph-controls input[type=range]{width:100%;accent-color:var(--accent)}.physics .ph-controls .field{display:block;margin:8px 0}.physics .ph-controls .field>span{display:block;font-size:11px;color:var(--muted)}
+.physics #ph-how p{font-size:11px;line-height:1.5;color:#b9c7cf}
