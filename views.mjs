@@ -161,6 +161,9 @@ export function buildViews(lm,obstruct=null){
  return views;
 }
 
+// version of the view definitions: bump when buildViews changes, then regenerate assets/views.json (tools/build-views.mjs);
+// tests/views.test.mjs fails when the precomputed file no longer matches the computation
+export const VIEWS_VERSION=2;
 export const VIEW_INFO={
  plax:{name:'Paraesternal eje largo',short:'PLAX',window:'plax',clock:'10–11',goal:'VI, septo, raíz aórtica, válvula mitral y AI en un mismo corte; ápex a la izquierda de la pantalla y aorta a la derecha.',checks:['Septo y pared posterior casi horizontales y paralelos','Válvula aórtica y mitral visibles a la vez','El ápex no se ve (es normal)'],pitfall:'Si el VI se ve redondo o el septo muy inclinado, estás oblicuo: rota o inclina, no te conformes.'},
  psaxAV:{name:'Paraesternal eje corto · válvula aórtica',short:'PSAX-VA',window:'psax',clock:'1–2',goal:'La válvula aórtica en corte transversal (la «Y» de Mercedes) rodeada por AD, VD, tracto de salida y arteria pulmonar.',checks:['Tres velos aórticos visibles','Tricúspide a la izquierda y pulmonar a la derecha de la pantalla'],pitfall:'Una aorta ovalada indica que el plano está oblicuo al anillo.'},

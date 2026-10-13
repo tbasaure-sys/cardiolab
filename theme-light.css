@@ -1,0 +1,41 @@
+/* Light theme (data-theme=light on <html>): the interface chrome turns light; echo images, spectra and the 3D views stay
+   on black, as on a scanner. Dark is the default. */
+:root[data-theme=light]{color-scheme:light;--bg:#f3f6f7;--surface:#ffffff;--line:#cdd8dd;--muted:#556a75;--ink:#14212a;--accent:#0b7d6c}
+:root[data-theme=light] button:not(:is(.machine-console *)){background:#fff;color:var(--ink);border-color:#c3d0d6}
+:root[data-theme=light] button:not(:is(.machine-console *)):hover{background:#e7f1f2;border-color:#7fb0a8}
+:root[data-theme=light] button.active:not(:is(.machine-console *)),:root[data-theme=light] #course-toggle[aria-expanded=true],:root[data-theme=light] .panel-tabs button.active,:root[data-theme=light] .ph-bar button.active,:root[data-theme=light] .physics .ph-chapters button.active,:root[data-theme=light] .physics .ph-controls .seg button.active{background:#d6f1eb;color:#0a5a4e;border-color:#5fae9f}
+:root[data-theme=light] .ph-bar button.active i{color:#0a5a4e}
+:root[data-theme=light] select,:root[data-theme=light] .slider input[type=number],:root[data-theme=light] input[type=number]{background:#fff;color:var(--ink);border-color:#c3d0d6}
+:root[data-theme=light] dialog{background:#fff;color:var(--ink);border-color:#b9c9d0}
+:root[data-theme=light] .brand .divider{color:#9aabb4}
+:root[data-theme=light] .slider label{color:#33444d}:root[data-theme=light] .slider small{color:#5e727c}
+:root[data-theme=light] .practice-task>p:first-of-type{color:#24453d}
+:root[data-theme=light] #quiz-feedback{color:#8a5a1c}
+:root[data-theme=light] .recording-result{background:#e6f5f0}:root[data-theme=light] .recording-result a{color:#0a5a4e}
+:root[data-theme=light] #video-controls{background:#e9eff1}
+:root[data-theme=light] .study-figure{background:var(--surface)}
+:root[data-theme=light] .st-head b{color:var(--ink)}
+:root[data-theme=light] .st-strip dd div,:root[data-theme=light] .st-how p,:root[data-theme=light] .physics #ph-how p{color:#3e515b}
+:root[data-theme=light] .st-strip small{color:#5e727c}
+:root[data-theme=light] .st-bar{background:#dde6ea}
+:root[data-theme=light] .physics .ph-key{background:#e2f4ef;color:#13332c}
+:root[data-theme=light] .ph-bar button{background:#fff}
+:root[data-theme=light] .lessons .now .ask{background:#fbf1dc}:root[data-theme=light] .lessons .now .answer{background:#e2f4ef}
+:root[data-theme=light] .lessons .scenes li.active{background:#e2f4ef;color:#0a5a4e}
+:root[data-theme=light] .lessons .bar{background:#dde6ea}
+:root[data-theme=light] .prov-medido{background:#d3f1e9;color:#0b5a4d}:root[data-theme=light] .prov-ecuacion{background:#dbe9fa;color:#1d4f86}:root[data-theme=light] .prov-modelo{background:#f6e9c6;color:#6b4d0e}:root[data-theme=light] a.prov-fuente,:root[data-theme=light] .prov-fuente{background:#ece2fb;color:#4b2f7a}
+:root[data-theme=light] body.cabina .probe-controls{background:var(--surface)}
+:root[data-theme=light] .volume-entry{color:#0a5a4e;border-color:#5fae9f}
+:root[data-theme=light] .lead{color:#3e515b}
+:root[data-theme=light] .coach-card,:root[data-theme=light] .chd-card,:root[data-theme=light] .drill-card,:root[data-theme=light] .lesson-item{background:var(--surface);border-color:var(--line)}
+:root[data-theme=light] .result.ok,:root[data-theme=light] .drill-options button.correct{background:#dcf3e6;color:#11553a}:root[data-theme=light] .result.bad,:root[data-theme=light] .drill-options button.wrong{background:#fbe1dc;color:#7a2a1c}
+:root[data-theme=light] .side-panel button.primary{background:#0b7d6c;color:#fff;border-color:#0b7d6c}
+:root[data-theme=light] .shortcut-help{background:#fff}:root[data-theme=light] kbd{background:#eef3f5;color:var(--ink)}:root[data-theme=light] .shortcut-cols dd{color:#3e515b}
+:root[data-theme=light] .side-panel .lead{color:#3e515b}
+:root[data-theme=light] .coach-meter[data-tone=done] .verdict,:root[data-theme=light] .legend-in{color:#0b7d6c}:root[data-theme=light] .coach-landmarks li.ok,:root[data-theme=light] .drill-feedback .ok b{color:#11804f}
+:root[data-theme=light] .hint,:root[data-theme=light] .drill-weak li,:root[data-theme=light] .lessons .fb{color:#8a5a1c}:root[data-theme=light] .legend-out,:root[data-theme=light] .error{color:#b0452a!important}
+:root[data-theme=light] #marker-clock{color:#9a5b12}
+:root[data-theme=light] .lessons .question{color:var(--ink)}:root[data-theme=light] .lessons .chip,:root[data-theme=light] .lessons .dots li{background:#e3eaee;color:#3e515b}:root[data-theme=light] .lessons .dots li.done,:root[data-theme=light] .lessons .opts button.right{background:#d6f1eb;color:#0a5a4e}
+:root[data-theme=light] .lessons .maneuver{background:#eef3f5}
+:root[data-theme=light] .reference-context #reference-link-note{color:#2f6b60}
+:root[data-theme=light] .st-bands{background:#dde6ea}

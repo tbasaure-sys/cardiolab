@@ -1,5 +1,5 @@
 // Simulated B-mode worker: owns a copy of the tissue volume, the valve leaflets and the current congenital variant.
-import {loadTissue,HeartMotion,ventricularContraction,LABEL} from './tissue.mjs';
+import {loadTissue,HeartMotion,ventricularContraction,LABEL,gunzip} from './tissue.mjs';
 import {buildViews,fanObstruction} from './views.mjs';
 import {createBMode} from './bmode.mjs';
 import {buildValves,sliceValves,setValveVariant} from './valves.mjs';
@@ -14,7 +14,7 @@ const phantom=createPhantom();
 
 let tissue=null,flow=null,valves=[],motion=null,engine=createBMode(),variant={id:'normal'},initDone=null;
 async function loadAnatomy(){
- const manifest=await (await fetch('assets/anatomy.json')).json(),buffer=await (await fetch('assets/anatomy.bin')).arrayBuffer();const byName={};
+ const manifest=await (await fetch('assets/anatomy.json')).json(),buffer=await gunzip(await (await fetch('assets/anatomy.bin.gz')).arrayBuffer());const byName={};
  for(const o of manifest.objects){if(o.kind!=='heart')continue;byName[o.sourceName]={sourceName:o.sourceName,positions:placeAtlasPositions(o.kind,new Float32Array(buffer,o.positionOffset,o.positionCount)),indices:new Uint32Array(buffer,o.indexOffset,o.indexCount)}}
  return byName;
 }

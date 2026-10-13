@@ -44,3 +44,9 @@ test('guided sweeps: valid lessons whose maneuvers match the probe motion betwee
    if(st.maneuver){const r=maneuverAgrees(st.maneuver,from,to);assert.ok(r.ok,`${sw.id}/${st.id}: ${st.maneuver.verb} ${st.maneuver.direction} ${st.maneuver.amount} → ${r.got}`)}prev=to}}
  for(const id of Object.keys(VIEW_INFO))assert.deepEqual(validateLesson(lessonForView(id),{sources}),[],id);
 });
+
+test('the precomputed views (assets/views.json) match the computation',async()=>{
+ const {VIEWS_VERSION}=await import('../views.mjs');const pre=JSON.parse(fs.readFileSync(new URL('../assets/views.json',import.meta.url)));
+ assert.equal(pre.version,VIEWS_VERSION);assert.equal(pre.geometrySHA256,meta.geometrySHA256);
+ assert.deepEqual(pre.views,JSON.parse(JSON.stringify(views)),'regenerate with: node tools/build-views.mjs');
+});

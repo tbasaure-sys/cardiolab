@@ -8,19 +8,26 @@
 // the QRS, and the atrial events (A wave, atrial kick, P wave) on a «late» clock anchored to the next QRS; both scaled so
 // that the AV-closed period lasts what the regression gives. Diastasis is what is left between the two: at low rates it
 // is long, at high rates it vanishes and E and A overlap (fusion), as in infants.
-// Model assumption (not sourced): the early-filling and atrial events scale with the same factor as systole.
+// Model assumption (not sourced): the filling events (early filling E from mitral opening, atrial contraction A) shorten less
+// than systole — their durations scale with the square root of the systolic factor — so that at newborn rates E and A overlap
+// visibly (≈35 ms at 160 lpm), at 95 lpm a short diastasis remains (≈35 ms) and at 60 lpm it is long (≈300 ms).
 export const CYCLE_SOURCES=['sarnari2009'];
-const AV_CLOSED=.41; // canonical beat: AV valves closed from 0.97 to 1.38
+const R=60000/90,AVO=.38,AVC=.97; // the canonical beat was drawn at 90 lpm; AV valves closed from 0.97 to 1.38
 const wrap=t=>((t%1)+1)%1;
 export const HR_RANGE=[50,160];
 export function systolicMs(hr){return 500.05-1.9228*hr} // Sarnari 2009 (regression; valid about 50–156 lpm)
 export function cycleTiming(hr){
- const h=Math.max(HR_RANGE[0],Math.min(HR_RANGE[1],hr)),rr=60000/h,S=systolicMs(h),k=rr*AV_CLOSED/S;
- const early=t=>t*k,late=t=>1-(1-t)*k,inv={early:m=>m/k*rr,late:m=>rr-(1-m)/k*rr}; // model phase → ms after the QRS
- // canonical event times (ms after the QRS)
- const ev={avClose:0,slOpen:inv.early(.07),slClose:inv.early(.33),avOpen:inv.early(.40),eEnd:inv.early(.635),aStart:inv.late(.82),aEnd:inv.late(.97),
+ const h=Math.max(HR_RANGE[0],Math.min(HR_RANGE[1],hr)),rr=60000/h,S=systolicMs(h);
+ // systolic factor f (QRS → mitral opening) and filling factor √f (E after mitral opening, A before the QRS); the AV-closed
+ // period (0.97 → 1.38) = (1 − AVC)·R·√f + AVO·R·f = S, solved for x = √f
+ const a=AVO*R,b=(1-AVC)*R,x=(-b+Math.sqrt(b*b+4*a*S))/(2*a),f=x*x,fd=x,t1=AVO*R*f;
+ // ms after the QRS → canonical phase: «early» (systole, relaxation, E), «late» (A, anchored to the next QRS)
+ const earlyMs=ms=>ms<=t1?ms/(R*f):AVO+(ms-t1)/(R*fd),lateMs=ms=>1-(rr-ms)/(R*fd);
+ const early=t=>earlyMs(t*rr),late=t=>lateMs(t*rr);
+ const inv={early:m=>m<=AVO?m*R*f:t1+(m-AVO)*R*fd,late:m=>rr-(1-m)*R*fd}; // canonical phase → ms after the QRS
+ const ev={avClose:0,slOpen:inv.early(.07),slClose:inv.early(.33),avOpen:inv.early(AVO),eEnd:inv.early(.635),aStart:inv.late(.82),aEnd:inv.late(AVC),
   ePeak:inv.early(.465),aPeak:inv.late(.885)};
- return {hr:h,rr,systole:S,diastole:rr-S,k,early,late,events:ev,diastasis:ev.aStart-ev.eEnd,fused:ev.aStart<ev.eEnd};
+ return {hr:h,rr,systole:S,diastole:rr-S,f,fd,early,late,events:ev,diastasis:ev.aStart-ev.eEnd,fused:ev.aStart<ev.eEnd};
 }
 let current=null;
 // the clock the model functions below use (null = canonical beat, phase as given)
@@ -28,11 +35,11 @@ export function setHeartRate(hr){current=hr?cycleTiming(hr):null;return current}
 export function currentTiming(){return current}
 // run fn with the clock at another heart rate (figures of other rates on the main thread), then restore it
 export function withHeartRate(hr,fn){const prev=current;current=hr?cycleTiming(hr):null;try{return fn()}finally{current=prev}}
-export function earlyPhase(t){t=wrap(t);return current?t*current.k:t}
-export function latePhase(t){t=wrap(t);return current?1-(1-t)*current.k:t}
+export function earlyPhase(t){t=wrap(t);return current?current.early(t):t}
+export function latePhase(t){t=wrap(t);return current?current.late(t):t}
 // one canonical phase for events that are not E or A (systole, relaxation): early clock until early filling is over,
 // then held during diastasis and continued on the late clock (never goes back)
-export function modelPhase(t){t=wrap(t);if(!current)return t;const e=t*current.k;return e<.64?e:Math.max(.64,1-(1-t)*current.k)}
+export function modelPhase(t){t=wrap(t);if(!current)return t;const e=current.early(t);return e<.64?e:Math.max(.64,current.late(t))}
 
 // canonical wave shapes (model phase): fast acceleration, slower deceleration (E deceleration ≈ 140 ms at 90 lpm)
 const asym=(t,a,p,b)=>{if(t<=a||t>=b)return 0;return t<p?Math.sin(Math.PI/2*(t-a)/(p-a))**2:Math.cos(Math.PI/2*(t-p)/(b-p))**1.6};

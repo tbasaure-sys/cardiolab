@@ -70,6 +70,7 @@ export function mountLessons(api){
  // ---------------------------------------------------------------- open a lesson in the chosen mode
  function open(id,{seed=null,mode=prefs.mode}={}){
   stop();let spec=getLesson(id);if(!spec)return;seed=seed??(Math.floor(Math.random()*1e6)+1);
+  api.onRoute?.({route:'leccion',id,params:{modo:mode}});
   const caseId=spec.cases?.length?(mode==='examen'?pickCase(spec,seed):spec.cases.find(c=>c.variant?.id!=='normal')?.id||spec.cases[0].id):null;
   if(caseId)spec=withCase(spec,caseId);
   run={spec,id,mode,seed,caseId,step:0,record:{goals:{},answers:{},evidence:[],hints:{},showMe:{},measures:{},errors:[],rescued:{},stepMs:{},ms:0},t0:performance.now(),stepT0:performance.now(),hintIx:0,stable:0,blocked:null,files:[]};
