@@ -47,7 +47,7 @@ export function parseTissue(meta,fineBytes,coarseBytes){
  if(coarse.data.length!==coarse.dims[0]*coarse.dims[1]*coarse.dims[2])throw Error('Volumen torácico incompleto');
  return new Tissue(meta,fine,coarse);
 }
-async function gunzip(buffer){const stream=new Blob([buffer]).stream().pipeThrough(new DecompressionStream('gzip'));return new Response(stream).arrayBuffer()}
+export async function gunzip(buffer){const stream=new Blob([buffer]).stream().pipeThrough(new DecompressionStream('gzip'));return new Response(stream).arrayBuffer()}
 export async function loadTissue(base='assets/'){
  const meta=await (await fetch(base+'tissue.json')).json();
  const [f,c]=await Promise.all([meta.fine.file,meta.coarse.file].map(async file=>{const r=await fetch(base+file);if(!r.ok)throw Error('No se pudo cargar '+file);return gunzip(await r.arrayBuffer())}));

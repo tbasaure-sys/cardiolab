@@ -8,6 +8,8 @@ import {pwNyquist} from './spectral.mjs';
 import {PATIENTS,PATIENT_BY_ID,bodyScale} from './patient.mjs';
 import {poseFromState,defaultState,toPlane} from './geometry.mjs';
 import {LABEL} from './tissue.mjs';
+import {numParam} from './links.mjs';
+import {tag} from './provenance.mjs';
 
 const esc=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fx=(v,d=1)=>v==null||!isFinite(v)?'—':v.toFixed(d).replace('.',',');
@@ -36,6 +38,7 @@ export const CHAPTERS=[
   sources:CYCLE_SOURCES}
 ];
 const BY_ID=Object.fromEntries(CHAPTERS.map(c=>[c.id,c]));
+const SHORT={frecuencia:'Frecuencia',resolucion:'Resolución',armonicos:'Armónica',artefactos:'Artefactos',doppler:'Doppler',ciclo:'Ciclo'};
 
 export function mountPhysics(api){
  // api: {host, figure, engine, views, landmarks(), patient(), ySign(windowPreset), freq(), bodyScale(), status(text), normal()}
@@ -45,14 +48,15 @@ export function mountPhysics(api){
   <div id="ph-body" hidden><p id="ph-key" class="ph-key"></p><div id="ph-controls" class="ph-controls"></div><div id="ph-read" class="st-strip" aria-live="polite"></div>
   <details class="st-how"><summary>Cómo se mide y qué es supuesto</summary><div id="ph-how"></div></details></div>`;
  const $=id=>host.querySelector('#'+id);
- figure.innerHTML=`<div class="st-head"><button id="ph-prev" aria-label="Capítulo anterior">‹</button><b id="ph-title"></b><button id="ph-next" aria-label="Capítulo siguiente">›</button><span id="ph-sub" class="micro"></span><button id="ph-close" aria-label="Cerrar la figura">✕</button></div>
+ figure.innerHTML=`<div class="st-head"><b id="ph-title"></b><nav id="ph-bar" class="ph-bar" aria-label="Capítulos">${CHAPTERS.map((c,i)=>`<button data-bar="${c.id}" title="${esc(c.title)}"><i>${i+1}</i> ${SHORT[c.id]}</button>`).join('')}</nav><button id="ph-play" title="Recorre todos los capítulos, con los recorridos animados de foco y frecuencia cardíaca">▶ Reproducir todo</button><button id="ph-link" title="Copia un enlace que abre este capítulo con estos ajustes">Copiar enlace</button><button id="ph-close" aria-label="Cerrar la figura">✕</button></div>
   <div id="ph-grid" class="ph-grid"></div><p class="micro st-foot">Imágenes y espectros calculados por el mismo motor que la sonda en vivo · docencia, no diagnóstico</p>`;
  const F=id=>figure.querySelector('#'+id);
- F('ph-close').onclick=()=>show(false);F('ph-prev').onclick=()=>step(-1);F('ph-next').onclick=()=>step(1);
+ F('ph-close').onclick=()=>show(false);F('ph-link').onclick=()=>api.copyLink?.();
+ figure.querySelectorAll('[data-bar]').forEach(b=>b.onclick=()=>select(b.dataset.bar));F('ph-play').onclick=()=>playing?stopPlay():playAll();
  figure.addEventListener('keydown',e=>{if(e.key==='ArrowLeft')step(-1);if(e.key==='ArrowRight')step(1)});figure.tabIndex=-1;
  host.querySelectorAll('[data-ch]').forEach(b=>b.onclick=()=>select(b.dataset.ch));
  function step(d){const i=CHAPTERS.findIndex(c=>c.id===cur);select(CHAPTERS[(i+d+CHAPTERS.length)%CHAPTERS.length].id)}
- function show(on){open=on;figure.hidden=!on;document.body.classList.toggle('physics-open',on);if(!on){cancelAnimationFrame(raf);gen++}}
+ function show(on){if(!on)stopPlay();open=on;figure.hidden=!on;document.body.classList.toggle('physics-open',on);if(!on){cancelAnimationFrame(raf);gen++}}
  // ---------------------------------------------------------------- figure cells
  function layout(cells,cols=2){const g=F('ph-grid');g.style.setProperty('--cols',cols);
   g.innerHTML=cells.map(c=>`<figure class="${c.span?'span-'+c.span:''} ${c.tall?'tall':''}"><figcaption id="cap-${c.id}">${esc(c.caption||'')}</figcaption><canvas id="cv-${c.id}"></canvas></figure>`).join('')}
@@ -127,7 +131,8 @@ export function mountPhysics(api){
  }
  const lvot=()=>{const lm=api.landmarks();return lm.aorticValve.map((v,i)=>v+unit(lm.lvApexCavity.map((x,j)=>x-lm.aorticValve[j]))[i]*.006)};
  const mitralTips=()=>{const lm=api.landmarks();return lm.mitralValve.map((v,i)=>v+unit(lm.lvApexCavity.map((x,j)=>x-lm.mitralValve[j]))[i]*.008)};
- function readout(rows){$('ph-read').innerHTML=`<dl>${rows.map(([k,v,d])=>`<dt>${k}</dt><dd><b>${v}</b>${d?`<div>${d}</div>`:''}</dd>`).join('')}</dl>`}
+ // rows: [name, value, detail, provenance (provenance.mjs: medido / ecuacion / modelo / {fuente:[…]})]
+ function readout(rows){$('ph-read').innerHTML=`<dl>${rows.map(([k,v,d,p])=>`<dt>${k}</dt><dd><b>${v}</b>${p?' '+tag(p):''}${d?`<div>${d}</div>`:''}</dd>`).join('')}</dl>`}
  // sources of the chapter (lessons/sources.json), listed under «Cómo se mide»
  let catalog=null;fetch('lessons/sources.json').then(r=>r.json()).then(j=>{catalog=j.sources}).catch(()=>{});
  function how(html){const src=(BY_ID[cur]?.sources||[]).map(id=>catalog?.[id]).filter(Boolean);
@@ -148,13 +153,13 @@ export function mountPhysics(api){
     caption('ph'+i,`Fantoma · ${MHz(f)}${harmonic?' (armónica)':''} · útil ${pen.limit>=PHANTOM.depth-.006?'≥ 12':fx(pen.limit*100,0)} cm · axial ${fx(w.axial,1)} mm`)}
    const pose=viewPose('a4c');
    for(const [i,f] of freqs.entries()){const fr=await heart(pose,{freq:f,bodyScale:k,harmonic:f>=4});if(my!==gen)return;drawFrame('h'+i,fr,{ySign:api.ySign('apical'),depthScale:k})}
-   readout(freqs.map(f=>[MHz(f),`útil ${res[f].pen>=PHANTOM.depth-.006?'≥ 12':fx(res[f].pen*100,0)} cm · axial ${fx(res[f].axial,2)} mm`,res[f].lateral==null?'lateral a 5 cm: el hilo no se distingue del speckle':`lateral a 5 cm ${fx(res[f].lateral,1)} mm`]).concat([[p.name,`apical 4C con ${fx(api.views.a4c.depth*k*100,0)} cm de profundidad`,'lo que la imagen necesita alcanzar en este paciente']]));
+   readout(freqs.map(f=>[MHz(f),`útil ${res[f].pen>=PHANTOM.depth-.006?'≥ 12':fx(res[f].pen*100,0)} cm · axial ${fx(res[f].axial,2)} mm`,res[f].lateral==null?'lateral a 5 cm: el hilo no se distingue del speckle':`lateral a 5 cm ${fx(res[f].lateral,1)} mm`,'medido']).concat([[p.name,`apical 4C con ${fx(api.views.a4c.depth*k*100,0)} cm de profundidad`,'lo que la imagen necesita alcanzar en este paciente','medido']]));
   },
-  async resolucion(my){
+  async resolucion(my,opts={}){
    const f=state.freq??4,focusCm=state.focusCm??6;
    $('ph-controls').innerHTML=`<label class="field"><span>Frecuencia</span><select id="ph-f">${[2.5,4,7,10].map(v=>`<option value="${v}" ${v===f?'selected':''}>${MHz(v)}</option>`).join('')}</select></label>
-    <div class="field"><span>Foco <output>${fx(focusCm,0)} cm</output></span><input id="ph-focus" type="range" min="2" max="11" step="1" value="${focusCm}"></div>`;
-   $('ph-f').onchange=()=>{state.freq=Number($('ph-f').value);run()};$('ph-focus').onchange=()=>{state.focusCm=Number($('ph-focus').value);run()};
+    <div class="field"><span>Foco <output>${fx(focusCm,0)} cm</output></span><input id="ph-focus" type="range" min="2" max="11" step="1" value="${focusCm}"></div>${sweepButton('resolucion')}`;bindSweep('resolucion');
+   $('ph-f').onchange=()=>{stopSweepOnly();state.freq=Number($('ph-f').value);run()};$('ph-focus').onchange=()=>{stopSweepOnly();state.focusCm=Number($('ph-focus').value);run()};
    $('ph-focus').oninput=()=>{$('ph-controls').querySelector('output').textContent=`${$('ph-focus').value} cm`};
    layout([{id:'img',caption:`Fantoma · ${MHz(f)} · foco a ${focusCm} cm`,tall:true},{id:'chart',caption:'Anchura del eco de cada hilo (−6 dB)',tall:true}],2);
    how(`<p>Cada hilo es un reflector puntual: lo que la imagen muestra de él es la respuesta del sistema (pulso × haz). Se mide su anchura a −6 dB (mitad de la amplitud) a lo largo del haz (<b>axial</b>) y a lo ancho (<b>lateral</b>). Un par de hilos se separa cuando su distancia supera esa anchura.</p><p>Pares del fantoma: axiales a 2, 1 y 0,5 mm; laterales a 3, 2 y 1 mm; a 5 y 9 cm. Quistes anecoicos de 2, 4 y 6 mm a 7 cm.</p>`);
@@ -170,7 +175,7 @@ export function mountPhysics(api){
     xLabel:'Profundidad (cm)',yLabel:'Anchura (mm)',xMin:0,xMax:12,yMax:Math.max(4,Math.ceil(Math.max(...w.map(x=>x.lateral||0))))+.5,vlines:[{x:focusCm,text:'foco'}]});
    const fw=wAt(focusCm),far=wAt(focusCm<=6?11:2);
    const list=(arr)=>[5,9].map(d=>`${d} cm: ${arr.filter(p=>p.depth===d*10).map(p=>`${fx(p.sep,p.sep<1?1:0)} mm ${p.ok?'✓':'✗'}`).join(' · ')}`).join('<br>');
-   readout([['Lateral en el foco',`${fx(fw?.lateral,1)} mm a ${focusCm} cm`,`${fx(far?.lateral,1)} mm a ${fx(far?.cm,0)} cm`],['Axial',`${fx(wAt(5)?.axial,2)} mm`,'casi igual a cualquier profundidad: depende del pulso'],['Pares laterales',list(lat),'✓ separados · ✗ fundidos en uno'],['Pares axiales',list(ax),'']]);
+   readout([['Lateral en el foco',`${fx(fw?.lateral,1)} mm a ${focusCm} cm`,`${fx(far?.lateral,1)} mm a ${fx(far?.cm,0)} cm`,'medido'],['Axial',`${fx(wAt(5)?.axial,2)} mm`,'casi igual a cualquier profundidad: depende del pulso','medido'],['Pares laterales',list(lat),'✓ separados · ✗ fundidos en uno','medido'],['Pares axiales',list(ax),'','medido']]);
   },
   async armonicos(my){
    const p=api.patient(),f=api.freq(),pose=viewPose('a4c');
@@ -185,7 +190,7 @@ export function mountPhysics(api){
     const lat=spotWidth(a,PHANTOM.column[4]).lateral,pen=penetration(a,b).limit;out[harmonic?'h':'f']={haze,lat,pen};
     drawFrame(harmonic?'ph':'pf',a);caption(harmonic?'harm':'fund',`${harmonic?`Armónica · emite ${MHz(f)}, recibe ${MHz(2*f)}`:`Fundamental · ${MHz(f)}`} · neblina en el VI ${fx(haze,0)}`);
     caption(harmonic?'ph':'pf',`Fantoma · ${harmonic?'armónica':'fundamental'} · lateral a 5 cm ${fx(lat,1)} mm`)}
-   readout([['Neblina en el VI',`${fx(out.f.haze,0)} → ${fx(out.h.haze,0)}`,'gris medio (0–255), fundamental → armónica'],['Lateral a 5 cm',`${fx(out.f.lat,1)} → ${fx(out.h.lat,1)} mm`,'fantoma'],['Profundidad útil',`${out.f.pen>=PHANTOM.depth-.006?'≥ 12':fx(out.f.pen*100,0)} → ${out.h.pen>=PHANTOM.depth-.006?'≥ 12':fx(out.h.pen*100,0)} cm`,'fantoma; 12 cm es todo el campo']]);
+   readout([['Neblina en el VI',`${fx(out.f.haze,0)} → ${fx(out.h.haze,0)}`,'gris medio (0–255), fundamental → armónica','medido'],['Lateral a 5 cm',`${fx(out.f.lat,1)} → ${fx(out.h.lat,1)} mm`,'fantoma','medido'],['Profundidad útil',`${out.f.pen>=PHANTOM.depth-.006?'≥ 12':fx(out.f.pen*100,0)} → ${out.h.pen>=PHANTOM.depth-.006?'≥ 12':fx(out.h.pen*100,0)} cm`,'fantoma; 12 cm es todo el campo','medido']]);
   },
   async artefactos(my){
    const k=api.bodyScale(),f=api.freq();
@@ -197,11 +202,11 @@ export function mountPhysics(api){
    const base=viewPose('plax'),found=await findArtifactPoses();if(my!==gen)return;
    const ys=api.ySign('plax'),rows=[];
    const r0=await heart(base);if(my!==gen)return;drawFrame('rib0',r0,{ySign:ys,depthScale:k});drawFrame('lung0',r0,{ySign:ys,depthScale:k});
-   if(found.rib){const fr=await heart(found.rib);if(my!==gen)return;drawFrame('rib1',fr,{ySign:ys,depthScale:k});const sh=shadowFraction(fr);caption('rib1',`Sobre una costilla · sombra en ${fx(sh*100,0)} % del sector`);rows.push(['Sombra acústica',`${fx(sh*100,0)} % del sector sin eco`,'no es una estructura: detrás del hueso no llega sonido'])}
+   if(found.rib){const fr=await heart(found.rib);if(my!==gen)return;drawFrame('rib1',fr,{ySign:ys,depthScale:k});const sh=shadowFraction(fr);caption('rib1',`Sobre una costilla · sombra en ${fx(sh*100,0)} % del sector`);rows.push(['Sombra acústica',`${fx(sh*100,0)} % del sector sin eco`,'no es una estructura: detrás del hueso no llega sonido','medido'])}
    else busy('rib1','No se encontró una costilla en esta ventana');
    if(found.lung){const fr=await heart(found.lung);if(my!==gen)return;const pl=found.pleura*k*100;
     drawFrame('lung1',fr,{ySign:ys,depthScale:k,marks:[1,2,3].map(m=>({kind:'text',x:-found.lung.depth*.5,y:found.pleura*m,text:m===1?'pleura':`${m}×`,color:C.warm}))});caption('lung1',`Sobre el pulmón · pleura a ${fx(pl,1)} cm`);
-    rows.push(['Pulmón',`pleura a ${fx(pl,1)} cm · líneas A a ${fx(2*pl,1)} y ${fx(3*pl,1)} cm`,'ecos repetidos entre la sonda y la pleura: no son estructuras'])}
+    rows.push(['Pulmón',`pleura a ${fx(pl,1)} cm · líneas A a ${fx(2*pl,1)} y ${fx(3*pl,1)} cm`,'ecos repetidos entre la sonda y la pleura: no son estructuras','medido'])}
    else busy('lung1','No se encontró pulmón en esta ventana');
    const a4=viewPose('a4c'),ya=api.ySign('apical');
    const [e0,e1]=[await heart(a4,{elevation:false}),await heart(a4)];if(my!==gen)return;drawFrame('el0',e0,{ySign:ya,depthScale:k});drawFrame('el1',e1,{ySign:ya,depthScale:k});
@@ -214,7 +219,7 @@ export function mountPhysics(api){
    const atria=[LABEL.LA_BLOOD,LABEL.RA_BLOOD],[b0,b1]=[await meanOverLabel(i0,a4,atria,{near:fossa,radius:.015}),await meanOverLabel(i1,sc,atria,{near:fossa,radius:.015})];if(my!==gen)return;
    drawFrame('ias0',i0,{ySign:ya,depthScale:k,marks:[{kind:'box',...xy(a4,fossa),w:.012,h:.012}]});drawFrame('ias1',i1,{ySign:api.ySign('subcostal'),depthScale:k,marks:[{kind:'box',...xy(sc,fossa),w:.012,h:.012}]});
    caption('ias0',`Apical 4C · fosa oval: gris ${fx(g0,0)}`);caption('ias1',`Subcostal 4C · fosa oval: gris ${fx(g1,0)}`);
-   rows.push(['Fosa oval',`apical ${fx(g0,0)} · subcostal ${fx(g1,0)}`,`eco de la membrana (gris 0–255): más débil con el haz paralelo; la sangre vecina da ${fx(b0,0)} y ${fx(b1,0)}`]);
+   rows.push(['Fosa oval',`apical ${fx(g0,0)} · subcostal ${fx(g1,0)}`,`eco de la membrana (gris 0–255): más débil con el haz paralelo; la sangre vecina da ${fx(b0,0)} y ${fx(b1,0)}`,['medido',{fuente:['ase2024','silvestry2015']}]]);
    readout(rows);
   },
   async doppler(my){
@@ -241,25 +246,25 @@ export function mountPhysics(api){
    apical.angle=angleOf(viewPose('a4c'));para.angle=angleOf(plaxPose);
    paintSpectrumPair('angle',apical,para);
    const n=pwNyquist(gateCm/100,fd);
-   readout([['TSVI',`Vmáx ${fx(v,2)} m/s`,`Nyquist a ${fx(gateCm,1)} cm con ${MHz(fd)}: ${fx(n,2)} m/s`],['Escala ±'+fx(low,1),'aliasing','la línea base desplazada lo resuelve sin cambiar la PRF; si no basta: menos profundidad, menor frecuencia Doppler o CW'],
-    ['Ángulo con el flujo mitral',`apical ${fx(apical.angle,0)}° → E ${fx(Math.abs(apical.vPeak),2)} m/s`,`paraesternal ${fx(para.angle,0)}° → ${fx(Math.abs(para.vPeak),2)} m/s: el mismo llenado medido un ${fx((1-Math.abs(para.vPeak)/Math.abs(apical.vPeak))*100,0)} % más bajo`]]);
+   readout([['TSVI',`Vmáx ${fx(v,2)} m/s`,`Nyquist a ${fx(gateCm,1)} cm con ${MHz(fd)}: ${fx(n,2)} m/s`,['medido','ecuacion']],['Escala ±'+fx(low,1),'aliasing','la línea base desplazada lo resuelve sin cambiar la PRF; si no basta: menos profundidad, menor frecuencia Doppler o CW','medido'],
+    ['Ángulo con el flujo mitral',`apical ${fx(apical.angle,0)}° → E ${fx(Math.abs(apical.vPeak),2)} m/s`,`paraesternal ${fx(para.angle,0)}° → ${fx(Math.abs(para.vPeak),2)} m/s: el mismo llenado medido un ${fx((1-Math.abs(para.vPeak)/Math.abs(apical.vPeak))*100,0)} % más bajo`,['medido',{fuente:['quinones2002']}]]]);
   },
-  async ciclo(my){
+  async ciclo(my,opts={}){
    const hr=state.hr??api.patient().hr,T=cycleTiming(hr),k=api.bodyScale();
-   $('ph-controls').innerHTML=`<div class="field"><span>Frecuencia cardíaca <output>${hr} lpm</output></span><input id="ph-hr" type="range" min="50" max="160" step="5" value="${hr}"><div class="seg">${[60,95,140,160].map(v=>`<button data-hr="${v}" class="${v===hr?'active':''}">${v}</button>`).join('')}</div></div>`;
-   $('ph-hr').oninput=()=>{$('ph-controls').querySelector('output').textContent=`${$('ph-hr').value} lpm`};$('ph-hr').onchange=()=>{state.hr=Number($('ph-hr').value);run()};
-   $('ph-controls').querySelectorAll('[data-hr]').forEach(b=>b.onclick=()=>{state.hr=Number(b.dataset.hr);run()});
+   $('ph-controls').innerHTML=`<div class="field"><span>Frecuencia cardíaca <output>${hr} lpm</output></span><input id="ph-hr" type="range" min="50" max="160" step="5" value="${hr}"><div class="seg">${[60,95,140,160].map(v=>`<button data-hr="${v}" class="${v===hr?'active':''}">${v}</button>`).join('')}</div></div>${sweepButton('ciclo')}`;bindSweep('ciclo');
+   $('ph-hr').oninput=()=>{$('ph-controls').querySelector('output').textContent=`${$('ph-hr').value} lpm`};$('ph-hr').onchange=()=>{stopSweepOnly();state.hr=Number($('ph-hr').value);run()};
+   $('ph-controls').querySelectorAll('[data-hr]').forEach(b=>b.onclick=()=>{stopSweepOnly();state.hr=Number(b.dataset.hr);run()});
    layout([{id:'wig',span:2,tall:true,caption:`Un latido a ${hr} lpm (${fx(T.rr,0)} ms)`},{id:'cine',tall:true,caption:'Apical 4C al mismo ritmo'}],3);
-   how(`<p><b>Volumen del VI</b>: medido sobre el corazón en movimiento del simulador (la cavidad que muestran las imágenes), contando su sangre en cada fase. <b>Duraciones</b>: el periodo con las válvulas AV cerradas (contracción isovolumétrica + eyección + relajación isovolumétrica) sigue la regresión de Sarnari et al. 2009 en 179 niños (500 − 1,92·FC ms); el resto es diástole. Supuesto del modelo: el llenado rápido y la contracción auricular se acortan en la misma proporción que la sístole, así que la diástasis absorbe el resto y, a frecuencias altas, E y A se solapan. Los espectros son los del motor a esa frecuencia.</p><p>El corazón es un atlas adulto escalado: la fracción de eyección del modelo es realista, los volúmenes absolutos no son pediátricos.</p>`);
+   how(`<p><b>Volumen del VI</b>: medido sobre el corazón en movimiento del simulador (la cavidad que muestran las imágenes), contando su sangre en cada fase. <b>Duraciones</b>: el periodo con las válvulas AV cerradas (contracción isovolumétrica + eyección + relajación isovolumétrica) sigue la regresión de Sarnari et al. 2009 en 179 niños (500 − 1,92·FC ms); el resto es diástole. Supuesto del modelo, sin fuente: el llenado rápido y la contracción auricular se acortan menos que la sístole (con la raíz cuadrada de su factor); la diástasis absorbe el resto y, a frecuencias de recién nacido, E y A se solapan. Los espectros son los del motor a esa frecuencia.</p><p>El corazón es un atlas adulto escalado: la fracción de eyección del modelo es realista, los volúmenes absolutos no son pediátricos.</p>`);
    busy('wig');busy('cine');
    const [curve,mv,ao]=await Promise.all([api.engine.lvVolume({hr,phases:48,k}),gateSpectrum(viewPose('a4c'),mitralTips(),{freq:3.5,scale:1.2,baseline:.15,hr}),gateSpectrum(viewPose('a5c'),lvot(),{freq:3.5,scale:1.5,baseline:.85,hr})]);if(my!==gen)return;
    const ed=Math.max(...curve.map(c=>c.ml)),es=Math.min(...curve.map(c=>c.ml)),ef=(ed-es)/ed;
    drawWiggers('wig',T,curve,mv,ao);
-   state.cine=[];state.cineHr=hr;const pose=viewPose('a4c'),N=12;
+   readout([['Ciclo',`${fx(T.rr,0)} ms a ${hr} lpm`,'','ecuacion'],['Válvulas AV cerradas',`${fx(T.systole,0)} ms · ${fx(T.systole/T.rr*100,0)} % del ciclo`,'contracción isovolumétrica + eyección + relajación',{fuente:['sarnari2009']}],
+    ['Diástole',`${fx(T.diastole,0)} ms`,T.fused?`sin diástasis: E y A se solapan ${fx(-T.diastasis,0)} ms`:`diástasis ${fx(T.diastasis,0)} ms`,[{fuente:['sarnari2009']},'modelo']],['VI',`FE ${fx(ef*100,0)} %`,`VTD ${fx(ed,1)} mL · VTS ${fx(es,1)} mL · corazón adulto escalado`,'medido'],['Llenado mitral',`E ${fx(Math.abs(mv.vPeak),2)} m/s`,'pico del espectro PW en las puntas mitrales','medido']]);
+   state.cine=[];state.cineHr=hr;const pose=viewPose('a4c'),N=opts.quick?6:12;state.cineN=N; // fewer frames while sweeping the rate
    startCine(my,T);
    for(let i=0;i<N;i++){const fr=await heart(pose,{beating:true,phase:(i+.5)/N,hr});if(my!==gen)return;state.cine[i]=frameCanvas('cine',fr,{ySign:api.ySign('apical'),depthScale:k})}
-   readout([['Ciclo',`${fx(T.rr,0)} ms a ${hr} lpm`,''],['Válvulas AV cerradas',`${fx(T.systole,0)} ms · ${fx(T.systole/T.rr*100,0)} % del ciclo`,'contracción isovolumétrica + eyección + relajación (Sarnari 2009)'],
-    ['Diástole',`${fx(T.diastole,0)} ms`,T.fused?`sin diástasis: E y A se solapan ${fx(-T.diastasis,0)} ms`:`diástasis ${fx(T.diastasis,0)} ms`],['VI (modelo)',`FE ${fx(ef*100,0)} %`,`VTD ${fx(ed,1)} mL · VTS ${fx(es,1)} mL · corazón adulto escalado`],['Llenado mitral',`E ${fx(Math.abs(mv.vPeak),2)} m/s`,'pico del espectro PW en las puntas mitrales']]);
   }
  };
  // ---------------------------------------------------------------- chapter-specific drawing
@@ -296,7 +301,7 @@ export function mountPhysics(api){
  }
  // cine at the chosen rate: a frame is drawn only when the phase index changes; the cursor on the beat diagram is a CSS
  // line moved with a transform (no canvas redraw per animation frame)
- function startCine(my,T){cancelAnimationFrame(raf);const t0=performance.now(),N=12,wc=cell('wig'),fig=wc?.parentElement;let last=-1,cursor=null;
+ function startCine(my,T){cancelAnimationFrame(raf);const t0=performance.now(),N=state.cineN||12,wc=cell('wig'),fig=wc?.parentElement;let last=-1,cursor=null;
   if(fig&&state.wig){cursor=fig.querySelector('.ph-cursor')||fig.appendChild(Object.assign(document.createElement('i'),{className:'ph-cursor'}));
    cursor.style.top=`${wc.offsetTop+state.wig.top}px`;cursor.style.height=`${state.wig.bottom-state.wig.top}px`}
   const draw=now=>{if(my!==gen||!open)return;raf=requestAnimationFrame(draw);const t=((now-t0)/T.rr)%1,i=Math.floor(t*N);
@@ -327,9 +332,27 @@ export function mountPhysics(api){
   return state.artifactPoses={rib,lung,pleura};
  }
  // ---------------------------------------------------------------- selection
- async function select(id){cur=id;const ch=BY_ID[id];host.querySelectorAll('[data-ch]').forEach(b=>b.classList.toggle('active',b.dataset.ch===id));$('ph-body').hidden=false;$('ph-key').textContent=ch.key;
-  F('ph-title').textContent=ch.title;F('ph-sub').textContent=`${ch.group} · ${CHAPTERS.indexOf(ch)+1} de ${CHAPTERS.length}`;show(true);figure.focus({preventScroll:true});run()}
- async function run(){const my=++gen;cancelAnimationFrame(raf);const ch=BY_ID[cur];if(!ch)return;$('ph-read').innerHTML='';
-  try{await api.normal?.();api.status(`Física · ${ch.title}`);await RUN[ch.id](my)}catch(e){console.error(e);if(my===gen)api.status('No se pudo calcular la figura: '+e.message)}}
- return {enter(){if(cur)select(cur)},leave(){show(false)},select,get chapter(){return cur},chapters:CHAPTERS};
+ // a chapter: by the user (stops «Reproducir todo») or by the tour (auto)
+ function select(id,{auto=false}={}){if(!auto)stopPlay();cur=id;const ch=BY_ID[id];host.querySelectorAll('[data-ch]').forEach(b=>b.classList.toggle('active',b.dataset.ch===id));figure.querySelectorAll('[data-bar]').forEach(b=>b.classList.toggle('active',b.dataset.bar===id));$('ph-body').hidden=false;$('ph-key').textContent=ch.key;
+  F('ph-title').textContent=ch.title;show(true);figure.focus({preventScroll:true});return run()}
+ // «Reproducir todo»: every chapter in turn; the resolution and cycle chapters play their sweep, the others stay a few seconds
+ let playing=false,sweeping=false;const wait=ms=>new Promise(r=>setTimeout(r,ms));
+ function stopPlay(){playing=false;sweeping=false;const b=F('ph-play');if(b)b.textContent='▶ Reproducir todo';const sw=$('ph-sweep');if(sw)sw.textContent=sw.dataset.label}
+ async function playAll(){playing=true;F('ph-play').textContent='■ Detener';
+  for(const c of CHAPTERS){if(!playing)return;await select(c.id,{auto:true});if(!playing)return;if(SWEEPS[c.id])await sweep(c.id,true);else await wait(7000)}
+  stopPlay()}
+ // animated sweeps: the focus through the phantom, the heart rate through the beat
+ const SWEEPS={resolucion:{key:'focusCm',values:[3,5,7,9,11],label:'▶ Recorrer el foco'},ciclo:{key:'hr',values:[60,80,100,120,140,160],label:'▶ Recorrer 60 → 160 lpm'}};
+ async function sweep(id,fromTour=false){const sw=SWEEPS[id];if(!sw||(sweeping&&!fromTour))return stopSweepOnly();sweeping=true;const b=$('ph-sweep');if(b)b.textContent='■ Detener';
+  for(const v of sw.values){if(!sweeping||cur!==id)break;state[sw.key]=v;await run({quick:true});if(!sweeping||cur!==id)break;await wait(1500)}
+  if(!fromTour)stopSweepOnly();else sweeping=false}
+ function stopSweepOnly(){sweeping=false;const b=$('ph-sweep');if(b)b.textContent=b.dataset.label}
+ function sweepButton(id){const sw=SWEEPS[id];return `<button id="ph-sweep" data-label="${sw.label}">${sweeping?'■ Detener':sw.label}</button>`}
+ function bindSweep(id){const b=$('ph-sweep');if(b)b.onclick=()=>{if(sweeping)stopSweepOnly();else{if(playing)stopPlay();sweep(id)}}}
+ // the chapter and its settings as a link (links.mjs): #/fisica/<capítulo>?…
+ function route(){const p={};if(cur==='frecuencia'&&state.patient)p.corazon=state.patient;if(cur==='resolucion'){if(state.freq)p.f=state.freq;if(state.focusCm)p.foco=state.focusCm}if(cur==='ciclo'&&state.hr)p.fc=state.hr;return {route:'fisica',id:cur,params:p}}
+ function setParams(q={}){const f=numParam(q.f,2,12),foco=numParam(q.foco,2,11),fc=numParam(q.fc,50,160);if([2.5,4,7,10].includes(f))state.freq=f;if(foco)state.focusCm=Math.round(foco);if(fc)state.hr=Math.round(fc/5)*5;if(PATIENT_BY_ID[q.corazon])state.patient=q.corazon}
+ async function run(opts={}){const my=++gen;cancelAnimationFrame(raf);const ch=BY_ID[cur];if(!ch)return;$('ph-read').innerHTML='';api.onRoute?.(route());
+  try{await api.normal?.();api.status(`Física · ${ch.title}`);await RUN[ch.id](my,opts)}catch(e){console.error(e);if(my===gen)api.status('No se pudo calcular la figura: '+e.message)}}
+ return {enter(){if(cur)select(cur)},leave(){show(false)},select,setParams,route,get chapter(){return cur},get open(){return open},chapters:CHAPTERS};
 }

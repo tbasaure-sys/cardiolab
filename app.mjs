@@ -11,7 +11,7 @@ import {createVideoRecorder,recordingExtension} from './recording-format.mjs';
 import {initialDisplay,mountInstrument,applyDisplayTone,boundedCursor,distanceMM} from './instrument.mjs';
 import {createSimEngine,CINE_PHASES} from './sim-engine.mjs';
 import {scanConvert,COLOR_MAP} from './bmode.mjs';
-import {VIEW_INFO,VIEW_CARD,nearestView,markerClock,describeManeuver} from './views.mjs';
+import {VIEW_INFO,VIEW_CARD,nearestView,markerClock,describeManeuver,VIEWS_VERSION} from './views.mjs';
 import {mountPlaneMap,WINDOW_COLORS} from './plane-map.mjs';
 import {mountCoach} from './coach.mjs';
 import {mountCHD} from './chd-panel.mjs';
@@ -19,7 +19,7 @@ import {mountDrills} from './drills.mjs';
 import {mountPhoneProbe} from './phone-probe.mjs';
 import {VARIANT_BY_ID} from './chd-data.mjs';
 import {roiAround} from './flow.mjs';
-import {HeartMotion} from './tissue.mjs';
+import {HeartMotion,gunzip} from './tissue.mjs';
 import {mountBeamMap} from './beam-map.mjs';
 import {mountCabina} from './cabina.mjs';
 import {buildValves,sliceValves} from './valves.mjs';
@@ -27,6 +27,8 @@ import {createSketch} from './sketch.mjs';
 import {mountLessons} from './lesson-panel.mjs';
 import {mountStudy} from './study.mjs';
 import {mountPhysics} from './physics.mjs';
+import {parseLink,formatLink,numParam} from './links.mjs';
+import {LESIONS,PVR} from './shunt-model.mjs';
 import {ecgValue,setHeartRate} from './cycle.mjs';
 
 // patient size first: every default depth below is scaled to it
@@ -36,6 +38,8 @@ let beam=null,planeMap=null,mainValves=null,sketch=createSketch(),manifest,meshe
 let frozen=false,sweeping=false,sweepStart=0,sweepBase=0,recording=null,dragging=false,latestRequestedAt=0,frameCount=0;
 let tutor=null,pediatricDisplay=true,instrument=null,references=null,videoImage=null,echoSource='sim',resumeAfterFreeze=false,imageOnly=false;const display=initialDisplay();
 // simulated B-mode: engine, cardiac phase, cine cache of scan-converted images
+// the standard views are precomputed (assets/views.json, tools/build-views.mjs); the worker computes them only as a fallback
+const viewsPromise=fetch('assets/views.json').then(r=>r.ok?r.json():null).catch(()=>null);
 const engine=createSimEngine();engine.set({bodyScale:BODY.k,hr:patient.hr});setHeartRate(patient.hr);display.freq=patient.freq;let phase=0,study=null,phaseLock=null,blockedWindows=null,lessonPanel=null,beatSpeed=1,heartRate=patient.hr,lastTick=performance.now(),lastPoseChange=0,simQuick=false,simViews=null,coach=null,chd=null,targetPose=null,lesion=null,overlayContours=false;
 const scanCache=new WeakMap();let scanCacheKey='';
 const latencies=[],poseLog=[],controls=[];let lastInputAt=0;let projection={cx:0,cy:30,scale:1},scanWidth=600,scanHeight=400;
@@ -420,7 +424,7 @@ function animate(now){requestAnimationFrame(animate);frameCount++;videoImage?.ti
   const dt=Math.min(.1,(now-lastTick)/1000);lastTick=now;if(!frozen&&engine.params.beating&&beatSpeed>0){phase=(phase+dt*heartRate/60*beatSpeed)%1;dop.beat+=dt*heartRate/60*beatSpeed}if(phaseLock!=null){phase=phaseLock;dop.beat=phaseLock}
   if(simEcho()&&ready&&active){if(simQuick&&!dragging&&!sweeping&&now-lastPoseChange>260)requestSim(false);drawSim()}if(sweeping&&ready&&!frozen&&now-lastSweepRequest>65){state.tilt=clamp(sweepBase+12*Math.sin((now-sweepStart)/1500),-60,60);syncControls();requestSlice();lastSweepRequest=now}beam?.frame(now,selected);planeMap?.frame();for(const v of views){v.orbit.update();v.renderer.render(v.scene,v.camera)}if(recording){if(now-recording.lastFrame>50){compositeFrame();poseLog.push({t:now-recording.start,imageSource:realEcho()?'real-video':'atlas',video:realEcho()?videoImage.metadata():null,display:displaySnapshot(),gain:state.gain});recording.lastFrame=now}$('record').textContent=`■ ${Math.min(10,(now-recording.start)/1000).toFixed(1)} / 10 s`;if(now-recording.start>=10000&&recording.recorder.state==='recording')recording.recorder.stop()}}
 async function boot(){
-  manifest=await (await fetch('assets/anatomy.json')).json();const buffer=await (await fetch('assets/anatomy.bin')).arrayBuffer();
+  manifest=await (await fetch('assets/anatomy.json')).json();const buffer=await gunzip(await (await fetch('assets/anatomy.bin.gz')).arrayBuffer()); // gzip: half the download
   const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',buffer))].map(b=>b.toString(16).padStart(2,'0')).join('');if(hash!==manifest.geometrySHA256)throw Error('La geometría no coincide con su manifiesto');
   meshes=manifest.objects.map(m=>{const positions=placeAtlasPositions(m.kind,new Float32Array(buffer,m.positionOffset,m.positionCount)),indices=new Uint32Array(buffer,m.indexOffset,m.indexCount);const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.BufferAttribute(positions,3));geometry.setIndex(new THREE.BufferAttribute(indices,1));geometry.computeVertexNormals();const item={...m,positions,indices,geometry};byId.set(m.id,item);return item});
   views=[makeView('patient-view',true),makeView('heart-view',false)];bindProbeDrag(views[0]);
@@ -506,12 +510,28 @@ function updateViewCard(){const el=$('view-card'),hide=imageOnly||openPanel==='d
 function lesionPosition(id){const lm=engine.landmarks,k=LESION_AT[id];if(lm&&id==='lvh')return lm.aorticValve.map((v,i)=>v+(lm.mitralValve[i]-v)*.35); // subaortic outflow, where the septal bulge narrows it
  if(lm&&id==='ebstein'){const tv=lm.tricuspidValve,ax=lm.rvApex.map((v,i)=>v-tv[i]),l=Math.hypot(...ax);return tv.map((v,i)=>v+ax[i]/l*.019)} // displaced tricuspid coaptation
  if(!lm||!k)return null;if(Array.isArray(k))return k.map(n=>lm[n]).reduce((a,b)=>a.map((v,i)=>(v+b[i])/2));return lm[k]}
+// ---------------------------------------------------------------- direct links (links.mjs): #/fisica/…, #/estudio/…, #/vista/…, #/leccion/…
+function setLink(link){const base=location.pathname+location.search,url=base+(link?formatLink({...link,params:{...link.params,paciente:patient.id}}):''); // the patient size always travels with the link
+ if(url!==base+location.hash)history.replaceState(null,'',url)}
+async function copyLink(){const url=location.href;try{await navigator.clipboard.writeText(url);status('Enlace copiado: '+url)}catch{prompt('Copia este enlace:',url)}}
+async function applyLink(link){if(!link||!physics||!study||!lessonPanel)return;const q=link.params||{};
+ if(PATIENT_BY_ID[q.paciente]&&q.paciente!==patient.id)setPatient(q.paciente);
+ if(link.route==='fisica'){physics.setParams(q);if(openPanel!=='physics')showPanel('physics');physics.select(physics.chapters.some(c=>c.id===link.id)?link.id:physics.chapters[0].id)}
+ else if(link.route==='estudio'&&LESIONS[link.id]){if(openPanel!=='chd')showPanel('chd');chd.setMode('study');study.show(true);await study.set({lesion:link.id,size:numParam(q.tam,0,1)??.6,pvr:PVR[q.rvp]?q.rvp:'normal'})}
+ else if(link.route==='vista'&&VIEW_INFO[link.id]){for(let i=0;i<150&&!ready;i++)await new Promise(r=>setTimeout(r,100));if(openPanel)showPanel(openPanel);if(imageOnly)setImageOnly(false);setEchoMode();await goToView(link.id);setLink(link)} // the live simulator: close the panel that drives the probe
+ else if(link.route==='leccion'){if(openPanel!=='lessons')showPanel('lessons');lessonPanel.open(link.id,{mode:['demostracion','practica','examen'].includes(q.modo)?q.modo:undefined,seed:numParam(q.semilla,1,1e9)??undefined})}
+}
+addEventListener('hashchange',()=>applyLink(parseLink(location.hash)));
+// ---------------------------------------------------------------- theme: dark (default) or light chrome; the images stay on black
+{const THEME_KEY='cardiolab.theme.v1',b=$('theme-toggle'),sync=()=>{const light=document.documentElement.dataset.theme==='light';b.textContent=light?'Tema: claro':'Tema: oscuro';b.setAttribute('aria-pressed',String(light))};
+ b.onclick=()=>{const light=document.documentElement.dataset.theme!=='light';if(light)document.documentElement.dataset.theme='light';else delete document.documentElement.dataset.theme;try{localStorage.setItem(THEME_KEY,light?'light':'dark')}catch{}sync()};sync()}
 const panels={lessons:$('lessons'),coach:$('coach'),drills:$('drills'),chd:$('chd'),physics:$('physics')};let drills=null,physics=null;let openPanel=null;
 function showPanel(name){
  if(name!=='course'&&!$('tutor').hidden)$('course-toggle').click();
  for(const [k,el] of Object.entries(panels)){const on=k===name&&openPanel!==name;el.hidden=!on;$('tab-'+k).classList.toggle('active',on);$('tab-'+k).setAttribute('aria-expanded',String(on))}
  const leaving=openPanel;openPanel=name==='course'||openPanel===name?null:name;
  if(leaving==='coach'&&openPanel!=='coach')coach?.stop();if(leaving==='drills'&&openPanel!=='drills')drills?.stop();if(leaving==='chd'&&openPanel!=='chd')chd?.leave();if(openPanel==='chd')chd?.enter();if(leaving==='lessons'&&openPanel!=='lessons')lessonPanel?.leave();if(leaving==='physics'&&openPanel!=='physics')physics?.leave();if(openPanel==='physics')physics?.enter();
+ if(!openPanel)setLink(null);
  $('practice-shell').classList.toggle('with-tutor',!!openPanel||!$('tutor').hidden);$('practice-shell').classList.toggle('with-drills',openPanel==='drills');updateViewCard();
 }
 for(const k of Object.keys(panels))$('tab-'+k).onclick=()=>{if(!coach||!chd||!drills||!lessonPanel){status('Preparando el simulador…');return}showPanel(k)};
@@ -552,7 +572,7 @@ function tutorApi(){return {
   r.setPixelRatio(pr);r.setSize(size.x,size.y,false);v.camera.aspect=aspect;v.camera.updateProjectionMatrix();r.render(v.scene,v.camera);return c}),canvases:()=>({probe:views[0].renderer.domElement,plane:views[1].renderer.domElement,scan}),pediatric:()=>pediatricDisplay,
  metadata:()=>exportMetadata()}}
 engine.ready.then(async()=>{
- simViews=await engine.getViews();
+ {const pre=await viewsPromise;simViews=pre&&pre.version===VIEWS_VERSION&&(!manifest||pre.geometrySHA256===manifest.geometrySHA256)?pre.views:await engine.getViews()}
  try{const byName={};for(const m of meshes)if(m.kind==='heart')byName[m.sourceName]={sourceName:m.sourceName,positions:m.positions,indices:m.indices};mainValves=buildValves(byName,engine.landmarks);beam?.setValves(mainValves);if(active){beam.update(active,selected);views.forEach(v=>updateView(v,active.pose))}}catch(e){console.warn('valvas del mapa del haz',e)}
  // window presets start exactly on the reference views computed from the anatomy
  const BASE={plax:'plax',psax:'psaxPM',apical:'a4c',subcostal:'sc4c',ssn:'ssn'};
@@ -564,17 +584,18 @@ engine.ready.then(async()=>{
  drills=mountDrills({...common,host:$('drills'),ySign,setTgc:setTgcAll,visible:()=>openPanel==='drills'});
  chd=mountCHD({...common,host:$('chd'),study:()=>study,onVariant:(spec,reveal)=>{chdVariantKey=spec.id+JSON.stringify(spec.params||{});setLesionMarker(reveal?lesionPosition(spec.id):null);requestSim(false);requestSpectrum()},colorOnLesion:id=>focusColorOn(lesionPosition(id)),cwOnLesion:id=>cwOnLesion(id)});
  planeMap=mountPlaneMap({view:views[1],targets:simViews,info:VIEW_INFO,onGo:goToView,core:['plax','psaxAV','psaxMV','psaxPM','a4c','a5c','a2c','a3c','sc4c','scSAX','ssn']});
- study=mountStudy({host:chd.host,figure:$('study-figure'),engine,views:simViews,landmarks:()=>engine.landmarks,patient:()=>patient,ySign:w=>scanYSign(w,pediatricDisplay),freq:()=>display.freq,bodyScale:()=>BODY.k,
+ study=mountStudy({onRoute:setLink,copyLink,host:chd.host,figure:$('study-figure'),engine,views:simViews,landmarks:()=>engine.landmarks,patient:()=>patient,ySign:w=>scanYSign(w,pediatricDisplay),freq:()=>display.freq,bodyScale:()=>BODY.k,
   onVariant:spec=>{chdVariantKey=spec.id+JSON.stringify(spec.params||{});setLesionMarker(null);requestSim(false);requestSpectrum()},status:t=>status(t),goLive:p=>{setEchoMode();goToView(p.view||'psaxAV')}});
  if(window.echoLab)echoLab.study=study;
- physics=mountPhysics({host:$('physics'),figure:$('physics-figure'),engine,views:simViews,landmarks:()=>engine.landmarks,patient:()=>patient,ySign:w=>scanYSign(w,pediatricDisplay),freq:()=>display.freq,bodyScale:()=>BODY.k,status:t=>status(t),
+ physics=mountPhysics({onRoute:setLink,copyLink,host:$('physics'),figure:$('physics-figure'),engine,views:simViews,landmarks:()=>engine.landmarks,patient:()=>patient,ySign:w=>scanYSign(w,pediatricDisplay),freq:()=>display.freq,bodyScale:()=>BODY.k,status:t=>status(t),
   normal:async()=>{if(chdVariantKey&&!chdVariantKey.startsWith('normal')){await engine.setVariant({id:'normal'});chdVariantKey='normal{}';setLesionMarker(null);requestSim(false);requestSpectrum()}}});
  if(window.echoLab)echoLab.physics=physics;
- {const api=tutorApi();lessonPanel=mountLessons({host:$('lessons'),...api,visible:()=>openPanel==='lessons'});if(window.echoLab)echoLab.tutor=Object.assign(api,{panel:lessonPanel})}
+ {const api=tutorApi();lessonPanel=mountLessons({host:$('lessons'),...api,onRoute:setLink,visible:()=>openPanel==='lessons'});if(window.echoLab)echoLab.tutor=Object.assign(api,{panel:lessonPanel})}
  {let on=false;try{on=localStorage.getItem('cardiolab.planeMap.v1')==='1'}catch{}$('plane-map').checked=on;
   $('plane-map').onchange=()=>{try{localStorage.setItem('cardiolab.planeMap.v1',$('plane-map').checked?'1':'0')}catch{}updateViewCard()}}
  updateViewCard();
  if(ready)requestSim(false);
+ applyLink(parseLink(location.hash));
 }).catch(e=>{console.error(e);status('Simulador eco no disponible: '+e.message,true);echoSource='synthetic';$('echo-source').value='synthetic'});
 syncControls();boot().catch(e=>{console.error(e);status('No se pudo iniciar: '+e.message,true)});
 

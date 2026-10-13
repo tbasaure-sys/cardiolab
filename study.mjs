@@ -7,6 +7,7 @@ import {scanConvert} from './bmode.mjs';
 import {roiAround} from './flow.mjs';
 import {VIEW_INFO} from './views.mjs';
 import {planeThrough,lessonContext} from './lesson-engine.mjs';
+import {tag,sourcesReady} from './provenance.mjs';
 
 const esc=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const f1=v=>v.toFixed(1).replace('.',','),f2=v=>v.toFixed(2).replace('.',',');
@@ -39,11 +40,11 @@ export function mountStudy(api){
   <p>Supuestos del modelo, sin fuente clínica: índice cardíaco, presión arterial por edad, valores de resistencia pulmonar, coeficiente del orificio, gradiente interauricular, cuánto se dilata una cavidad por el flujo extra. Las bandas («sin sobrecarga», «moderada», «importante», «restrictivo») son del modelo, no umbrales clínicos. Los valores no sirven para interpretar estudios reales.</p></details>`;
  const $=id=>host.querySelector('#'+id);
  // ---------------------------------------------------------------- figure (four panels over the workspace)
- figure.innerHTML=`<div class="st-head"><b id="st-title"></b><span id="st-sub" class="micro"></span><button id="st-close" aria-label="Cerrar el estudio">✕</button></div>
+ figure.innerHTML=`<div class="st-head"><b id="st-title"></b><span id="st-sub" class="micro"></span><button id="st-link" title="Copia un enlace que abre el estudio con esta lesión, tamaño y resistencia">Copiar enlace</button><button id="st-close" aria-label="Cerrar el estudio">✕</button></div>
   <div class="st-grid"><figure><figcaption id="st-cap-lesion"></figcaption><canvas id="st-c-lesion"></canvas></figure><figure><figcaption id="st-cap-chambers"></figcaption><canvas id="st-c-chambers"></canvas></figure>
   <figure><figcaption id="st-cap-jet"></figcaption><canvas id="st-c-jet"></canvas></figure><figure><figcaption>PW · flujo pulmonar y sistémico (Qp y Qs)</figcaption><canvas id="st-c-out"></canvas></figure></div>
   <p class="micro st-foot">Imágenes simuladas por el mismo motor que la sonda en vivo · modelo docente, no diagnóstico</p>`;
- const F=id=>figure.querySelector('#'+id);F('st-close').onclick=()=>showFigure(false);
+ const F=id=>figure.querySelector('#'+id);F('st-close').onclick=()=>showFigure(false);F('st-link').onclick=()=>api.copyLink?.();
  function showFigure(on){open=on;figure.hidden=!on;document.body.classList.toggle('study-open',on);if(on){refresh();loop()}else{cancelAnimationFrame(raf)}}
  // ---------------------------------------------------------------- state → model → UI
  const state=()=>shuntState({lesion,size,pvr,patient:api.patient()});
@@ -54,14 +55,14 @@ export function mountStudy(api){
   const L=LESIONS[lesion],g=s.gains,ov=L.overload,maxG=Math.max(0,...ov.map(c=>g[c]||0));
   const bar=(v,min,max,bands,ticks=[])=>{const x=q=>Math.max(0,Math.min(100,(q-min)/(max-min)*100));return `<span class="st-bar">${bands.map(([a,b,c])=>`<i class="b-${c}" style="left:${x(a)}%;width:${x(b)-x(a)}%"></i>`).join('')}${ticks.map(([t,l])=>`<em style="left:${x(t)}%" title="${esc(l)}"></em>`).join('')}<b style="left:${x(v)}%"></b></span>`};
   const rows=[];
-  rows.push(['Defecto',`${s.size?f1(s.defect.diameterMM)+' mm':'—'}`,s.defect.rootRatio!=null&&s.size?`${f2(s.defect.rootRatio)} de la raíz aórtica (${f1(s.defect.rootMM)} mm)${bar(s.defect.rootRatio,0,1,[[0,.5,'ok'],[.5,1,'hi']],[[.5,'½ raíz aórtica: repercusión (Spicer 2014)']])}`:'']);
-  rows.push(['Dirección',esc(s.flows.direction),'']);
-  rows.push(['Qp/Qs',f2(s.flows.qpqs),'= (VTI × área) pulmonar / (VTI × área) sistémica · valor del modelo'+bar(s.flows.qpqs,.5,4.5,[[.5,1,'rev'],[1,1.15,'ok'],[1.15,1.8,'mid'],[1.8,4.5,'hi']])+'<small>bandas del modelo</small>']);
-  if(s.size){const v=Math.abs(s.jet.sys),dp=4*v*v;rows.push([lesion==='pda'?'Velocidad ductal':'Velocidad del chorro',`${f2(v)} m/s${lesion==='pda'?` · diást. ${f2(Math.abs(s.jet.dia))}`:''}`,`ΔP = 4v² ≈ ${Math.round(dp)} mmHg${lesion.startsWith('vsd')&&s.jet.sys>0?` · PSVD ≈ PAS ${Math.round(s.patient.sbp)} − ${Math.round(dp)} = ${Math.round(s.patient.sbp-dp)} mmHg`:''}`])}
-  rows.push(['Presión sistólica VD',`${Math.round(s.pressures.rvSys)} mmHg`,`${Math.round(s.pressures.rvRatio*100)} % de la sistémica`+bar(s.pressures.rvRatio,0,1.3,[[0,.45,'ok'],[.45,.75,'mid'],[.75,1.3,'hi']])+'<small>bandas del modelo</small>']);
-  for(const c of ov)rows.push([{RA:'AD',RV:'VD',LA:'AI',LV:'VI'}[c],`+${Math.round((g[c]||0)*100)} % de diámetro`,`volumen × ${f2((1+(g[c]||0))**3)}`+bar(g[c]||0,0,.32,[[0,.04,'ok'],[.04,.12,'mid'],[.12,.32,'hi']])+'<small>sobre el normal de este paciente · bandas del modelo</small>']);
-  if(s.rvWallMM>.3)rows.push(['Pared libre del VD',`+${f1(s.rvWallMM*s.patient.k)} mm`,'engrosada por la carga de presión (modelo)']);
-  $('st-strip').innerHTML=`<dl>${rows.map(([k,v,d])=>`<dt>${k}</dt><dd><b>${v}</b>${d?`<div>${d}</div>`:''}</dd>`).join('')}</dl>`;
+  rows.push(['Defecto',`${s.size?f1(s.defect.diameterMM)+' mm':'—'}`,s.defect.rootRatio!=null&&s.size?`${f2(s.defect.rootRatio)} de la raíz aórtica (${f1(s.defect.rootMM)} mm) ${tag({fuente:['spicer2014']})}${bar(s.defect.rootRatio,0,1,[[0,.5,'ok'],[.5,1,'hi']],[[.5,'½ raíz aórtica: repercusión (Spicer 2014)']])}`:'','modelo']);
+  rows.push(['Dirección',esc(s.flows.direction),'','modelo']);
+  rows.push(['Qp/Qs',f2(s.flows.qpqs),'= (VTI × área) pulmonar / (VTI × área) sistémica'+bar(s.flows.qpqs,.5,4.5,[[.5,1,'rev'],[1,1.15,'ok'],[1.15,1.8,'mid'],[1.8,4.5,'hi']])+'<small>bandas del modelo</small>','modelo']);
+  if(s.size){const v=Math.abs(s.jet.sys),dp=4*v*v;rows.push([lesion==='pda'?'Velocidad ductal':'Velocidad del chorro',`${f2(v)} m/s${lesion==='pda'?` · diást. ${f2(Math.abs(s.jet.dia))}`:''}`,`ΔP = 4v² ≈ ${Math.round(dp)} mmHg${lesion.startsWith('vsd')&&s.jet.sys>0?` · PSVD ≈ PAS ${Math.round(s.patient.sbp)} − ${Math.round(dp)} = ${Math.round(s.patient.sbp-dp)} mmHg`:''} ${tag(['ecuacion',{fuente:['quinones2002']}],'ΔP = 4v²')}`,'modelo'])}
+  rows.push(['Presión sistólica VD',`${Math.round(s.pressures.rvSys)} mmHg`,`${Math.round(s.pressures.rvRatio*100)} % de la sistémica`+bar(s.pressures.rvRatio,0,1.3,[[0,.45,'ok'],[.45,.75,'mid'],[.75,1.3,'hi']])+'<small>bandas del modelo</small>','modelo']);
+  for(const c of ov)rows.push([{RA:'AD',RV:'VD',LA:'AI',LV:'VI'}[c],`+${Math.round((g[c]||0)*100)} % de diámetro`,`volumen × ${f2((1+(g[c]||0))**3)}`+bar(g[c]||0,0,.32,[[0,.04,'ok'],[.04,.12,'mid'],[.12,.32,'hi']])+'<small>sobre el normal de este paciente · bandas del modelo</small>','modelo']);
+  if(s.rvWallMM>.3)rows.push(['Pared libre del VD',`+${f1(s.rvWallMM*s.patient.k)} mm`,'engrosada por la carga de presión','modelo']);
+  $('st-strip').innerHTML=`<dl>${rows.map(([k,v,d,p])=>`<dt>${k}</dt><dd><b>${v}</b>${p?' '+tag(p):''}${d?`<div>${d}</div>`:''}</dd>`).join('')}</dl>`;
   $('st-grade').innerHTML=`<span class="st-chip k-${s.grade.key}">${esc(s.grade.label)}</span>`;
   $('st-size-out').textContent=s.size?`${f1(s.defect.diameterMM)} mm`:'sin defecto';
  }
@@ -69,7 +70,7 @@ export function mountStudy(api){
   $('st-bands').innerHTML=pts.slice(1).map((p,i)=>`<i class="k-${p.s.grade.key}" style="left:${pts[i].x*100}%;width:${(p.x-pts[i].x)*100}%"></i>`).join('')}
  // ---------------------------------------------------------------- rendering
  async function refresh(){
-  const my=++gen,s=state();renderStrip(s);bands();
+  const my=++gen,s=state();renderStrip(s);bands();api.onRoute?.({route:'estudio',id:lesion,params:{tam:+size.toFixed(2),rvp:pvr}});
   const spec=variantSpec(s);api.status('Aplicando el defecto al corazón simulado…');await api.engine.setVariant(spec);api.onVariant(spec);if(my!==gen)return;
   api.status(`${LESIONS[lesion].name} · ${s.grade.label}`);
   if(!open)return;
@@ -137,7 +138,7 @@ export function mountStudy(api){
  $('st-live').onclick=()=>{showFigure(false);api.goLive?.(PLAN[lesion].lesion)};
  $('st-play').onclick=async()=>{if(playing){playing=false;$('st-play').textContent='▶ Recorrer de ausente a grande';return}playing=true;$('st-play').textContent='■ Detener';showFigure(true);
   for(const x of [0,.25,.5,.75,1]){if(!playing)break;size=x;$('st-size').value=String(x);await refresh();await new Promise(r=>setTimeout(r,2200))}playing=false;$('st-play').textContent='▶ Recorrer de ausente a grande'};
- renderStrip(state());bands();
+ renderStrip(state());bands();sourcesReady.then(()=>renderStrip(state())); // links to the sources once their catalog is loaded
  return {enter(){refresh()},leave(){playing=false;showFigure(false);gen++},get state(){return state()},show:showFigure,refresh,
   set(o){if(o.lesion){lesion=o.lesion;$('st-lesion').value=lesion}if(o.size!=null){size=o.size;$('st-size').value=String(size)}if(o.pvr){pvr=o.pvr;host.querySelectorAll('[data-pvr]').forEach(x=>x.classList.toggle('active',x.dataset.pvr===pvr))}return refresh()},
   sources:SHUNT_SOURCES};
