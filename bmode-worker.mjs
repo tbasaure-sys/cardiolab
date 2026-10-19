@@ -10,9 +10,10 @@ import {renderSpectrum,optimizeAim} from './spectral.mjs';
 import {setHeartRate} from './cycle.mjs';
 import {createPhantom,wireOverlay} from './phantom.mjs';
 import {lvVolumeCurve} from './physio.mjs';
+import {projectChest} from './cxr.mjs';
 const phantom=createPhantom();
 
-let tissue=null,flow=null,valves=[],motion=null,engine=createBMode(),variant={id:'normal'},initDone=null;
+let normalP=null,tissue=null,flow=null,valves=[],motion=null,engine=createBMode(),variant={id:'normal'},initDone=null;
 async function loadAnatomy(){
  const manifest=await (await fetch('assets/anatomy.json')).json(),buffer=await gunzip(await (await fetch('assets/anatomy.bin.gz')).arrayBuffer());const byName={};
  for(const o of manifest.objects){if(o.kind!=='heart')continue;byName[o.sourceName]={sourceName:o.sourceName,positions:placeAtlasPositions(o.kind,new Float32Array(buffer,o.positionOffset,o.positionCount)),indices:new Uint32Array(buffer,o.indexOffset,o.indexCount)}}
@@ -27,7 +28,7 @@ self.onmessage=async e=>{
   }
   // messages that arrive while the volume is still loading wait for it (never dropped)
   if(!tissue){if(!initDone)throw Error('Simulador sin inicializar');await initDone}
-  if(m.type==='variant'){tissue.reset();variant=m.spec||{id:'normal'};const info=applyVariant(tissue,variant);setValveVariant(valves,tissue,valveVariant(variant));flow.jets=lesionJets(tissue,variant);flow.scale=variant.params?.hemo?.flowScale||null;info.jets=flow.jets.length;self.postMessage({type:'variant',id:m.id,info});return}
+  if(m.type==='variant'){normalP=null;tissue.reset();variant=m.spec||{id:'normal'};const info=applyVariant(tissue,variant);setValveVariant(valves,tissue,valveVariant(variant));flow.jets=lesionJets(tissue,variant);flow.scale=variant.params?.hemo?.flowScale||null;info.jets=flow.jets.length;self.postMessage({type:'variant',id:m.id,info});return}
   if(m.type==='render'){
    setHeartRate(m.params.hr||null); // beat timing at the patient's heart rate (cycle.mjs)
    const t0=performance.now(),p=m.params,phase=p.phase??0,s=p.beating?ventricularContraction(phase):0;
@@ -44,6 +45,9 @@ self.onmessage=async e=>{
    return;
   }
   if(m.type==='spectrum'){const spec={...m.spec};setHeartRate(spec.hr||null);if(spec.optimize){spec.theta=optimizeAim(tissue,flow,motion,spec,spec.optimize);delete spec.optimize}const sp=renderSpectrum(tissue,flow,motion,spec);self.postMessage({type:'spectrum',id:m.id,spectrum:sp},[sp.data.buffer]);return}
+  if(m.type==='cxr'){ // AP chest projection with the chambers' enlargement, and the same chest without it (reference silhouette)
+   const variantP=projectChest(tissue,{remodel:tissue.remodel||null});normalP=tissue.remodel?(normalP||projectChest(tissue,{remodel:null})):variantP;
+   self.postMessage({type:'cxr',id:m.id,variant:variantP,normal:{metrics:normalP.metrics}});return}
   if(m.type==='lvVolume'){setHeartRate(m.hr||null);self.postMessage({type:'lvVolume',id:m.id,curve:lvVolumeCurve(tissue,motion,{phases:m.phases||40,k:m.k||1})});return}
   if(m.type==='views'){const views=buildViews(tissue.landmarks,fanObstruction(tissue,LABEL.LUNG,LABEL.BONE));self.postMessage({type:'views',id:m.id,views});return}
   if(m.type==='warp'){self.postMessage({type:'warp',id:m.id,points:m.points.map(p=>tissue.remodel?tissue.remodel.forward(p):p)});return} // reference landmark → where it is in the remodelled heart

@@ -13,6 +13,7 @@ export function createSimEngine({workers=Math.max(1,Math.min(3,(navigator.hardwa
   if(m.type==='ready'){landmarks=m.landmarks;onReady();return}
   if(m.type==='error'){w.busy=false;const p=pending.get(m.id);if(p){pending.delete(m.id);p.reject?.(Error(m.message))}pump();return}
   if(m.type==='spectrum'){const p=pending.get(m.id);if(p){pending.delete(m.id);p.resolve(m.spectrum)}return}
+  if(m.type==='cxr'){const p=pending.get(m.id);if(p){pending.delete(m.id);p.resolve({variant:m.variant,normal:m.normal})}return}
   if(m.type==='lvVolume'){const p=pending.get(m.id);if(p){pending.delete(m.id);p.resolve(m.curve)}return}
   if(m.type==='views'){const p=pending.get(m.id);if(p){pending.delete(m.id);p.resolve(m.views)}return}
   if(m.type==='warp'){const p=pending.get(m.id);if(p){pending.delete(m.id);p.resolve(m.points)}return}
@@ -55,6 +56,8 @@ export function createSimEngine({workers=Math.max(1,Math.min(3,(navigator.hardwa
  function warp(points){return ready.then(()=>new Promise(resolve=>{const id=++seq;pending.set(id,{resolve});pool[0].postMessage({type:'warp',id,points})}))}
  // LV volume through one beat (mL) at a heart rate, measured on the moving model (physio.mjs)
  function lvVolume({hr=params.hr,phases=40,k=params.bodyScale}={}){return ready.then(()=>new Promise(resolve=>{const id=++seq;pending.set(id,{resolve});pool[pool.length-1].postMessage({type:'lvVolume',id,hr,phases,k})}))}
+ // AP chest projection of the current variant (cxr.mjs): silhouette, cardiothoracic ratio and the reference ratio
+ function cxr(){return ready.then(()=>new Promise(resolve=>{const id=++seq;pending.set(id,{resolve});pool[pool.length-1].postMessage({type:'cxr',id})}))}
  function getViews(){return ready.then(()=>new Promise(resolve=>{const id=++seq;pending.set(id,{resolve});pool[0].postMessage({type:'views',id})}))}
- return {warp,lvVolume,debug:()=>({queue:queue.length,pending:pending.size,busy:pool.map(w=>w.busy),key:key.slice(-40),frames:frames.size}),ready,show,frameFor,renderOnce,setVariant,set,getViews,spectrum,probe,params,onFrame:f=>listeners.add(f),get landmarks(){return landmarks},get cached(){return frames.size},get failed(){return failed}};
+ return {warp,lvVolume,cxr,debug:()=>({queue:queue.length,pending:pending.size,busy:pool.map(w=>w.busy),key:key.slice(-40),frames:frames.size}),ready,show,frameFor,renderOnce,setVariant,set,getViews,spectrum,probe,params,onFrame:f=>listeners.add(f),get landmarks(){return landmarks},get cached(){return frames.size},get failed(){return failed}};
 }

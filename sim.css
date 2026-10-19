@@ -338,3 +338,13 @@ body.physics-open .workspace{display:none}body.phone-dock.physics-open .practice
 #pixel-profile{width:100%;height:84px;display:block;border-radius:4px;margin:4px 0 8px}
 .pixel-shares{list-style:none;margin:0 0 6px;padding:0}.pixel-shares li{display:grid;grid-template-columns:1fr 70px 34px;align-items:center;gap:8px;font-size:11px;color:#b9c7cf;margin:2px 0}.pixel-shares i{display:block;height:5px;background:#63ddc8;border-radius:3px}.pixel-shares b{font:10px Consolas,monospace;text-align:right;color:#d8fff7}
 body.phone-dock .pixel-card{margin:6px 8px}
+/* Cabecera del paciente (bedside-panel.mjs) */
+body.study-open .workspace{display:none}.bedside-figure[hidden]{display:none}body.phone-dock.study-open .practice-main>.scan{display:none}body.phone-dock .practice-main>.bedside-figure{order:1}
+.bd-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.bd-grid figure{margin:0;background:#05080b;border:1px solid #1b2730;border-radius:6px;overflow:hidden;display:flex;flex-direction:column}.bd-grid .bd-wide{grid-column:1/-1}
+.bd-grid figcaption{font:11px Consolas,monospace;color:#9fb2bd;padding:5px 8px;border-bottom:1px solid #141e25}
+.bd-grid canvas{width:100%;display:block}#bd-pcg{height:clamp(120px,calc((100vh - 760px) / 1.4),220px)}#bd-cxr{height:clamp(150px,calc((100vh - 740px) / 1.2),260px)}
+.bd-tools{display:flex;align-items:center;gap:10px;padding:6px 8px;border-top:1px solid #141e25}.bd-tools button{font-size:11px;padding:3px 10px}
+.bd-sat{padding:10px 12px;color:#b9c7cf}.bd-sats{display:flex;gap:16px}.bd-sats>div{display:flex;flex-direction:column}.bd-sats b{font:700 34px Consolas,monospace;line-height:1.1}
+.bd-diff{margin:6px 0 2px;font-size:12px}.bd-screen{margin:2px 0 6px;font-weight:600;font-size:13px}
+.bd-findings{list-style:none;margin:0;padding:8px 12px}.bd-findings li{font-size:12px;line-height:1.55;color:#c9d6dd;margin:4px 0}.bd-findings li b{color:#e6edf2;margin-right:4px}
+@media(max-width:850px){.bd-grid{grid-template-columns:1fr}#bd-pcg{height:230px}#bd-cxr{height:260px}}

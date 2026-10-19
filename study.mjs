@@ -9,6 +9,7 @@ import {roiAround} from './flow.mjs';
 import {VIEW_INFO} from './views.mjs';
 import {planeThrough,lessonContext} from './lesson-engine.mjs';
 import {tag,sourcesReady} from './provenance.mjs';
+import {mountBedside} from './bedside-panel.mjs';
 
 const esc=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const f1=v=>v.toFixed(1).replace('.',','),f2=v=>v.toFixed(2).replace('.',',');
@@ -28,14 +29,14 @@ const PLAN={
 
 export function mountStudy(api){
  // api: {host, figure, engine, views, landmarks(), patient(), ySign(windowPreset), freq(), bodyScale(), onVariant(spec), status(text)}
- const {host,figure}=api;let lesion='asd2',size=.6,pvr='normal',hoursOn=false,hoursIdx=0,closing=false,gen=0,timer=0,raf=0,playing=false,cine={lesion:[],chambers:[]},spectra={},open=false;
+ const {host,figure}=api;let bsOpen=false,lesion='asd2',size=.6,pvr='normal',hoursOn=false,hoursIdx=0,closing=false,gen=0,timer=0,raf=0,playing=false,cine={lesion:[],chambers:[]},spectra={},open=false;
  const ctxL=()=>lessonContext(api.landmarks(),api.views,'ref');
  host.innerHTML=`<p class="micro">Un control lleva el defecto de ausente a grande; la imagen, el color, los espectros y las medidas cambian juntos. Es la misma anatomía que exploras con la sonda.</p>
   <label class="field"><span>Defecto</span><select id="st-lesion">${Object.entries(LESIONS).map(([k,v])=>`<option value="${k}">${esc(v.name)}</option>`).join('')}</select></label>
   <div class="field"><span>Tamaño del defecto <output id="st-size-out"></output></span><input id="st-size" type="range" min="0" max="1" step="0.05" value="${size}"><div class="st-bands" id="st-bands"></div></div>
   <div class="field"><span>Resistencia vascular pulmonar</span><div class="seg" id="st-pvr">${Object.entries(PVR).map(([k,v])=>`<button data-pvr="${k}" class="${k===pvr?'active':''}">${esc(v.name)}</button>`).join('')}</div></div>
   <div class="field" id="st-hours-field" hidden><span>Horas de vida <output id="st-hours-out"></output></span><label class="check"><input type="checkbox" id="st-hours-on"> Seguir la transición (la resistencia pulmonar baja con la edad)</label><input type="range" id="st-hours" min="0" max="${HOURS.length-1}" step="1" value="0" disabled aria-label="Horas de vida"><label class="check" id="st-closing-row"><input type="checkbox" id="st-closing"> El ductus se cierra solo (recién nacido sano)</label><p class="micro" id="st-hours-note"></p></div>
-  <div class="st-actions"><button id="st-play" class="primary">▶ Recorrer de ausente a grande</button><button id="st-figure">Ver el estudio</button><button id="st-live">Explorar en vivo</button></div>
+  <div class="st-actions"><button id="st-play" class="primary">▶ Recorrer de ausente a grande</button><button id="st-figure">Ver el estudio</button><button id="st-bedside" title="Soplo, saturaciones, ECG y radiografía del mismo paciente">Ver la cabecera</button><button id="st-live">Explorar en vivo</button></div>
   <div id="st-grade" class="st-grade" aria-live="polite"></div><div id="st-strip" class="st-strip"></div>
   <details class="st-how"><summary>Cómo se calcula y qué es supuesto</summary><p>Modelo docente de circuito: el flujo sistémico sale del índice cardíaco; la presión pulmonar, de la resistencia pulmonar por el flujo pulmonar; el defecto es un orificio (Q = Cd·A·√(2ΔP/ρ)), así que un defecto grande deja de ser restrictivo porque las presiones se igualan. Las cavidades que reciben el volumen extra se agrandan con una deformación reversible del volumen acústico; con presión del VD alta, su pared se engruesa.</p>
   <p>Con fuente: el cortocircuito depende del tamaño del defecto y de la relación entre resistencias pulmonar y sistémica; una CIV pequeña es restrictiva (gradiente alto, presión del VD baja) y una grande no; la dilatación de AI y VI indica una CIV con cortocircuito grande; un defecto ≥ ½ de la raíz aórtica tiene repercusión (Spicer 2014). En el ductus, el gasto del VI lleva el flujo sistémico más el cortocircuito (van Laere 2018). ΔP = 4v².</p>
@@ -47,7 +48,11 @@ export function mountStudy(api){
   <figure><figcaption id="st-cap-jet"></figcaption><canvas id="st-c-jet"></canvas></figure><figure><figcaption>PW · flujo pulmonar y sistémico (Qp y Qs)</figcaption><canvas id="st-c-out"></canvas></figure></div>
   <p class="micro st-foot">Imágenes simuladas por el mismo motor que la sonda en vivo · modelo docente, no diagnóstico</p>`;
  const F=id=>figure.querySelector('#'+id);F('st-close').onclick=()=>showFigure(false);F('st-link').onclick=()=>api.copyLink?.();
- function showFigure(on){open=on;figure.hidden=!on;document.body.classList.toggle('study-open',on);if(on){refresh();loop()}else{cancelAnimationFrame(raf)}}
+ const bedsideFigure=api.bedsideFigure,bd=bedsideFigure?mountBedside({figure:bedsideFigure,engine:api.engine,patient:api.patient,hr:()=>api.patient().hr,onClose:()=>showBedside(false),copyLink:()=>api.copyLink?.()}):null;
+ function showFigure(on){if(on&&bsOpen)showBedside(false);open=on;figure.hidden=!on;document.body.classList.toggle('study-open',on||bsOpen);if(on){refresh();loop()}else{cancelAnimationFrame(raf)}}
+ // the bedside: the same state read with the bedside instruments (bedside.mjs) — no re-render of the echo panels
+ function showBedside(on){if(!bd)return;if(on&&open)showFigure(false);bsOpen=on;bedsideFigure.hidden=!on;document.body.classList.toggle('study-open',on||open);if(on)refresh();else bd.stop();api.onRoute?.(routeNow())}
+ const routeNow=()=>({route:'estudio',id:lesion,params:{tam:+size.toFixed(2),...(timed()?{horas:HOURS[hoursIdx],...(closing&&lesion==='pda'?{cierre:1}:{})}:{rvp:pvr}),...(bsOpen?{cab:1}:{})}});
  // ---------------------------------------------------------------- state → model → UI
  const isNeonate=()=>api.patient().id==='neonate';
  const timed=()=>hoursOn&&isNeonate();
@@ -79,9 +84,10 @@ export function mountStudy(api){
   $('st-bands').innerHTML=pts.slice(1).map((p,i)=>`<i class="k-${p.s.grade.key}" style="left:${pts[i].x*100}%;width:${(p.x-pts[i].x)*100}%"></i>`).join('')}
  // ---------------------------------------------------------------- rendering
  async function refresh(){
-  const my=++gen,s=state();renderStrip(s);bands();api.onRoute?.({route:'estudio',id:lesion,params:{tam:+size.toFixed(2),...(timed()?{horas:HOURS[hoursIdx],...(closing&&lesion==='pda'?{cierre:1}:{})}:{rvp:pvr})}});syncHours();
+  const my=++gen,s=state();renderStrip(s);bands();api.onRoute?.(routeNow());syncHours();
   const spec=variantSpec(s);api.status('Aplicando el defecto al corazón simulado…');await api.engine.setVariant(spec);api.onVariant(spec);if(my!==gen)return;
   api.status(`${LESIONS[lesion].name} · ${s.grade.label}`);
+  if(bsOpen)bd.update(s,api.patient().hr);
   if(!open)return;
   const P=PLAN[lesion];F('st-title').textContent=`${LESIONS[lesion].name} · ${s.size?f1(s.defect.diameterMM)+' mm':'sin defecto'} · ${s.transition?hoursLabel(s.transition.hours):'RVP '+PVR[pvr].name.toLowerCase()}`;F('st-sub').textContent=`${api.patient().name} · Qp/Qs ${f2(s.flows.qpqs)} · ${s.grade.label}`;
   F('st-cap-lesion').textContent=P.lesion.title;F('st-cap-chambers').textContent=P.chambers.title;F('st-cap-jet').textContent=P.jet.title;
@@ -146,12 +152,12 @@ export function mountStudy(api){
  $('st-hours-on').onchange=()=>{hoursOn=$('st-hours-on').checked;syncHours();renderStrip(state());schedule()};
  $('st-hours').oninput=()=>{hoursIdx=Number($('st-hours').value);syncHours();renderStrip(state())};$('st-hours').onchange=schedule;
  $('st-closing').onchange=()=>{closing=$('st-closing').checked;syncHours();renderStrip(state());schedule()};
- $('st-figure').onclick=()=>showFigure(true);
+ $('st-figure').onclick=()=>showFigure(true);$('st-bedside').onclick=()=>showBedside(true);
  $('st-live').onclick=()=>{showFigure(false);api.goLive?.(PLAN[lesion].lesion)};
  $('st-play').onclick=async()=>{if(playing){playing=false;$('st-play').textContent='▶ Recorrer de ausente a grande';return}playing=true;$('st-play').textContent='■ Detener';showFigure(true);
   for(const x of [0,.25,.5,.75,1]){if(!playing)break;size=x;$('st-size').value=String(x);await refresh();await new Promise(r=>setTimeout(r,2200))}playing=false;$('st-play').textContent='▶ Recorrer de ausente a grande'};
  syncHours();renderStrip(state());bands();sourcesReady.then(()=>renderStrip(state())); // links to the sources once their catalog is loaded
- return {enter(){refresh()},leave(){playing=false;showFigure(false);gen++},get state(){return state()},show:showFigure,refresh,
+ return {enter(){refresh()},leave(){playing=false;showFigure(false);showBedside(false);gen++},get state(){return state()},show:showFigure,showBedside,refresh,
   set(o){if(o.lesion){lesion=o.lesion;$('st-lesion').value=lesion}if(o.size!=null){size=o.size;$('st-size').value=String(size)}if(o.pvr){pvr=o.pvr;host.querySelectorAll('[data-pvr]').forEach(x=>x.classList.toggle('active',x.dataset.pvr===pvr))}
    if('hours' in o){const i=o.hours==null?-1:HOURS.reduce((b,h,n)=>Math.abs(h-o.hours)<Math.abs(HOURS[b]-o.hours)?n:b,0);hoursOn=i>=0;if(i>=0){hoursIdx=i;$('st-hours').value=String(i)}}
    if('closing' in o)closing=!!o.closing;syncHours();return refresh()},sync:()=>{syncHours();renderStrip(state());bands()},

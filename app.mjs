@@ -552,7 +552,7 @@ async function applyLink(link){if(!link||!physics||!study||!lessonPanel)return;c
  if(PATIENT_BY_ID[q.paciente]&&q.paciente!==patient.id)setPatient(q.paciente);
  if(link.route==='fisica'){physics.setParams(q);if(openPanel!=='physics')showPanel('physics');physics.select(physics.chapters.some(c=>c.id===link.id)?link.id:physics.chapters[0].id)}
  else if(link.route==='estudio'&&LESIONS[link.id]){const hrs=numParam(q.horas,0,2000);if(hrs!=null&&patient.id!=='neonate')setPatient('neonate'); // the hours of life belong to the newborn
-  if(openPanel!=='chd')showPanel('chd');chd.setMode('study');study.show(true);await study.set({lesion:link.id,size:numParam(q.tam,0,1)??.6,pvr:PVR[q.rvp]?q.rvp:'normal',hours:hrs,closing:q.cierre==='1'})}
+  if(openPanel!=='chd')showPanel('chd');chd.setMode('study');study.show(true);await study.set({lesion:link.id,size:numParam(q.tam,0,1)??.6,pvr:PVR[q.rvp]?q.rvp:'normal',hours:hrs,closing:q.cierre==='1'});if(q.cab==='1'){study.show(false);study.showBedside(true)}}
  else if(link.route==='vista'&&VIEW_INFO[link.id]){for(let i=0;i<150&&!ready;i++)await new Promise(r=>setTimeout(r,100));if(openPanel)showPanel(openPanel);if(imageOnly)setImageOnly(false);setEchoMode();await goToView(link.id);setLink(link)} // the live simulator: close the panel that drives the probe
  else if(link.route==='leccion'){if(openPanel!=='lessons')showPanel('lessons');lessonPanel.open(link.id,{mode:['demostracion','practica','examen'].includes(q.modo)?q.modo:undefined,seed:numParam(q.semilla,1,1e9)??undefined})}
 }
@@ -619,7 +619,7 @@ engine.ready.then(async()=>{
  drills=mountDrills({...common,host:$('drills'),ySign,setTgc:setTgcAll,visible:()=>openPanel==='drills'});
  chd=mountCHD({...common,host:$('chd'),study:()=>study,onVariant:(spec,reveal)=>{chdVariantKey=spec.id+JSON.stringify(spec.params||{});setLesionMarker(reveal?lesionPosition(spec.id):null);requestSim(false);requestSpectrum()},colorOnLesion:id=>focusColorOn(lesionPosition(id)),cwOnLesion:id=>cwOnLesion(id)});
  planeMap=mountPlaneMap({view:views[1],targets:simViews,info:VIEW_INFO,onGo:goToView,core:['plax','psaxAV','psaxMV','psaxPM','a4c','a5c','a2c','a3c','sc4c','scSAX','ssn']});
- study=mountStudy({onRoute:setLink,copyLink,host:chd.host,figure:$('study-figure'),engine,views:simViews,landmarks:()=>engine.landmarks,patient:()=>patient,ySign:w=>scanYSign(w,pediatricDisplay),freq:()=>display.freq,bodyScale:()=>BODY.k,
+ study=mountStudy({onRoute:setLink,copyLink,bedsideFigure:$('bedside-figure'),host:chd.host,figure:$('study-figure'),engine,views:simViews,landmarks:()=>engine.landmarks,patient:()=>patient,ySign:w=>scanYSign(w,pediatricDisplay),freq:()=>display.freq,bodyScale:()=>BODY.k,
   onVariant:spec=>{chdVariantKey=spec.id+JSON.stringify(spec.params||{});setLesionMarker(null);requestSim(false);requestSpectrum()},status:t=>status(t),goLive:p=>{setEchoMode();goToView(p.view||'psaxAV')}});
  if(window.echoLab)echoLab.study=study;
  physics=mountPhysics({onRoute:setLink,copyLink,host:$('physics'),figure:$('physics-figure'),engine,views:simViews,landmarks:()=>engine.landmarks,patient:()=>patient,ySign:w=>scanYSign(w,pediatricDisplay),freq:()=>display.freq,bodyScale:()=>BODY.k,status:t=>status(t),
