@@ -362,3 +362,4 @@ body.study-open .workspace{display:none}.bedside-figure[hidden]{display:none}bod
 .ex-bars{display:grid;gap:3px;margin-top:6px}.ex-bar{display:grid;grid-template-columns:minmax(90px,38%) 1fr 74px;gap:6px;align-items:center;font-size:11px}.ex-bar .lab{color:var(--muted)}.ex-bar.main .lab{color:inherit;font-weight:600}.ex-bar b{text-align:right;font-weight:500;font-family:Consolas,monospace}
 .ex-bar .track{position:relative;height:9px;background:#0b1319;border-radius:4px;overflow:hidden}.ex-bar .track:after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:#4a5d69}.ex-bar .track i{position:absolute;top:1px;bottom:1px;border-radius:3px}.ex-bar .track i.pos{background:#ff9b8a}.ex-bar .track i.neg{background:#7fb6ff}
 .ex-two>*{min-width:0}#chd-exam select{width:100%;min-width:0;box-sizing:border-box}.ex-two{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.ex-table{table-layout:fixed}.ex-table td,.ex-table th{overflow-wrap:anywhere}

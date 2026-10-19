@@ -14,7 +14,7 @@
 //   caliper    placement of the calipers on the image (edges, blur) — everything else
 export const ATTRIBUTION_SOURCES=['quinones2002','docencia'];
 export const VELOCITY_TERMS=[
- {id:'cursor',label:'Lectura del cursor',hint:'Marca el borde superior de la envolvente, no el interior del espectro, y copia el número tal cual.'},
+ {id:'cursor',label:'Lectura del cursor',hint:'Marca la cresta de la envolvente, ni por encima (el ensanchamiento del espectro engaña) ni por dentro, y copia el número tal cual.'},
  {id:'scale',label:'Escala y aliasing',hint:'Sube la escala o baja la línea base hasta que el espectro no se corte ni se envuelva; en un chorro rápido usa Doppler continuo.'},
  {id:'angle',label:'Ángulo con el chorro',hint:'Alinea el cursor con el chorro (el color ayuda): la velocidad medida es v·cos θ.'},
  {id:'gate',label:'Posición del volumen de muestra',hint:'Coloca el volumen de muestra sobre el chorro, en su parte más estrecha.'},
