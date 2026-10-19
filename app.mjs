@@ -15,6 +15,7 @@ import {VIEW_INFO,VIEW_CARD,nearestView,markerClock,describeManeuver,VIEWS_VERSI
 import {mountPlaneMap,WINDOW_COLORS} from './plane-map.mjs';
 import {mountCoach} from './coach.mjs';
 import {mountCHD} from './chd-panel.mjs';
+import {mountExam} from './exam.mjs';
 import {mountDrills} from './drills.mjs';
 import {mountPhoneProbe} from './phone-probe.mjs';
 import {VARIANT_BY_ID} from './chd-data.mjs';
@@ -28,6 +29,8 @@ import {mountLessons} from './lesson-panel.mjs';
 import {mountStudy} from './study.mjs';
 import {mountPhysics} from './physics.mjs';
 import {parseLink,formatLink,numParam} from './links.mjs';
+import {explainPixel,pixelOf} from './pixel-trace.mjs';
+import {tag} from './provenance.mjs';
 import {LESIONS,PVR} from './shunt-model.mjs';
 import {ecgValue,setHeartRate} from './cycle.mjs';
 
@@ -40,7 +43,7 @@ let tutor=null,pediatricDisplay=true,instrument=null,references=null,videoImage=
 // simulated B-mode: engine, cardiac phase, cine cache of scan-converted images
 // the standard views are precomputed (assets/views.json, tools/build-views.mjs); the worker computes them only as a fallback
 const viewsPromise=fetch('assets/views.json').then(r=>r.ok?r.json():null).catch(()=>null);
-const engine=createSimEngine();engine.set({bodyScale:BODY.k,hr:patient.hr});setHeartRate(patient.hr);display.freq=patient.freq;let phase=0,study=null,phaseLock=null,blockedWindows=null,lessonPanel=null,beatSpeed=1,heartRate=patient.hr,lastTick=performance.now(),lastPoseChange=0,simQuick=false,simViews=null,coach=null,chd=null,targetPose=null,lesion=null,overlayContours=false;
+const engine=createSimEngine();engine.set({bodyScale:BODY.k,hr:patient.hr});setHeartRate(patient.hr);display.freq=patient.freq;let phase=0,study=null,exam=null,phaseLock=null,blockedWindows=null,lessonPanel=null,beatSpeed=1,heartRate=patient.hr,lastTick=performance.now(),lastPoseChange=0,simQuick=false,simViews=null,coach=null,chd=null,targetPose=null,lesion=null,overlayContours=false;
 const scanCache=new WeakMap();let scanCacheKey='';
 const latencies=[],poseLog=[],controls=[];let lastInputAt=0;let projection={cx:0,cy:30,scale:1},scanWidth=600,scanHeight=400;
 const status=(text,error=false)=>{$('status').textContent=text;$('status').classList.toggle('error',error)};
@@ -146,7 +149,7 @@ function dispatch(){if(!busy&&pending){busy=true;const next=pending;pending=null
 function visibleCut(c,pose){const a=c.segments;for(let i=0;i<a.length;i+=4){if(inSector(a[i],a[i+1],pose)||inSector(a[i+2],a[i+3],pose)||inSector((a[i]+a[i+2])/2,(a[i+1]+a[i+3])/2,pose))return true}return false}
 function accept(msg){
   busy=false;if(msg.type==='error'){status('No se pudo calcular el corte: '+msg.message,true);dispatch();return}
-  if(msg.id===revision){if(active&&JSON.stringify(active.pose)!==JSON.stringify(msg.pose)){crosshair=null;display.points=[];}active=msg;active.visible=msg.cuts.filter(c=>visibleCut(c,msg.pose));active.elapsed=performance.now()-latestRequestedAt;latencies.push(active.elapsed);if(latencies.length>100)latencies.shift();
+  if(msg.id===revision){if(active&&JSON.stringify(active.pose)!==JSON.stringify(msg.pose)){crosshair=null;display.points=[];if(pixelAsk){pixelAsk=null;PX.hidden=true}}active=msg;active.visible=msg.cuts.filter(c=>visibleCut(c,msg.pose));active.elapsed=performance.now()-latestRequestedAt;latencies.push(active.elapsed);if(latencies.length>100)latencies.shift();
     if(selected&&!active.visible.some(c=>c.id===selected)){selected=null;crosshair=null}
     beam?.update(active,selected);beam?.track(msg.pose,scanYSign(msg.state.preset,pediatricDisplay));updateViewCard();$('beam-path').textContent=beam?.enabled&&beam.path?'Línea central (cm): '+beam.path:'';
     for(const v of views)updateView(v,msg.pose);renderScan();renderStructures();$('latency').textContent=`${Math.round(active.elapsed)} ms`;
@@ -199,6 +202,7 @@ new ResizeObserver(()=>renderScan()).observe($('scan-view'));
 scan.addEventListener('click',e=>{
   if(!active||realEcho())return;
   if(simEcho()&&dop.mode&&dop.geom){const rr=scan.getBoundingClientRect(),py=e.clientY-rr.top;if(py>dop.geom.hImg){const g=dop.geom,sp=dop.spec;if(sp&&py>=g.y0&&py<=g.y0+g.H){dop.caliper=sp.top-(py-g.y0)/g.H*(sp.top-sp.bottom);renderScan()}return}}const r=scan.getBoundingClientRect(),[x,y]=screenToPlane(projection,e.clientX-r.left,e.clientY-r.top);if(!inSector(x,y,active.pose))return;
+  if(askingPixel&&simEcho()){askPixel(x,y);return}
   if(display.measuring){addCaliper(x,y);return}
   if(simEcho()&&dop.mode){aimDoppler(x,y);return}
   if(simEcho()&&engine.params.color.on){moveColorBox(x,y);return}
@@ -207,6 +211,36 @@ scan.addEventListener('click',e=>{
   for(const cut of active.visible){const a=cut.segments;for(let i=0;i<a.length;i+=4){const ax=a[i],ay=a[i+1],dx=a[i+2]-ax,dy=a[i+3]-ay,t=clamp(((x-ax)*dx+(y-ay)*dy)/(dx*dx+dy*dy||1),0,1),px=ax+t*dx,py=ay+t*dy,d=Math.hypot(x-px,y-py);if(d<best){best=d;found=cut.id;point=toWorld(active.pose,px,py)}}}
   if(found)select(found,point);
 });
+// ---------------------------------------------------------------- «¿Por qué este píxel?» (pixel-trace.mjs)
+let askingPixel=false,pixelAsk=null,pixelSeq=0;
+const PX=$('pixel-card');
+function setAskPixel(on){askingPixel=!!on&&!!simEcho();$('ask-pixel').classList.toggle('active',askingPixel);$('ask-pixel').setAttribute('aria-pressed',String(askingPixel));scan.style.cursor=askingPixel?'help':'';
+ if(askingPixel){display.measuring=false;$('scan-foot').textContent='Pulsa un punto de la imagen eco: el simulador explica por qué se ve así'}else{pixelAsk=null;PX.hidden=true;renderScan()}}
+$('ask-pixel').onclick=()=>setAskPixel(!askingPixel);
+// re-render the very frame on screen (same pose, settings and cardiac phase, hence the same noise) with the ray of that line recorded
+async function askPixel(x,y){
+ if(!active||active.id!==revision)return;const pose=active.pose,my=++pixelSeq;
+ const geo={lines:168,sector:pose.sector,depth:pose.depth,samples:Math.min(960,Math.round(pose.depth*BODY.k/.00025))},px=pixelOf(geo,x,y);if(!px)return;
+ pixelAsk={x,y};renderScan();PX.hidden=false;PX.innerHTML='<p class="micro">Siguiendo el rayo…</p>';
+ const idx=engine.params.beating?Math.floor(((phase%1)+1)%1*20):0;
+ const frame=await engine.renderOnce(pose,{lines:168,phase:(idx+.5)/20,trace:{j:px.j}});if(my!==pixelSeq||!frame.trace)return;
+ const e=explainPixel(frame.trace,px.k);if(!e)return;pixelAsk={x,y,e};renderScan();renderPixelCard(e)}
+function renderPixelCard(e){
+ const bars=e.shares.slice(0,5).map(s=>`<li title="${s.note}"><span>${s.label}</span><i style="width:${Math.max(3,s.pct).toFixed(0)}%"></i><b>${s.pct.toFixed(0)} %</b></li>`).join('');
+ PX.innerHTML=`<div class="pixel-head"><strong>¿Por qué este píxel?</strong> ${tag('medido')}<button id="pixel-close" aria-label="Cerrar">✕</button></div>
+  <p class="pixel-verdict k-${e.verdict.id}">${e.verdict.text}</p>
+  <canvas id="pixel-profile" aria-label="Energía del pulso y brillo a lo largo del rayo"></canvas>
+  <ul class="pixel-shares">${bars}</ul>
+  <p class="micro">${e.sentences.slice(0,2).join(' ')}</p>`;
+ $('pixel-close').onclick=()=>setAskPixel(false);drawPixelProfile(e)}
+function drawPixelProfile(e){const c=$('pixel-profile');if(!c)return;const W=c.width=Math.max(200,c.clientWidth||280),H=c.height=84,g=c.getContext('2d'),P=e.profile,n=P.depthCm.length,maxD=P.depthCm[n-1];
+ g.fillStyle='#05080b';g.fillRect(0,0,W,H);const X=d=>8+d/maxD*(W-16),maxL=Math.max(20,...P.lossDB.filter(v=>isFinite(v)));
+ g.strokeStyle='#ffb454';g.lineWidth=1.4;g.beginPath();for(let i=0;i<n;i+=2){const y=6+Math.min(maxL,P.lossDB[i])/maxL*(H-26);i?g.lineTo(X(P.depthCm[i]),y):g.moveTo(X(P.depthCm[i]),y)}g.stroke();
+ g.strokeStyle='#63ddc866';g.beginPath();for(let i=0;i<n;i+=2){const y=H-16-P.grey[i]/255*(H-30);i?g.lineTo(X(P.depthCm[i]),y):g.moveTo(X(P.depthCm[i]),y)}g.stroke();
+ for(const ev of e.events){g.fillStyle=ev.kind==='iface'?'#9fb2bd':'#ff6b6b';g.fillRect(X(ev.depthCm),H-14,1.5,6)}
+ g.strokeStyle='#ffe398';g.setLineDash([3,3]);g.beginPath();g.moveTo(X(e.depthCm),0);g.lineTo(X(e.depthCm),H-12);g.stroke();g.setLineDash([]);
+ g.fillStyle='#9fb2bd';g.font='9px Consolas, monospace';g.fillText(`pérdida ${e.loss.total.toFixed(0)} dB`,8,10);g.fillStyle='#63ddc8';g.fillText('brillo',W-40,10);g.fillStyle='#9fb2bd';g.fillText('0',8,H-2);g.fillText(`${maxD.toFixed(0)} cm`,W-34,H-2)}
+function drawPixelMark(){if(!pixelAsk||!active)return;const {cx,cy,scale,ySign}=projection,px=cx+pixelAsk.x*scale,py=cy+pixelAsk.y*scale*ySign;ctx.save();ctx.strokeStyle='#ffe398';ctx.fillStyle='#ffe398';ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(px,py);ctx.stroke();ctx.setLineDash([]);ctx.lineWidth=1.6;ctx.beginPath();ctx.arc(px,py,7,0,Math.PI*2);ctx.stroke();ctx.restore()}
 // ---------------------------------------------------------------- simulated B-mode display
 function simProjection(w,h,p,ySign){const baseScale=Math.min((w-45)/(2*p.depth*Math.sin(rad(p.sector/2))),(h-72)/p.depth),scale=baseScale*display.zoom,cy=(ySign===1?28:h-44)+ySign*p.depth*.55*(baseScale-scale);return {cx:w/2,cy,scale,ySign}}
 // ECG from the beat timing at the patient's heart rate (cycle.mjs)
@@ -265,7 +299,7 @@ function drawSim(){
  drawHud(w,48);
  if(!frame){ctx.fillStyle='#8aa1ae';ctx.font='12px Segoe UI';ctx.textAlign='center';ctx.fillText(engine.failed?'Simulador no disponible: '+engine.failed:'Simulando la imagen…',w/2,h/2)}
  if(crosshair&&active){const q=toPlane(p,crosshair);if(Math.abs(q[2])<1e-4){const x=cx+q[0]*scale,y=cy+ySign*q[1]*scale;ctx.strokeStyle='#ffe98c';ctx.beginPath();ctx.moveTo(x-7,y);ctx.lineTo(x+7,y);ctx.moveTo(x,y-7);ctx.lineTo(x,y+7);ctx.stroke()}}
- drawColorBox(p,cx,cy,scale,ySign);drawDopplerCursor(p,cx,cy,scale,ySign);drawCalipers();if(dop.mode)drawSpectrum(w,h,hImg);else drawECG(12,h-34,w-24,28);
+ drawColorBox(p,cx,cy,scale,ySign);drawDopplerCursor(p,cx,cy,scale,ySign);drawCalipers();drawPixelMark();if(dop.mode)drawSpectrum(w,h,hImg);else drawECG(12,h-34,w-24,28);
  drawTutorOverlay(w,hImg,sector);
 }
 // lesson tutor on the image: only a window that fails in this case (gas, lung, dressing) is drawn; the lesson text
@@ -447,6 +481,7 @@ function caliperText(){const mm=distanceMM(...display.points)*BODY.k,k=display.m
 function setPatient(id){const p=PATIENT_BY_ID[id];if(!p)return;patient=p;try{localStorage.setItem(PATIENT_KEY,id)}catch{}
  setBodyScale(bodyScale(p));engine.set({bodyScale:BODY.k,hr:p.hr});setHeartRate(p.hr);heartRate=p.hr;display.freq=p.freq;display.points=[];crosshair=null;updatePatientUI();
  if(ready&&!frozen){stopSweep();state.depth=defaultState(state.preset).depth;syncControls();requestSlice()}else renderScan();
+ study?.sync?.();
  dop.key='';requestSpectrum();instrument?.update();status(`Paciente: ${describePatient(p)}`)}
 function updatePatientUI(){$('patient').value=patient.id;$('patient-info').textContent=`${patient.age} · SC ${bsaHaycock(patient.weight,patient.height).toFixed(2).replace('.',',')} m² · FC ${patient.hr}`;$('patient').title=describePatient(patient)}
 $('patient').replaceChildren(...PATIENTS.map(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=`${p.name} · ${String(p.weight).replace('.',',')} kg`;return o}));$('patient').onchange=()=>setPatient($('patient').value);updatePatientUI();
@@ -514,10 +549,12 @@ function lesionPosition(id){const lm=engine.landmarks,k=LESION_AT[id];if(lm&&id=
 function setLink(link){const base=location.pathname+location.search,url=base+(link?formatLink({...link,params:{...link.params,paciente:patient.id}}):''); // the patient size always travels with the link
  if(url!==base+location.hash)history.replaceState(null,'',url)}
 async function copyLink(){const url=location.href;try{await navigator.clipboard.writeText(url);status('Enlace copiado: '+url)}catch{prompt('Copia este enlace:',url)}}
-async function applyLink(link){if(!link||!physics||!study||!lessonPanel)return;const q=link.params||{};
+async function applyLink(link){if(!link||!physics||!study||!exam||!lessonPanel)return;const q=link.params||{};
  if(PATIENT_BY_ID[q.paciente]&&q.paciente!==patient.id)setPatient(q.paciente);
  if(link.route==='fisica'){physics.setParams(q);if(openPanel!=='physics')showPanel('physics');physics.select(physics.chapters.some(c=>c.id===link.id)?link.id:physics.chapters[0].id)}
- else if(link.route==='estudio'&&LESIONS[link.id]){if(openPanel!=='chd')showPanel('chd');chd.setMode('study');study.show(true);await study.set({lesion:link.id,size:numParam(q.tam,0,1)??.6,pvr:PVR[q.rvp]?q.rvp:'normal'})}
+ else if(link.route==='estudio'&&link.id==='examen'){if(openPanel!=='chd')showPanel('chd');chd.setMode('exam');await exam.start(numParam(q.semilla,1,999999)??undefined)}
+ else if(link.route==='estudio'&&LESIONS[link.id]){const hrs=numParam(q.horas,0,2000);if(hrs!=null&&patient.id!=='neonate')setPatient('neonate'); // the hours of life belong to the newborn
+  if(openPanel!=='chd')showPanel('chd');chd.setMode('study');study.show(true);await study.set({lesion:link.id,size:numParam(q.tam,0,1)??.6,pvr:PVR[q.rvp]?q.rvp:'normal',hours:hrs,closing:q.cierre==='1'});if(q.cab==='1'){study.show(false);study.showBedside(true)}}
  else if(link.route==='vista'&&VIEW_INFO[link.id]){for(let i=0;i<150&&!ready;i++)await new Promise(r=>setTimeout(r,100));if(openPanel)showPanel(openPanel);if(imageOnly)setImageOnly(false);setEchoMode();await goToView(link.id);setLink(link)} // the live simulator: close the panel that drives the probe
  else if(link.route==='leccion'){if(openPanel!=='lessons')showPanel('lessons');lessonPanel.open(link.id,{mode:['demostracion','practica','examen'].includes(q.modo)?q.modo:undefined,seed:numParam(q.semilla,1,1e9)??undefined})}
 }
@@ -542,6 +579,11 @@ $('sources-top').onclick=()=>$('sources').click();
 $('echo-tools').hidden=state.mode!=='echo';
 // ---------------------------------------------------------------- lesson tutor API (lesson-panel.mjs, lesson-export.mjs)
 function ensureEcho(){if(state.mode!=='echo'||echoSource!=='sim'){state.mode='echo';echoSource='sim';$('echo-source').value='sim';for(const m of ['anatomy','echo'])$(`mode-${m}`).classList.toggle('active',m==='echo');$('echo-tools').hidden=false;$('sim-tools').hidden=false;syncControls()}}
+// what is on screen, for the structured study: plane, colour box, spectral Doppler cursor and its reading, calipers
+function captureForExam(){const p=poseFromState(state),col=engine.params.color,sp=dop.spec;
+ return {ready:ready&&simEcho(),pose:{origin:[...p.origin],u:[...p.u],d:[...p.d],n:[...p.n],depth:p.depth,sector:p.sector},color:{on:!!col.on,roi:col.on&&col.roi?{...col.roi}:null},
+  dop:dop.mode?{mode:dop.mode,theta:dop.theta,gateDepth:dop.depth*p.depth,scale:dop.mode==='cw'?(dop.scale||4):dop.scale,baseline:dop.baseline,freq:display.freq,bodyScale:BODY.k,reading:dop.caliper,spec:sp?{vPeak:sp.vPeak,top:sp.top,bottom:sp.bottom,nyquist:sp.nyquist,angle:sp.angle,mode:sp.mode}:null}:null,
+  caliper:display.points.length===2?{points:display.points.map(q=>[...q]),mm:distanceMM(...display.points)*BODY.k}:null}}
 function aimDopplerAtPoint(point){const p=poseFromState(state),q=point.map((v,i)=>v-p.origin[i]);aimDoppler(q[0]*p.u[0]+q[1]*p.u[1]+q[2]*p.u[2],q[0]*p.d[0]+q[1]*p.d[1]+q[2]*p.d[2])}
 // resolves once the plane of the current state is sliced and drawn (or after a timeout)
 // and the 3D cameras have stopped moving (orbit damping, beam follow), so that the same state draws the same pixels
@@ -582,11 +624,15 @@ engine.ready.then(async()=>{
  const ySign=w=>scanYSign(PRESET_OF_WINDOW[w]||'plax',pediatricDisplay);
  coach=mountCoach({...common,host:$('coach'),setTarget:setTargetPose,ySign,imageOnly:setImageOnly});
  drills=mountDrills({...common,host:$('drills'),ySign,setTgc:setTgcAll,visible:()=>openPanel==='drills'});
- chd=mountCHD({...common,host:$('chd'),study:()=>study,onVariant:(spec,reveal)=>{chdVariantKey=spec.id+JSON.stringify(spec.params||{});setLesionMarker(reveal?lesionPosition(spec.id):null);requestSim(false);requestSpectrum()},colorOnLesion:id=>focusColorOn(lesionPosition(id)),cwOnLesion:id=>cwOnLesion(id)});
+ chd=mountCHD({...common,host:$('chd'),study:()=>study,exam:()=>exam,onVariant:(spec,reveal)=>{chdVariantKey=spec.id+JSON.stringify(spec.params||{});setLesionMarker(reveal?lesionPosition(spec.id):null);requestSim(false);requestSpectrum()},colorOnLesion:id=>focusColorOn(lesionPosition(id)),cwOnLesion:id=>cwOnLesion(id)});
  planeMap=mountPlaneMap({view:views[1],targets:simViews,info:VIEW_INFO,onGo:goToView,core:['plax','psaxAV','psaxMV','psaxPM','a4c','a5c','a2c','a3c','sc4c','scSAX','ssn']});
- study=mountStudy({onRoute:setLink,copyLink,host:chd.host,figure:$('study-figure'),engine,views:simViews,landmarks:()=>engine.landmarks,patient:()=>patient,ySign:w=>scanYSign(w,pediatricDisplay),freq:()=>display.freq,bodyScale:()=>BODY.k,
+ study=mountStudy({onRoute:setLink,copyLink,bedsideFigure:$('bedside-figure'),host:chd.host,figure:$('study-figure'),engine,views:simViews,landmarks:()=>engine.landmarks,patient:()=>patient,ySign:w=>scanYSign(w,pediatricDisplay),freq:()=>display.freq,bodyScale:()=>BODY.k,
   onVariant:spec=>{chdVariantKey=spec.id+JSON.stringify(spec.params||{});setLesionMarker(null);requestSim(false);requestSpectrum()},status:t=>status(t),goLive:p=>{setEchoMode();goToView(p.view||'psaxAV')}});
  if(window.echoLab)echoLab.study=study;
+ exam=mountExam({host:chd.examHost,engine,views:simViews,landmarks:()=>engine.landmarks,patient:()=>patient,setPatient,status:t=>status(t),onRoute:setLink,copyLink,capture:captureForExam,
+  onVariant:(spec,reveal)=>{chdVariantKey=spec.id+JSON.stringify(spec.params||{});setLesionMarker(reveal?lesionPosition(spec.id):null);requestSim(false);requestSpectrum()},
+  openTruth:async(cs,{bedside})=>{chd.setMode('study');study.show(!bedside);await study.set({lesion:cs.lesion==='normal'?'asd2':cs.lesion,size:cs.size,pvr:cs.pvr||'normal',hours:cs.hours,closing:cs.closing});if(bedside){study.show(false);study.showBedside(true)}}});
+ if(window.echoLab)echoLab.exam=exam;
  physics=mountPhysics({onRoute:setLink,copyLink,host:$('physics'),figure:$('physics-figure'),engine,views:simViews,landmarks:()=>engine.landmarks,patient:()=>patient,ySign:w=>scanYSign(w,pediatricDisplay),freq:()=>display.freq,bodyScale:()=>BODY.k,status:t=>status(t),
   normal:async()=>{if(chdVariantKey&&!chdVariantKey.startsWith('normal')){await engine.setVariant({id:'normal'});chdVariantKey='normal{}';setLesionMarker(null);requestSim(false);requestSpectrum()}}});
  if(window.echoLab)echoLab.physics=physics;

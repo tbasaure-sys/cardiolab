@@ -1,6 +1,7 @@
 // Direct links to a place in CardioLab, kept in the URL fragment so they work on a static host:
 //   #/fisica/ciclo?fc=140          a physics or physiology chapter (with its settings)
 //   #/estudio/vsdpm?tam=0.6&rvp=normal   the shunt study at a lesion size and pulmonary resistance
+//   #/estudio/examen?semilla=42    a structured study: the same seed is always the same synthetic patient
 //   #/vista/a4c                    a standard view in the live simulator
 //   #/leccion/ductus?modo=practica a tutor lesson
 // Any link may add ?paciente=neonate (patient size). Worker-safe, no DOM.

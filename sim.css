@@ -330,3 +330,36 @@ body.physics-open .workspace{display:none}body.phone-dock.physics-open .practice
 /* provenance of each value (provenance.mjs) */
 .prov{display:inline-block;font:600 9px/1.5 'Segoe UI',sans-serif;letter-spacing:.02em;padding:0 5px;border-radius:7px;margin-left:3px;vertical-align:1px;text-decoration:none;white-space:nowrap}
 .prov-medido{background:#16403a;color:#9ff0de}.prov-ecuacion{background:#1d3550;color:#a9d2ff}.prov-modelo{background:#4a3d1d;color:#f3d79a}a.prov-fuente,.prov-fuente{background:#3a2b4f;color:#dcc8ff}a.prov-fuente:hover{background:#4d3a69}
+/* ¿Por qué este píxel? (pixel-trace.mjs) */
+#ask-pixel{font-size:11px;padding:3px 8px}
+.pixel-card{margin:8px 12px;padding:10px 12px;background:#0d171e;border:1px solid #2c3f4a;border-radius:8px;font-size:12px;line-height:1.5}.pixel-card[hidden]{display:none}
+.pixel-head{display:flex;align-items:center;gap:6px;margin-bottom:4px}.pixel-head button{margin-left:auto;padding:1px 8px;font-size:11px}
+.pixel-verdict{margin:4px 0 8px;color:#e8f2ef;font-weight:600}.pixel-verdict.k-sombra{color:#ff9c8a}.pixel-verdict.k-cavidad,.pixel-verdict.k-neblina{color:#9fe0ff}.pixel-verdict.k-especular{color:#ffe398}
+#pixel-profile{width:100%;height:84px;display:block;border-radius:4px;margin:4px 0 8px}
+.pixel-shares{list-style:none;margin:0 0 6px;padding:0}.pixel-shares li{display:grid;grid-template-columns:1fr 70px 34px;align-items:center;gap:8px;font-size:11px;color:#b9c7cf;margin:2px 0}.pixel-shares i{display:block;height:5px;background:#63ddc8;border-radius:3px}.pixel-shares b{font:10px Consolas,monospace;text-align:right;color:#d8fff7}
+body.phone-dock .pixel-card{margin:6px 8px}
+/* Cabecera del paciente (bedside-panel.mjs) */
+body.study-open .workspace{display:none}.bedside-figure[hidden]{display:none}body.phone-dock.study-open .practice-main>.scan{display:none}body.phone-dock .practice-main>.bedside-figure{order:1}
+.bd-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.bd-grid figure{margin:0;background:#05080b;border:1px solid #1b2730;border-radius:6px;overflow:hidden;display:flex;flex-direction:column}.bd-grid .bd-wide{grid-column:1/-1}
+.bd-grid figcaption{font:11px Consolas,monospace;color:#9fb2bd;padding:5px 8px;border-bottom:1px solid #141e25}
+.bd-grid canvas{width:100%;display:block}#bd-pcg{height:clamp(120px,calc((100vh - 760px) / 1.4),220px)}#bd-cxr{height:clamp(150px,calc((100vh - 740px) / 1.2),260px)}
+.bd-tools{display:flex;align-items:center;gap:10px;padding:6px 8px;border-top:1px solid #141e25}.bd-tools button{font-size:11px;padding:3px 10px}
+.bd-sat{padding:10px 12px;color:#b9c7cf}.bd-sats{display:flex;gap:16px}.bd-sats>div{display:flex;flex-direction:column}.bd-sats b{font:700 34px Consolas,monospace;line-height:1.1}
+.bd-diff{margin:6px 0 2px;font-size:12px}.bd-screen{margin:2px 0 6px;font-weight:600;font-size:13px}
+.bd-findings{list-style:none;margin:0;padding:8px 12px}.bd-findings li{font-size:12px;line-height:1.55;color:#c9d6dd;margin:4px 0}.bd-findings li b{color:#e6edf2;margin-right:4px}
+@media(max-width:850px){.bd-grid{grid-template-columns:1fr}#bd-pcg{height:230px}#bd-cxr{height:260px}}
+/* structured study (exam.mjs) */
+#chd-exam h3{font-size:13px;margin:14px 0 6px}#chd-exam h4{font-size:12px;margin:10px 0 2px}
+.ex-case{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0}.ex-case input{width:84px}
+.ex-patient{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.5;background:#111b22}
+.ex-list{list-style:none;margin:6px 0;padding:0;font-size:12px}.ex-list li{padding:3px 0;border-bottom:1px solid var(--line)}.ex-list .link{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:11px;padding:0 4px}
+.ex-two{display:grid;grid-template-columns:1fr 1fr;gap:8px}#chd-exam input[type=text],#chd-exam input[type=number]{width:100%;box-sizing:border-box}
+.ex-score{display:flex;align-items:baseline;gap:10px;margin:6px 0}.ex-score b{font-size:28px}.ex-score span{font-size:12px;color:var(--muted)}.ex-score.ok b{color:#63ddc8}.ex-score.mid b{color:#ffe398}.ex-score.bad b{color:#ff9b8a}
+.ex-table{width:100%;border-collapse:collapse;font-size:11.5px}.ex-table th{text-align:left;color:var(--muted);font-weight:500;padding:3px 4px}.ex-table td{padding:4px;border-top:1px solid var(--line);vertical-align:top}
+.ex-table tr.ok b{color:#63ddc8}.ex-table tr.mid b{color:#ffe398}.ex-table tr.bad b{color:#ff9b8a}
+.ex-cov{margin:8px 0;display:flex;flex-wrap:wrap;gap:6px;align-items:center}.ex-chip{font-size:11px;padding:2px 8px;border-radius:10px;color:#05080b}.ex-chip.ok{background:#63ddc8}.ex-chip.mid{background:#ffe398}.ex-chip.bad{background:#ff9b8a}
+.ex-cause{border:1px solid var(--line);border-radius:8px;padding:6px 10px 8px;margin:8px 0}.ex-hint{font-size:12px;margin:6px 0 0}
+.ex-bars{display:grid;gap:3px;margin-top:6px}.ex-bar{display:grid;grid-template-columns:minmax(90px,38%) 1fr 74px;gap:6px;align-items:center;font-size:11px}.ex-bar .lab{color:var(--muted)}.ex-bar.main .lab{color:inherit;font-weight:600}.ex-bar b{text-align:right;font-weight:500;font-family:Consolas,monospace}
+.ex-bar .track{position:relative;height:9px;background:#0b1319;border-radius:4px;overflow:hidden}.ex-bar .track:after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:#4a5d69}.ex-bar .track i{position:absolute;top:1px;bottom:1px;border-radius:3px}.ex-bar .track i.pos{background:#ff9b8a}.ex-bar .track i.neg{background:#7fb6ff}
+.ex-two>*{min-width:0}#chd-exam select{width:100%;min-width:0;box-sizing:border-box}.ex-two{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.ex-table{table-layout:fixed}.ex-table td,.ex-table th{overflow-wrap:anywhere}
