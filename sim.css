@@ -330,3 +330,11 @@ body.physics-open .workspace{display:none}body.phone-dock.physics-open .practice
 /* provenance of each value (provenance.mjs) */
 .prov{display:inline-block;font:600 9px/1.5 'Segoe UI',sans-serif;letter-spacing:.02em;padding:0 5px;border-radius:7px;margin-left:3px;vertical-align:1px;text-decoration:none;white-space:nowrap}
 .prov-medido{background:#16403a;color:#9ff0de}.prov-ecuacion{background:#1d3550;color:#a9d2ff}.prov-modelo{background:#4a3d1d;color:#f3d79a}a.prov-fuente,.prov-fuente{background:#3a2b4f;color:#dcc8ff}a.prov-fuente:hover{background:#4d3a69}
+/* ¿Por qué este píxel? (pixel-trace.mjs) */
+#ask-pixel{font-size:11px;padding:3px 8px}
+.pixel-card{margin:8px 12px;padding:10px 12px;background:#0d171e;border:1px solid #2c3f4a;border-radius:8px;font-size:12px;line-height:1.5}.pixel-card[hidden]{display:none}
+.pixel-head{display:flex;align-items:center;gap:6px;margin-bottom:4px}.pixel-head button{margin-left:auto;padding:1px 8px;font-size:11px}
+.pixel-verdict{margin:4px 0 8px;color:#e8f2ef;font-weight:600}.pixel-verdict.k-sombra{color:#ff9c8a}.pixel-verdict.k-cavidad,.pixel-verdict.k-neblina{color:#9fe0ff}.pixel-verdict.k-especular{color:#ffe398}
+#pixel-profile{width:100%;height:84px;display:block;border-radius:4px;margin:4px 0 8px}
+.pixel-shares{list-style:none;margin:0 0 6px;padding:0}.pixel-shares li{display:grid;grid-template-columns:1fr 70px 34px;align-items:center;gap:8px;font-size:11px;color:#b9c7cf;margin:2px 0}.pixel-shares i{display:block;height:5px;background:#63ddc8;border-radius:3px}.pixel-shares b{font:10px Consolas,monospace;text-align:right;color:#d8fff7}
+body.phone-dock .pixel-card{margin:6px 8px}

@@ -28,6 +28,8 @@ import {mountLessons} from './lesson-panel.mjs';
 import {mountStudy} from './study.mjs';
 import {mountPhysics} from './physics.mjs';
 import {parseLink,formatLink,numParam} from './links.mjs';
+import {explainPixel,pixelOf} from './pixel-trace.mjs';
+import {tag} from './provenance.mjs';
 import {LESIONS,PVR} from './shunt-model.mjs';
 import {ecgValue,setHeartRate} from './cycle.mjs';
 
@@ -146,7 +148,7 @@ function dispatch(){if(!busy&&pending){busy=true;const next=pending;pending=null
 function visibleCut(c,pose){const a=c.segments;for(let i=0;i<a.length;i+=4){if(inSector(a[i],a[i+1],pose)||inSector(a[i+2],a[i+3],pose)||inSector((a[i]+a[i+2])/2,(a[i+1]+a[i+3])/2,pose))return true}return false}
 function accept(msg){
   busy=false;if(msg.type==='error'){status('No se pudo calcular el corte: '+msg.message,true);dispatch();return}
-  if(msg.id===revision){if(active&&JSON.stringify(active.pose)!==JSON.stringify(msg.pose)){crosshair=null;display.points=[];}active=msg;active.visible=msg.cuts.filter(c=>visibleCut(c,msg.pose));active.elapsed=performance.now()-latestRequestedAt;latencies.push(active.elapsed);if(latencies.length>100)latencies.shift();
+  if(msg.id===revision){if(active&&JSON.stringify(active.pose)!==JSON.stringify(msg.pose)){crosshair=null;display.points=[];if(pixelAsk){pixelAsk=null;PX.hidden=true}}active=msg;active.visible=msg.cuts.filter(c=>visibleCut(c,msg.pose));active.elapsed=performance.now()-latestRequestedAt;latencies.push(active.elapsed);if(latencies.length>100)latencies.shift();
     if(selected&&!active.visible.some(c=>c.id===selected)){selected=null;crosshair=null}
     beam?.update(active,selected);beam?.track(msg.pose,scanYSign(msg.state.preset,pediatricDisplay));updateViewCard();$('beam-path').textContent=beam?.enabled&&beam.path?'Línea central (cm): '+beam.path:'';
     for(const v of views)updateView(v,msg.pose);renderScan();renderStructures();$('latency').textContent=`${Math.round(active.elapsed)} ms`;
@@ -199,6 +201,7 @@ new ResizeObserver(()=>renderScan()).observe($('scan-view'));
 scan.addEventListener('click',e=>{
   if(!active||realEcho())return;
   if(simEcho()&&dop.mode&&dop.geom){const rr=scan.getBoundingClientRect(),py=e.clientY-rr.top;if(py>dop.geom.hImg){const g=dop.geom,sp=dop.spec;if(sp&&py>=g.y0&&py<=g.y0+g.H){dop.caliper=sp.top-(py-g.y0)/g.H*(sp.top-sp.bottom);renderScan()}return}}const r=scan.getBoundingClientRect(),[x,y]=screenToPlane(projection,e.clientX-r.left,e.clientY-r.top);if(!inSector(x,y,active.pose))return;
+  if(askingPixel&&simEcho()){askPixel(x,y);return}
   if(display.measuring){addCaliper(x,y);return}
   if(simEcho()&&dop.mode){aimDoppler(x,y);return}
   if(simEcho()&&engine.params.color.on){moveColorBox(x,y);return}
@@ -207,6 +210,36 @@ scan.addEventListener('click',e=>{
   for(const cut of active.visible){const a=cut.segments;for(let i=0;i<a.length;i+=4){const ax=a[i],ay=a[i+1],dx=a[i+2]-ax,dy=a[i+3]-ay,t=clamp(((x-ax)*dx+(y-ay)*dy)/(dx*dx+dy*dy||1),0,1),px=ax+t*dx,py=ay+t*dy,d=Math.hypot(x-px,y-py);if(d<best){best=d;found=cut.id;point=toWorld(active.pose,px,py)}}}
   if(found)select(found,point);
 });
+// ---------------------------------------------------------------- «¿Por qué este píxel?» (pixel-trace.mjs)
+let askingPixel=false,pixelAsk=null,pixelSeq=0;
+const PX=$('pixel-card');
+function setAskPixel(on){askingPixel=!!on&&!!simEcho();$('ask-pixel').classList.toggle('active',askingPixel);$('ask-pixel').setAttribute('aria-pressed',String(askingPixel));scan.style.cursor=askingPixel?'help':'';
+ if(askingPixel){display.measuring=false;$('scan-foot').textContent='Pulsa un punto de la imagen eco: el simulador explica por qué se ve así'}else{pixelAsk=null;PX.hidden=true;renderScan()}}
+$('ask-pixel').onclick=()=>setAskPixel(!askingPixel);
+// re-render the very frame on screen (same pose, settings and cardiac phase, hence the same noise) with the ray of that line recorded
+async function askPixel(x,y){
+ if(!active||active.id!==revision)return;const pose=active.pose,my=++pixelSeq;
+ const geo={lines:168,sector:pose.sector,depth:pose.depth,samples:Math.min(960,Math.round(pose.depth*BODY.k/.00025))},px=pixelOf(geo,x,y);if(!px)return;
+ pixelAsk={x,y};renderScan();PX.hidden=false;PX.innerHTML='<p class="micro">Siguiendo el rayo…</p>';
+ const idx=engine.params.beating?Math.floor(((phase%1)+1)%1*20):0;
+ const frame=await engine.renderOnce(pose,{lines:168,phase:(idx+.5)/20,trace:{j:px.j}});if(my!==pixelSeq||!frame.trace)return;
+ const e=explainPixel(frame.trace,px.k);if(!e)return;pixelAsk={x,y,e};renderScan();renderPixelCard(e)}
+function renderPixelCard(e){
+ const bars=e.shares.slice(0,5).map(s=>`<li title="${s.note}"><span>${s.label}</span><i style="width:${Math.max(3,s.pct).toFixed(0)}%"></i><b>${s.pct.toFixed(0)} %</b></li>`).join('');
+ PX.innerHTML=`<div class="pixel-head"><strong>¿Por qué este píxel?</strong> ${tag('medido')}<button id="pixel-close" aria-label="Cerrar">✕</button></div>
+  <p class="pixel-verdict k-${e.verdict.id}">${e.verdict.text}</p>
+  <canvas id="pixel-profile" aria-label="Energía del pulso y brillo a lo largo del rayo"></canvas>
+  <ul class="pixel-shares">${bars}</ul>
+  <p class="micro">${e.sentences.slice(0,2).join(' ')}</p>`;
+ $('pixel-close').onclick=()=>setAskPixel(false);drawPixelProfile(e)}
+function drawPixelProfile(e){const c=$('pixel-profile');if(!c)return;const W=c.width=Math.max(200,c.clientWidth||280),H=c.height=84,g=c.getContext('2d'),P=e.profile,n=P.depthCm.length,maxD=P.depthCm[n-1];
+ g.fillStyle='#05080b';g.fillRect(0,0,W,H);const X=d=>8+d/maxD*(W-16),maxL=Math.max(20,...P.lossDB.filter(v=>isFinite(v)));
+ g.strokeStyle='#ffb454';g.lineWidth=1.4;g.beginPath();for(let i=0;i<n;i+=2){const y=6+Math.min(maxL,P.lossDB[i])/maxL*(H-26);i?g.lineTo(X(P.depthCm[i]),y):g.moveTo(X(P.depthCm[i]),y)}g.stroke();
+ g.strokeStyle='#63ddc866';g.beginPath();for(let i=0;i<n;i+=2){const y=H-16-P.grey[i]/255*(H-30);i?g.lineTo(X(P.depthCm[i]),y):g.moveTo(X(P.depthCm[i]),y)}g.stroke();
+ for(const ev of e.events){g.fillStyle=ev.kind==='iface'?'#9fb2bd':'#ff6b6b';g.fillRect(X(ev.depthCm),H-14,1.5,6)}
+ g.strokeStyle='#ffe398';g.setLineDash([3,3]);g.beginPath();g.moveTo(X(e.depthCm),0);g.lineTo(X(e.depthCm),H-12);g.stroke();g.setLineDash([]);
+ g.fillStyle='#9fb2bd';g.font='9px Consolas, monospace';g.fillText(`pérdida ${e.loss.total.toFixed(0)} dB`,8,10);g.fillStyle='#63ddc8';g.fillText('brillo',W-40,10);g.fillStyle='#9fb2bd';g.fillText('0',8,H-2);g.fillText(`${maxD.toFixed(0)} cm`,W-34,H-2)}
+function drawPixelMark(){if(!pixelAsk||!active)return;const {cx,cy,scale,ySign}=projection,px=cx+pixelAsk.x*scale,py=cy+pixelAsk.y*scale*ySign;ctx.save();ctx.strokeStyle='#ffe398';ctx.fillStyle='#ffe398';ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(px,py);ctx.stroke();ctx.setLineDash([]);ctx.lineWidth=1.6;ctx.beginPath();ctx.arc(px,py,7,0,Math.PI*2);ctx.stroke();ctx.restore()}
 // ---------------------------------------------------------------- simulated B-mode display
 function simProjection(w,h,p,ySign){const baseScale=Math.min((w-45)/(2*p.depth*Math.sin(rad(p.sector/2))),(h-72)/p.depth),scale=baseScale*display.zoom,cy=(ySign===1?28:h-44)+ySign*p.depth*.55*(baseScale-scale);return {cx:w/2,cy,scale,ySign}}
 // ECG from the beat timing at the patient's heart rate (cycle.mjs)
@@ -265,7 +298,7 @@ function drawSim(){
  drawHud(w,48);
  if(!frame){ctx.fillStyle='#8aa1ae';ctx.font='12px Segoe UI';ctx.textAlign='center';ctx.fillText(engine.failed?'Simulador no disponible: '+engine.failed:'Simulando la imagen…',w/2,h/2)}
  if(crosshair&&active){const q=toPlane(p,crosshair);if(Math.abs(q[2])<1e-4){const x=cx+q[0]*scale,y=cy+ySign*q[1]*scale;ctx.strokeStyle='#ffe98c';ctx.beginPath();ctx.moveTo(x-7,y);ctx.lineTo(x+7,y);ctx.moveTo(x,y-7);ctx.lineTo(x,y+7);ctx.stroke()}}
- drawColorBox(p,cx,cy,scale,ySign);drawDopplerCursor(p,cx,cy,scale,ySign);drawCalipers();if(dop.mode)drawSpectrum(w,h,hImg);else drawECG(12,h-34,w-24,28);
+ drawColorBox(p,cx,cy,scale,ySign);drawDopplerCursor(p,cx,cy,scale,ySign);drawCalipers();drawPixelMark();if(dop.mode)drawSpectrum(w,h,hImg);else drawECG(12,h-34,w-24,28);
  drawTutorOverlay(w,hImg,sector);
 }
 // lesson tutor on the image: only a window that fails in this case (gas, lung, dressing) is drawn; the lesson text

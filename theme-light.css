@@ -39,3 +39,4 @@
 :root[data-theme=light] .lessons .maneuver{background:#eef3f5}
 :root[data-theme=light] .reference-context #reference-link-note{color:#2f6b60}
 :root[data-theme=light] .st-bands{background:#dde6ea}
+:root[data-theme=light] .pixel-card{background:var(--surface);border-color:var(--line)}:root[data-theme=light] .pixel-verdict{color:var(--ink)}:root[data-theme=light] .pixel-shares li{color:#3e515b}:root[data-theme=light] .pixel-shares b{color:var(--ink)}:root[data-theme=light] .pixel-shares i{background:#0b7d6c}

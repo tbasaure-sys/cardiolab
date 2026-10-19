@@ -34,6 +34,11 @@ function smoothField(T,fx,fy,fz){const ix=Math.floor(fx),iy=Math.floor(fy),iz=Ma
 
 export function tgcAmplitude(tgc,f){const x=Math.max(0,Math.min(1,f))*(tgc.length-1),i=Math.floor(x),v=tgc[i]+(tgc[Math.min(i+1,tgc.length-1)]-tgc[i])*(x-i);return 2**((v-50)/25)}
 
+// ---------------------------------------------------------------- ray trace of one line (see render, opts.trace)
+function newTrace(n,j,stepAtt,geo){const f=()=>new Float32Array(n),stepDB=new Float32Array(256);for(let l=0;l<256;l++)stepDB[l]=-20*Math.log10(Math.max(1e-12,stepAtt[l]));
+ return {j,n,geo,stepDB,cum:{att:0,iface:0,shadow:0},events:[],lab:new Uint8Array(n),att:f(),iface:f(),shadow:f(),I:f(),
+  pSpec:f(),pDiff:f(),pClut:f(),pRing:f(),pRev:f(),pLeaf:f(),pLung:f(),sig:f(),side:f(),noise:f(),comp:f(),db:f(),grey:new Uint8Array(n)}}
+function finishTrace(T,extra){const {cum,...rest}=T;return {...rest,...extra}}
 export function createBMode(){
  let re,im,trans,env,ovb,cvb,cap=0;
  function ensure(n){if(n>cap){cap=n;re=new Float32Array(n);im=new Float32Array(n);trans=new Float32Array(n);env=new Float32Array(n)}}
@@ -63,13 +68,18 @@ export function createBMode(){
   if(color&&color.flow){const r=color.roi;cj0=Math.max(0,Math.floor(((r.center-r.half)*Math.PI/180+sector/2)/sector*lines));cj1=Math.min(lines-1,Math.ceil(((r.center+r.half)*Math.PI/180+sector/2)/sector*lines));
    ck0=Math.max(0,Math.floor(r.r0*samples));ck1=Math.min(samples-1,Math.ceil(r.r1*samples));if(!cvb||cvb.length<N)cvb=new Float32Array(N);cv=cvb;cv.fill(NaN,0,N)}
   const stepAtt=new Float32Array(256);for(let l=0;l<256;l++)stepAtt[l]=Math.exp(-2*alphaNp(PROPS[l*3+2])*drp*(H?1.12:1));
+  // optional ray trace of ONE scan line (opts.trace={j}): the history of that line, for «pregúntale al píxel» (pixel-trace.mjs).
+  // Records what the renderer already computes — tissue, cumulative losses, echo sources — and changes nothing in the image.
+  // Losses are in dB of echo AMPLITUDE (20·log10 of the factor the renderer multiplies in), round trip.
+  const TR=opts.trace&&opts.trace.j>=0&&opts.trace.j<lines?newTrace(samples,opts.trace.j,stepAtt,{drp,dr,freq,H,K,depth,lines,sector:pose.sector}):null;
   const icell=1/cell,JIT=new Float32Array(1024);for(let i=0;i<1024;i++)JIT[i]=(hash3(i,5,7)-.5)*.0008;
   for(let j=0;j<lines;j++){
    const th=-sector/2+sector*(j+.5)/lines,s=Math.sin(th),c=Math.cos(th);
    const bx=c*d[0]+s*u[0],by=c*d[1]+s*u[1],bz=c*d[2]+s*u[2];
    let I=1,prevZ=1.63,prevLab=-1,inLung=false,lungAt=0,base=j*samples,entered=false;
    const directivity=Math.cos(th)**1.6*(.8+.2*Math.cos(th*2));
-   for(const [eo,ew] of ELEV){I=1;prevZ=1.63;prevLab=-1;inLung=false;lungAt=0;entered=false;
+   const trl=TR&&j===TR.j;
+   for(const [eo,ew] of ELEV){I=1;prevZ=1.63;prevLab=-1;inLung=false;lungAt=0;entered=false;const trc=trl&&!eo;if(trc)TR.cum.att=TR.cum.iface=TR.cum.shadow=0;
    for(let k=0;k<samples;k++){
     const r=(k+.5)*dr,e=eo?eo*elevAt(r):0;p[0]=o[0]+bx*r+nv[0]*e;p[1]=o[1]+by*r+nv[1]*e;p[2]=o[2]+bz*r+nv[2]*e;
     // chamber remodelling (volume overload): back to the reference anatomy before the heart's own motion is undone
@@ -99,9 +109,11 @@ export function createBMode(){
       const gl=Math.hypot(zx,zy,zz),cosi=gl>1e-6?Math.abs(zx*bx+zy*by+zz*bz)/gl:.5;
       const arc=Math.abs(rc),specular=arc*(arc>.05?1:.22)*(cosi**6*.85+.15*cosi)*I;
       const ph=hash3(Math.round(x/cell),Math.round(y/cell),Math.round(z/cell))*TWO_PI;a+=specular*Math.cos(ph)*.6;b+=specular*Math.sin(ph)*.6;a+=specular*.5;
+      if(trl)TR.pSpec[k]+=(specular*.8*directivity*ew)**2;
+      if(trc){TR.cum.iface-=20*Math.log10(Math.max(1e-9,1-rc*rc));TR.events.push({k,kind:'iface',from:prevLab,to:lab,rc,cosi,specular,r})}
       I*=Math.max(0,1-rc*rc);
-      if(lab===LABEL.LUNG&&!inLung){inLung=true;lungAt=r;if(!eo){meanLungDepth+=r;lungHits++}I*=.02}
-      if(lab===LABEL.BONE)I*=.35;
+      if(lab===LABEL.LUNG&&!inLung){inLung=true;lungAt=r;if(!eo){meanLungDepth+=r;lungHits++}I*=.02;if(trc){TR.cum.shadow+=33.98;TR.events.push({k,kind:'lung',r})}}
+      if(lab===LABEL.BONE){I*=.35;if(trc){TR.cum.shadow+=9.12;TR.events.push({k,kind:'bone',r})}}
      }
     }
     prevZ=Z;prevLab=lab;
@@ -111,22 +123,25 @@ export function createBMode(){
      // gentle tissue heterogeneity (fibres, trabeculae) at ~1.5 mm
      const fx=x*icell,fy=y*icell,fz=z*icell,mod=smoothField(HETT,fx/8,fy/8,fz/8)*smoothField(CLU,fx/4,fy/4,fz/4)*smoothField(PATCH,fx/32,fy/32,fz/32);
      const w=I*scat*mod*directivity;
+     if(trl)TR.pDiff[k]+=(w*ew)**2*2;
      a+=w*GRE[g];b+=w*GIM[g];
     }
     // near-field clutter / reverberation haze from the chest wall (first ~2 cm)
     // (in atlas units: reverberations come from the chest wall, whose thickness scales with the patient)
     if(H){const bu=1-.3*Math.exp(-r*K/.01);a*=bu;b*=bu}
-    if(r<.03){const g=hidx(j,k,31),f=.0016*(H?1:2.6)*Math.exp(-r/.009)*directivity;a+=f*GRE[g];b+=f*GIM[g]}
+    if(r<.03){const g=hidx(j,k,31),f=.0016*(H?1:2.6)*Math.exp(-r/.009)*directivity;if(trl)TR.pClut[k]+=(f*ew)**2*2;a+=f*GRE[g];b+=f*GIM[g]}
     re[base+k]+=a*directivity*ew;im[base+k]+=b*directivity*ew;trans[base+k]+=I*ew/EW;
+    if(trc){TR.lab[k]=lab;TR.att[k]=TR.cum.att;TR.iface[k]=TR.cum.iface;TR.shadow[k]=TR.cum.shadow;TR.I[k]=I}
     if(cv&&!eo&&j>=cj0&&j<=cj1&&k>=ck0&&k<=ck1&&I>2e-4&&color.flow.velocity(x,y,z,color.phase,vel))cv[base+k]=-(vel[0]*bx+vel[1]*by+vel[2]*bz);
     I*=stepAtt[lab];
+    if(trc)TR.cum.att+=TR.stepDB[lab];
    }
    // lung: pleural reverberations (A-lines) at multiples of the pleural depth
-   if(inLung){for(let m=2;m<=4;m++){const kk=Math.round(lungAt*m/dr);if(kk<samples){const amp=.03*ew*.5**(m-1)*Math.exp(-2*alphaNp(.5)*lungAt*K*m);for(let t=-1;t<=1;t++){const idx=base+Math.min(samples-1,Math.max(0,kk+t));re[idx]+=amp*(1-Math.abs(t)*.5)}}}
-    for(let k=Math.round(lungAt/dr)+2;k<samples;k++){const g=hash3(j,k,3);re[base+k]+=.0012*ew*(g-.5)*Math.exp(-(k*dr-lungAt)*K/.03)*Math.exp(-2*alphaNp(.5)*k*drp)}}
+   if(inLung){for(let m=2;m<=4;m++){const kk=Math.round(lungAt*m/dr);if(kk<samples){const amp=.03*ew*.5**(m-1)*Math.exp(-2*alphaNp(.5)*lungAt*K*m);for(let t=-1;t<=1;t++){const idx=base+Math.min(samples-1,Math.max(0,kk+t));re[idx]+=amp*(1-Math.abs(t)*.5);if(trl)TR.pLung[Math.min(samples-1,Math.max(0,kk+t))]+=(amp*(1-Math.abs(t)*.5))**2}}}
+    for(let k=Math.round(lungAt/dr)+2;k<samples;k++){const g=hash3(j,k,3);{const v=.0012*ew*(g-.5)*Math.exp(-(k*dr-lungAt)*K/.03)*Math.exp(-2*alphaNp(.5)*k*drp);re[base+k]+=v;if(trl)TR.pLung[k]+=v*v}}}
    }
    // near field: ring-down of the probe face and lens, horizontal bands in the first few millimetres (weaker in THI)
-   for(let k=0;k<samples;k++){const rp=(k+.5)*drp;if(rp>.01)break;re[base+k]+=(H?.0011:.0026)*Math.exp(-rp/.0025)*(.55+.45*Math.cos(TWO_PI*rp/.0017))*directivity}
+   for(let k=0;k<samples;k++){const rp=(k+.5)*drp;if(rp>.01)break;const rd=(H?.0011:.0026)*Math.exp(-rp/.0025)*(.55+.45*Math.cos(TWO_PI*rp/.0017))*directivity;re[base+k]+=rd;if(trl)TR.pRing[k]+=rd*rd}
   }
   // moving leaflets and other thin reflectors, rasterised into the RF field (max, not sum: an obliquely cut sheet
   // yields many overlapping segments that must not pile up into a blob)
@@ -157,12 +172,12 @@ export function createBMode(){
     }
    }
    // partially developed speckle: fibrous leaflets are strong, fairly coherent reflectors but not smooth tubes
-   for(let i=0;i<N;i++){const a=ovb[i];if(a>0){const g=hidx(i,17,3);re[i]+=a*(.55+.45*GRE[g]);im[i]+=a*.45*GIM[g]}}
+   for(let i=0;i<N;i++){const a=ovb[i];if(a>0){const g=hidx(i,17,3);re[i]+=a*(.55+.45*GRE[g]);im[i]+=a*.45*GIM[g];if(TR&&i>=TR.j*samples&&i<(TR.j+1)*samples)TR.pLeaf[i-TR.j*samples]+=a*a*.55}}
   }
   // near-field reverberation: echoes from the chest wall and anterior pericardium bounce between the probe face and those
   // layers and return again at twice their depth (a faint ghost of the anterior wall inside the RV); weaker in THI
   {const lim=Math.min(samples>>1,Math.round(.03/drp)),g=H?.035:.07;
-   for(let j=0;j<lines;j++){const b=j*samples;for(let k=4;k<lim;k++){const k2=2*k+1;re[b+k2]+=g*re[b+k];im[b+k2]+=g*im[b+k]}}}
+   for(let j=0;j<lines;j++){const b=j*samples;for(let k=4;k<lim;k++){const k2=2*k+1;if(TR&&j===TR.j)TR.pRev[k2]+=g*g*(re[b+k]*re[b+k]+im[b+k]*im[b+k]);re[b+k2]+=g*re[b+k];im[b+k2]+=g*im[b+k]}}}
   // point spread: axial (pulse length) and lateral (beam width, focused)
   const lambda=.00154/freq,sigA=Math.max(.8,(1.15*lambda)/drp),focusR=focus*depth*K;
   convolveAxial(re,lines,samples,sigA);convolveAxial(im,lines,samples,sigA);
@@ -197,9 +212,12 @@ export function createBMode(){
    // normal gain, a fine flickering grain in the deep, empty field when the gain is pushed (as on a real machine)
    const gn=(i*7+seed)&(GN-1),rn=.8*Math.sqrt(GRE[gn]*GRE[gn]+GIM[gn]*GIM[gn]);
    const e=(E[i]+(H?.045:.11)*SL[i]+1e-7*rn)*COMP[k]+4e-6*HET[(i*13+5+seed)&(GN-1)];
+   if(TR&&j===TR.j){TR.sig[k]=E[i]*COMP[k];TR.side[k]=(H?.045:.11)*SL[i]*COMP[k];TR.noise[k]=1e-7*rn*COMP[k]+4e-6*HET[(i*13+5+seed)&(GN-1)];TR.comp[k]=COMP[k]}
    const db=8.685889638*Math.log(e*REF)+gainDB,v=(db-floorDB)/dynamicRange;
+   if(TR&&j===TR.j)TR.db[k]=db;
    // soft knee: very strong echoes (pericardium, specular walls) approach white without clipping into flat blobs
    const vv=v>.82?.82+.18*(1-Math.exp(-(v-.82)/.18)):v;out[i]=vv<=0?0:LUT[(Math.min(.999,vv)*1023)|0];
+   if(TR&&j===TR.j)TR.grey[k]=out[i];
   }
   let colorOut=null;
   if(cv){
@@ -214,7 +232,7 @@ export function createBMode(){
   }
   // linear envelope after the depth gain (opts.envelope): for measurements in dB (physics chapters, phantom)
   let envelope=null;if(opts.envelope){envelope=new Float32Array(N);for(let j=0;j<lines;j++)for(let k=0;k<samples;k++){const i=j*samples+k;envelope[i]=E[i]*COMP[k]}}
-  return {lines,samples,depth,sector:pose.sector,data:out,envelope,lungLines:lungHits,color:colorOut,colorRoi:cv?{j0:cj0,j1:cj1,k0:ck0,k1:ck1}:null};
+  return {lines,samples,depth,sector:pose.sector,data:out,envelope,trace:TR?finishTrace(TR,{sigA,sigL,gainDB,dynamicRange}):null,lungLines:lungHits,color:colorOut,colorRoi:cv?{j0:cj0,j1:cj1,k0:ck0,k1:ck1}:null};
  }
  return {render};
 }

@@ -38,9 +38,9 @@ self.onmessage=async e=>{
    const leaflets=[];if(p.valves!==false){const po=m.pose,e=.0011*(6/(p.freq||6))/(p.bodyScale||1);
     for(const [k,w] of [[0,1],[-1,.6],[1,.6]]){const pose=k?{...po,origin:po.origin.map((v,i)=>v+po.n[i]*e*k)}:po;
      for(const v of sliceValves(valves,pose,p.beating?phase:0,motion,s,tissue.remodel))leaflets.push({segments:v.segments,t:v.t,strength:.012*w})}}
-   const frame=engine.render(tissue,{seed:p.seed??Math.round((p.phase||0)*997),elevation:p.elevation,envelope:!!p.envelope,pose:m.pose,lines:p.lines,samples:p.samples,bodyScale:p.bodyScale,freq:p.freq,gain:p.gain,tgc:p.tgc,dynamicRange:p.dynamicRange,focus:p.focus,harmonic:p.harmonic,motion,contraction:s,overlays:leaflets,color:p.color&&p.color.on?{flow,phase,roi:p.color.roi,nyquist:p.color.nyquist}:null});
+   const frame=engine.render(tissue,{seed:p.seed??Math.round((p.phase||0)*997),elevation:p.elevation,envelope:!!p.envelope,pose:m.pose,lines:p.lines,samples:p.samples,bodyScale:p.bodyScale,freq:p.freq,gain:p.gain,tgc:p.tgc,dynamicRange:p.dynamicRange,focus:p.focus,harmonic:p.harmonic,trace:p.trace,motion,contraction:s,overlays:leaflets,color:p.color&&p.color.on?{flow,phase,roi:p.color.roi,nyquist:p.color.nyquist}:null});
    const data=frame.data.slice(),color=frame.color;
-   self.postMessage({type:'frame',id:m.id,key:m.key,phaseIndex:m.phaseIndex,frame:{lines:frame.lines,samples:frame.samples,depth:frame.depth,sector:frame.sector,data,color,envelope:frame.envelope},ms:performance.now()-t0},[data.buffer,...(color?[color.buffer]:[]),...(frame.envelope?[frame.envelope.buffer]:[])]);
+   self.postMessage({type:'frame',id:m.id,key:m.key,phaseIndex:m.phaseIndex,frame:{lines:frame.lines,samples:frame.samples,depth:frame.depth,sector:frame.sector,data,color,envelope:frame.envelope,trace:frame.trace},ms:performance.now()-t0},[data.buffer,...(color?[color.buffer]:[]),...(frame.envelope?[frame.envelope.buffer]:[])]);
    return;
   }
   if(m.type==='spectrum'){const spec={...m.spec};setHeartRate(spec.hr||null);if(spec.optimize){spec.theta=optimizeAim(tissue,flow,motion,spec,spec.optimize);delete spec.optimize}const sp=renderSpectrum(tissue,flow,motion,spec);self.postMessage({type:'spectrum',id:m.id,spectrum:sp},[sp.data.buffer]);return}
