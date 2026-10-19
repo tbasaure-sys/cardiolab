@@ -41,3 +41,7 @@
 :root[data-theme=light] .st-bands{background:#dde6ea}
 :root[data-theme=light] .pixel-card{background:var(--surface);border-color:var(--line)}:root[data-theme=light] .pixel-verdict{color:var(--ink)}:root[data-theme=light] .pixel-shares li{color:#3e515b}:root[data-theme=light] .pixel-shares b{color:var(--ink)}:root[data-theme=light] .pixel-shares i{background:#0b7d6c}
 :root[data-theme=light] .bd-sat{color:#3e515b}:root[data-theme=light] .bd-findings li{color:#33444d}:root[data-theme=light] .bd-findings li b{color:var(--ink)}
+:root[data-theme=light] .ex-patient{background:var(--surface);border-color:var(--line)}
+:root[data-theme=light] .ex-bar .track{background:#e3ebef}:root[data-theme=light] .ex-bar .track:after{background:#8aa0ac}
+:root[data-theme=light] .ex-score.ok b{color:#0c8f7d}:root[data-theme=light] .ex-score.mid b{color:#8a6a00}:root[data-theme=light] .ex-score.bad b{color:#b3382a}
+:root[data-theme=light] .ex-table tr.ok b{color:#0c8f7d}:root[data-theme=light] .ex-table tr.mid b{color:#8a6a00}:root[data-theme=light] .ex-table tr.bad b{color:#b3382a}

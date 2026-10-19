@@ -15,6 +15,7 @@ import {VIEW_INFO,VIEW_CARD,nearestView,markerClock,describeManeuver,VIEWS_VERSI
 import {mountPlaneMap,WINDOW_COLORS} from './plane-map.mjs';
 import {mountCoach} from './coach.mjs';
 import {mountCHD} from './chd-panel.mjs';
+import {mountExam} from './exam.mjs';
 import {mountDrills} from './drills.mjs';
 import {mountPhoneProbe} from './phone-probe.mjs';
 import {VARIANT_BY_ID} from './chd-data.mjs';
@@ -42,7 +43,7 @@ let tutor=null,pediatricDisplay=true,instrument=null,references=null,videoImage=
 // simulated B-mode: engine, cardiac phase, cine cache of scan-converted images
 // the standard views are precomputed (assets/views.json, tools/build-views.mjs); the worker computes them only as a fallback
 const viewsPromise=fetch('assets/views.json').then(r=>r.ok?r.json():null).catch(()=>null);
-const engine=createSimEngine();engine.set({bodyScale:BODY.k,hr:patient.hr});setHeartRate(patient.hr);display.freq=patient.freq;let phase=0,study=null,phaseLock=null,blockedWindows=null,lessonPanel=null,beatSpeed=1,heartRate=patient.hr,lastTick=performance.now(),lastPoseChange=0,simQuick=false,simViews=null,coach=null,chd=null,targetPose=null,lesion=null,overlayContours=false;
+const engine=createSimEngine();engine.set({bodyScale:BODY.k,hr:patient.hr});setHeartRate(patient.hr);display.freq=patient.freq;let phase=0,study=null,exam=null,phaseLock=null,blockedWindows=null,lessonPanel=null,beatSpeed=1,heartRate=patient.hr,lastTick=performance.now(),lastPoseChange=0,simQuick=false,simViews=null,coach=null,chd=null,targetPose=null,lesion=null,overlayContours=false;
 const scanCache=new WeakMap();let scanCacheKey='';
 const latencies=[],poseLog=[],controls=[];let lastInputAt=0;let projection={cx:0,cy:30,scale:1},scanWidth=600,scanHeight=400;
 const status=(text,error=false)=>{$('status').textContent=text;$('status').classList.toggle('error',error)};
@@ -548,9 +549,10 @@ function lesionPosition(id){const lm=engine.landmarks,k=LESION_AT[id];if(lm&&id=
 function setLink(link){const base=location.pathname+location.search,url=base+(link?formatLink({...link,params:{...link.params,paciente:patient.id}}):''); // the patient size always travels with the link
  if(url!==base+location.hash)history.replaceState(null,'',url)}
 async function copyLink(){const url=location.href;try{await navigator.clipboard.writeText(url);status('Enlace copiado: '+url)}catch{prompt('Copia este enlace:',url)}}
-async function applyLink(link){if(!link||!physics||!study||!lessonPanel)return;const q=link.params||{};
+async function applyLink(link){if(!link||!physics||!study||!exam||!lessonPanel)return;const q=link.params||{};
  if(PATIENT_BY_ID[q.paciente]&&q.paciente!==patient.id)setPatient(q.paciente);
  if(link.route==='fisica'){physics.setParams(q);if(openPanel!=='physics')showPanel('physics');physics.select(physics.chapters.some(c=>c.id===link.id)?link.id:physics.chapters[0].id)}
+ else if(link.route==='estudio'&&link.id==='examen'){if(openPanel!=='chd')showPanel('chd');chd.setMode('exam');await exam.start(numParam(q.semilla,1,999999)??undefined)}
  else if(link.route==='estudio'&&LESIONS[link.id]){const hrs=numParam(q.horas,0,2000);if(hrs!=null&&patient.id!=='neonate')setPatient('neonate'); // the hours of life belong to the newborn
   if(openPanel!=='chd')showPanel('chd');chd.setMode('study');study.show(true);await study.set({lesion:link.id,size:numParam(q.tam,0,1)??.6,pvr:PVR[q.rvp]?q.rvp:'normal',hours:hrs,closing:q.cierre==='1'});if(q.cab==='1'){study.show(false);study.showBedside(true)}}
  else if(link.route==='vista'&&VIEW_INFO[link.id]){for(let i=0;i<150&&!ready;i++)await new Promise(r=>setTimeout(r,100));if(openPanel)showPanel(openPanel);if(imageOnly)setImageOnly(false);setEchoMode();await goToView(link.id);setLink(link)} // the live simulator: close the panel that drives the probe
@@ -577,6 +579,11 @@ $('sources-top').onclick=()=>$('sources').click();
 $('echo-tools').hidden=state.mode!=='echo';
 // ---------------------------------------------------------------- lesson tutor API (lesson-panel.mjs, lesson-export.mjs)
 function ensureEcho(){if(state.mode!=='echo'||echoSource!=='sim'){state.mode='echo';echoSource='sim';$('echo-source').value='sim';for(const m of ['anatomy','echo'])$(`mode-${m}`).classList.toggle('active',m==='echo');$('echo-tools').hidden=false;$('sim-tools').hidden=false;syncControls()}}
+// what is on screen, for the structured study: plane, colour box, spectral Doppler cursor and its reading, calipers
+function captureForExam(){const p=poseFromState(state),col=engine.params.color,sp=dop.spec;
+ return {ready:ready&&simEcho(),pose:{origin:[...p.origin],u:[...p.u],d:[...p.d],n:[...p.n],depth:p.depth,sector:p.sector},color:{on:!!col.on,roi:col.on&&col.roi?{...col.roi}:null},
+  dop:dop.mode?{mode:dop.mode,theta:dop.theta,gateDepth:dop.depth*p.depth,scale:dop.mode==='cw'?(dop.scale||4):dop.scale,baseline:dop.baseline,freq:display.freq,bodyScale:BODY.k,reading:dop.caliper,spec:sp?{vPeak:sp.vPeak,top:sp.top,bottom:sp.bottom,nyquist:sp.nyquist,angle:sp.angle,mode:sp.mode}:null}:null,
+  caliper:display.points.length===2?{points:display.points.map(q=>[...q]),mm:distanceMM(...display.points)*BODY.k}:null}}
 function aimDopplerAtPoint(point){const p=poseFromState(state),q=point.map((v,i)=>v-p.origin[i]);aimDoppler(q[0]*p.u[0]+q[1]*p.u[1]+q[2]*p.u[2],q[0]*p.d[0]+q[1]*p.d[1]+q[2]*p.d[2])}
 // resolves once the plane of the current state is sliced and drawn (or after a timeout)
 // and the 3D cameras have stopped moving (orbit damping, beam follow), so that the same state draws the same pixels
@@ -617,11 +624,15 @@ engine.ready.then(async()=>{
  const ySign=w=>scanYSign(PRESET_OF_WINDOW[w]||'plax',pediatricDisplay);
  coach=mountCoach({...common,host:$('coach'),setTarget:setTargetPose,ySign,imageOnly:setImageOnly});
  drills=mountDrills({...common,host:$('drills'),ySign,setTgc:setTgcAll,visible:()=>openPanel==='drills'});
- chd=mountCHD({...common,host:$('chd'),study:()=>study,onVariant:(spec,reveal)=>{chdVariantKey=spec.id+JSON.stringify(spec.params||{});setLesionMarker(reveal?lesionPosition(spec.id):null);requestSim(false);requestSpectrum()},colorOnLesion:id=>focusColorOn(lesionPosition(id)),cwOnLesion:id=>cwOnLesion(id)});
+ chd=mountCHD({...common,host:$('chd'),study:()=>study,exam:()=>exam,onVariant:(spec,reveal)=>{chdVariantKey=spec.id+JSON.stringify(spec.params||{});setLesionMarker(reveal?lesionPosition(spec.id):null);requestSim(false);requestSpectrum()},colorOnLesion:id=>focusColorOn(lesionPosition(id)),cwOnLesion:id=>cwOnLesion(id)});
  planeMap=mountPlaneMap({view:views[1],targets:simViews,info:VIEW_INFO,onGo:goToView,core:['plax','psaxAV','psaxMV','psaxPM','a4c','a5c','a2c','a3c','sc4c','scSAX','ssn']});
  study=mountStudy({onRoute:setLink,copyLink,bedsideFigure:$('bedside-figure'),host:chd.host,figure:$('study-figure'),engine,views:simViews,landmarks:()=>engine.landmarks,patient:()=>patient,ySign:w=>scanYSign(w,pediatricDisplay),freq:()=>display.freq,bodyScale:()=>BODY.k,
   onVariant:spec=>{chdVariantKey=spec.id+JSON.stringify(spec.params||{});setLesionMarker(null);requestSim(false);requestSpectrum()},status:t=>status(t),goLive:p=>{setEchoMode();goToView(p.view||'psaxAV')}});
  if(window.echoLab)echoLab.study=study;
+ exam=mountExam({host:chd.examHost,engine,views:simViews,landmarks:()=>engine.landmarks,patient:()=>patient,setPatient,status:t=>status(t),onRoute:setLink,copyLink,capture:captureForExam,
+  onVariant:(spec,reveal)=>{chdVariantKey=spec.id+JSON.stringify(spec.params||{});setLesionMarker(reveal?lesionPosition(spec.id):null);requestSim(false);requestSpectrum()},
+  openTruth:async(cs,{bedside})=>{chd.setMode('study');study.show(!bedside);await study.set({lesion:cs.lesion==='normal'?'asd2':cs.lesion,size:cs.size,pvr:cs.pvr||'normal',hours:cs.hours,closing:cs.closing});if(bedside){study.show(false);study.showBedside(true)}}});
+ if(window.echoLab)echoLab.exam=exam;
  physics=mountPhysics({onRoute:setLink,copyLink,host:$('physics'),figure:$('physics-figure'),engine,views:simViews,landmarks:()=>engine.landmarks,patient:()=>patient,ySign:w=>scanYSign(w,pediatricDisplay),freq:()=>display.freq,bodyScale:()=>BODY.k,status:t=>status(t),
   normal:async()=>{if(chdVariantKey&&!chdVariantKey.startsWith('normal')){await engine.setVariant({id:'normal'});chdVariantKey='normal{}';setLesionMarker(null);requestSim(false);requestSpectrum()}}});
  if(window.echoLab)echoLab.physics=physics;

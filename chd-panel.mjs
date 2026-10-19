@@ -13,11 +13,11 @@ export function mountCHD(api){
  const groups=[...new Set(VARIANTS.map(v=>v.group))];
  host.innerHTML=`<span class="eyebrow">CARDIOPATÍAS</span><h1>Lesiones en el mismo corazón</h1>
  <p class="lead">Las lesiones se modelan dentro del volumen acústico: aparecen en la imagen eco simulada, en el plano exacto donde estén. El atlas 3D sigue mostrando la anatomía normal.</p>
- <div class="seg" role="tablist"><button id="chd-mode-explore" class="active" role="tab">Explorar</button><button id="chd-mode-study" role="tab">Estudio por gravedad</button><button id="chd-mode-case" role="tab">Caso incógnito</button></div>
+ <div class="seg" role="tablist"><button id="chd-mode-explore" class="active" role="tab">Explorar</button><button id="chd-mode-study" role="tab">Estudio por gravedad</button><button id="chd-mode-case" role="tab">Caso incógnito</button><button id="chd-mode-exam" role="tab">Estudio con informe</button></div>
  <section id="chd-explore"><label class="field"><span>Lesión</span><select id="chd-variant">${groups.map(g=>`<optgroup label="${g}">${VARIANTS.filter(v=>v.group===g).map(v=>`<option value="${v.id}">${esc(v.name)}</option>`).join('')}</optgroup>`).join('')}</select></label>
   <div id="chd-size-row" class="field" hidden><span>Tamaño</span><input id="chd-size" type="range" min="0.6" max="1.6" step="0.1" value="1"><output id="chd-size-out">1,0×</output></div>
   <article id="chd-card" class="chd-card"></article></section>
- <section id="chd-study" hidden></section>
+ <section id="chd-study" hidden></section><section id="chd-exam" hidden></section>
  <section id="chd-case" hidden><p class="micro">Se carga una anatomía al azar (puede ser normal). Explora con las vistas que consideres y responde.</p>
   <button id="chd-new" class="primary">Nuevo caso</button><div id="chd-answer" hidden><label class="field"><span>Tu diagnóstico</span><select id="chd-guess">${VARIANTS.map(v=>`<option value="${v.id}">${esc(v.name)}</option>`).join('')}</select></label><button id="chd-submit">Responder</button></div>
   <div id="chd-feedback" aria-live="polite"></div><p class="micro" id="chd-stats"></p></section>`;
@@ -44,15 +44,15 @@ export function mountCHD(api){
  $('chd-variant').onchange=()=>{$('chd-size').value=1;$('chd-size-out').textContent='1,0×';showExplore();load(VARIANT_BY_ID[$('chd-variant').value])};
  $('chd-size').oninput=()=>{$('chd-size-out').textContent=`${Number($('chd-size').value).toFixed(1).replace('.',',')}×`};
  $('chd-size').onchange=()=>load(VARIANT_BY_ID[$('chd-variant').value],{scale:Number($('chd-size').value)});
- function setMode(m){const was=mode;mode=m;for(const k of ['explore','study','case']){$('chd-mode-'+k).classList.toggle('active',m===k);$('chd-'+k).hidden=m!==k}
-  if(was==='study'&&m!=='study')api.study?.()?.leave();
-  if(m==='explore'){caseVariant=null;load(VARIANT_BY_ID[$('chd-variant').value])}else if(m==='study'){caseVariant=null;api.study?.()?.enter()}else{$('chd-feedback').innerHTML='';$('chd-answer').hidden=true;load(VARIANT_BY_ID.normal,{reveal:false})}}
- $('chd-mode-explore').onclick=()=>setMode('explore');$('chd-mode-study').onclick=()=>setMode('study');$('chd-mode-case').onclick=()=>setMode('case');
+ function setMode(m){const was=mode;mode=m;for(const k of ['explore','study','case','exam']){$('chd-mode-'+k).classList.toggle('active',m===k);$('chd-'+k).hidden=m!==k}
+  if(was==='study'&&m!=='study')api.study?.()?.leave();if(was==='exam'&&m!=='exam')api.exam?.()?.leave();
+  if(m==='explore'){caseVariant=null;load(VARIANT_BY_ID[$('chd-variant').value])}else if(m==='study'){caseVariant=null;api.study?.()?.enter()}else if(m==='exam'){caseVariant=null;api.exam?.()?.enter()}else{$('chd-feedback').innerHTML='';$('chd-answer').hidden=true;load(VARIANT_BY_ID.normal,{reveal:false})}}
+ $('chd-mode-explore').onclick=()=>setMode('explore');$('chd-mode-study').onclick=()=>setMode('study');$('chd-mode-case').onclick=()=>setMode('case');$('chd-mode-exam').onclick=()=>setMode('exam');
  function updateStats(){$('chd-stats').textContent=stats.seen?`Aciertos: ${stats.correct} de ${stats.seen} casos`:''}
  $('chd-new').onclick=async()=>{const pool=VARIANTS.filter(v=>v.id!==caseVariant?.id);caseVariant=pool[Math.floor(Math.random()*pool.length)];answered=false;$('chd-feedback').innerHTML='';$('chd-answer').hidden=false;$('chd-guess').value='normal';
   caseScale=.85+Math.random()*.4;await load(caseVariant,{reveal:false,scale:caseScale});$('chd-feedback').innerHTML='<p class="micro">Caso listo. Recorre al menos una vista paraesternal, una apical y la subcostal antes de responder.</p>'};
  $('chd-submit').onclick=()=>{if(!caseVariant||answered)return;answered=true;const guess=$('chd-guess').value,ok=guess===caseVariant.id;stats.seen++;if(ok)stats.correct++;try{localStorage.setItem(KEY,JSON.stringify(stats))}catch{}updateStats();
   $('chd-feedback').innerHTML=`<div class="result ${ok?'ok':'bad'}"><b>${ok?'Correcto':'No era eso'}</b> · era <b>${esc(caseVariant.name)}</b>.</div>${card(caseVariant)}`;bindGo($('chd-feedback'));api.onVariant({id:caseVariant.id},true)};
  showExplore();updateStats();
- return {host:$('chd-study'),setMode,enter(){if(mode==='explore')load(VARIANT_BY_ID[$('chd-variant').value]);else if(mode==='study')api.study?.()?.enter();else if(caseVariant)load(caseVariant,{reveal:answered,scale:caseScale})},leave(){if(mode==='study')api.study?.()?.leave();api.engine.setVariant({id:'normal'});api.onVariant({id:'normal'},false)}};
+ return {host:$('chd-study'),examHost:$('chd-exam'),setMode,enter(){if(mode==='explore')load(VARIANT_BY_ID[$('chd-variant').value]);else if(mode==='study')api.study?.()?.enter();else if(mode==='exam')api.exam?.()?.enter();else if(caseVariant)load(caseVariant,{reveal:answered,scale:caseScale})},leave(){if(mode==='study')api.study?.()?.leave();if(mode==='exam')api.exam?.()?.leave();api.engine.setVariant({id:'normal'});api.onVariant({id:'normal'},false)}};
 }
