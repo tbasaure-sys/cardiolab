@@ -14,8 +14,9 @@
 //   given extra flow. The categories shown («sin sobrecarga», «moderada», «importante», «restrictivo»…) are bands of
 //   this model, not clinical thresholds.
 import {bsaHaycock,bodyScale} from './patient.mjs';
+import {pvrIndexAt,ductOpenFraction} from './transition.mjs';
 
-export const MODEL_VERSION=1;
+export const MODEL_VERSION=2;
 export const LESIONS={
  asd2:{name:'CIA ostium secundum',level:'auricular',maxAtlasMM:26,overload:['RA','RV']},
  vsdpm:{name:'CIV perimembranosa',level:'ventricular',maxAtlasMM:22,overload:['LA','LV']},
@@ -26,8 +27,12 @@ export const PVR={normal:{name:'Normal',index:3.5},elevada:{name:'Elevada',index
 export const AORTIC_ROOT_ATLAS_MM=29; // measured on the atlas volume at the sinuses (tests/shunt.test.mjs)
 // model assumptions (documented, not sourced)
 const ASSUME={cardiacIndex:3.5,laMean:6,raMean:4,cd:.7,rho:1060,mmHg:133.32,
- paPulse:{sys:1.5,dia:.7},recruit:.6,vsdDuty:.42,asdDrive:{normal:4,elevada:.6,suprasistemica:-1.2},asdCompliance:.9,
+ paPulse:{sys:1.5,dia:.7},recruit:.6,vsdDuty:.42,asdCompliance:.9,
  systolicByAge:[[0,70],[.08,85],[1,95],[4,100],[9,105],[14,115],[18,120]]};
+// interatrial driving pressure and recruitment as continuous functions of the resistance index (the three named values keep their numbers)
+const ASD_DRIVE=[[3.5,4],[10,.6],[26,-1.2]];
+const asdDriveAt=i=>{const t=ASD_DRIVE;if(i<=t[0][0])return t[0][1];for(let n=1;n<t.length;n++)if(i<=t[n][0])return t[n-1][1]+(t[n][1]-t[n-1][1])*(i-t[n-1][0])/(t[n][0]-t[n-1][0]);return t.at(-1)[1]};
+const recruitAt=i=>Math.max(0,Math.min(1,(10-i)/6.5));
 const lerpTable=(t,x)=>{if(x<=t[0][0])return t[0][1];for(let i=1;i<t.length;i++)if(x<=t[i][0]){const [a,b]=[t[i-1],t[i]];return a[1]+(b[1]-a[1])*(x-a[0])/(b[0]-a[0])}return t.at(-1)[1]};
 const ageYears=p=>{const a=String(p.age||'');const n=parseFloat(a);if(/día/.test(a))return n/365;if(/mes/.test(a))return n/12;if(/adulto/.test(a))return 30;return n||6};
 // flow through an orifice (L/min) for a pressure difference (mmHg), signed
@@ -35,21 +40,25 @@ function orifice(areaM2,dP,duty=1){const v=Math.sqrt(2*Math.abs(dP)*ASSUME.mmHg/
 // solve Q = g(Q) for a decreasing g by bisection on [lo,hi]
 function solve(g,lo,hi){for(let i=0;i<80;i++){const m=(lo+hi)/2;if(g(m)-m>0)lo=m;else hi=m}return (lo+hi)/2}
 
-// size: 0…1 of the lesion's largest teaching size; pvr: key of PVR; patient: from patient.mjs
-export function shuntState({lesion,size=0,pvr='normal',patient}){
+// size: 0…1 of the lesion's largest teaching size; pvr: key of PVR or a resistance index (WU·m²); patient: from patient.mjs.
+// hours (optional): hours of life; when given, the resistance follows the transitional curve (transition.mjs) and, with
+// closing=true, a ductus closes by itself at ductQuantile of the population (a healthy term newborn); the size is then the one at birth.
+export function shuntState({lesion,size=0,pvr='normal',patient,hours=null,closing=false,ductQuantile=.5}){
  const L=LESIONS[lesion];if(!L)throw Error(`Lesión sin modelo: ${lesion}`);
  const bsa=bsaHaycock(patient.weight,patient.height),k=bodyScale(patient),age=ageYears(patient);
  const sbp=lerpTable(ASSUME.systolicByAge,age),dbp=Math.round(sbp*.6),map=(sbp+2*dbp)/3;
- const Qs=ASSUME.cardiacIndex*bsa,Rp=PVR[pvr].index/bsa;
+ const timed=hours!=null&&isFinite(hours),pvrIndex=timed?pvrIndexAt(hours):typeof pvr==='number'?pvr:PVR[pvr].index;
+ if(timed&&closing&&lesion==='pda')size*=ductOpenFraction(hours,ductQuantile);
+ const Qs=ASSUME.cardiacIndex*bsa,Rp=pvrIndex/bsa;
  // pulmonary pressures for a pulmonary flow; with an atrial shunt the vascular bed accommodates the extra flow at low
  // pressure (recruitment, model assumption), with a post-tricuspid shunt the pressure is also transmitted by the defect
- const pa=Qp=>{const R=lesion==='asd2'&&pvr==='normal'?Rp/(1+ASSUME.recruit*Math.max(0,Qp/Qs-1)):Rp,m=ASSUME.laMean+R*Math.max(Qp,0);return {mean:m,sys:m*ASSUME.paPulse.sys,dia:m*ASSUME.paPulse.dia}};
+ const pa=Qp=>{const R=lesion==='asd2'?Rp/(1+ASSUME.recruit*recruitAt(pvrIndex)*Math.max(0,Qp/Qs-1)):Rp,m=ASSUME.laMean+R*Math.max(Qp,0);return {mean:m,sys:m*ASSUME.paPulse.sys,dia:m*ASSUME.paPulse.dia}};
  const atlasMM=size*L.maxAtlasMM,dMM=atlasMM*k,area=Math.PI*(dMM/2000)**2;
  let Qsh=0,jet={sys:0,dia:0},drive=null;
  if(area>0){
   if(lesion==='asd2'){
    // interatrial gradient: a few mmHg that fall as the defect lets the atria equalise; reversed when the RV is stiff
-   const d0=ASSUME.asdDrive[pvr],dP=Q=>d0-ASSUME.asdCompliance*Q/bsa;
+   const d0=asdDriveAt(pvrIndex),dP=Q=>d0-ASSUME.asdCompliance*Q/bsa;
    Qsh=d0>=0?solve(Q=>orifice(area,Math.max(0,dP(Q))),0,Qs*6):-solve(Q=>orifice(area,Math.max(0,-d0-ASSUME.asdCompliance*Q/bsa)),0,Qs*.6);
    const g=Qsh>=0?dP(Qsh):d0+ASSUME.asdCompliance*Math.abs(Qsh)/bsa;jet={sys:Math.sign(Qsh)*Math.sqrt(Math.abs(g)/4),dia:Math.sign(Qsh)*Math.sqrt(Math.abs(g)/4)};drive=g;
   }else if(lesion==='pda'){
@@ -78,17 +87,17 @@ export function shuntState({lesion,size=0,pvr='normal',patient}){
  const rvRatio=rvSys/sbp,rvWallMM=rvRatio>.5?Math.min(4,(rvRatio-.5)*8)/k:0;
  const restr=lesion==='asd2'?null:area===0?null:drive/(lesion==='pda'?map:sbp);
  const rootMM=AORTIC_ROOT_ATLAS_MM*k;
- return {model:MODEL_VERSION,lesion,size,pvr,patient:{bsa,k,ageYears:age,sbp,dbp},
+ return {model:MODEL_VERSION,lesion,size,pvr:timed?null:pvr,pvrIndex,transition:timed?{hours,closing:!!closing&&lesion==='pda',ductOpen:closing&&lesion==='pda'?ductOpenFraction(hours,ductQuantile):1}:null,patient:{bsa,k,ageYears:age,sbp,dbp},
   defect:{diameterMM:dMM,atlasRadiusM:atlasMM/2000,areaMM2:area*1e6,rootMM,rootRatio:lesion.startsWith('vsd')?dMM/rootMM:null},
   flows:{Qs,Qp,Qsh,qpqs,direction:Math.abs(Qsh)<.02*Qs&&!(jet.sys*jet.dia<0)?'sin cortocircuito':jet.sys*jet.dia<0?'bidireccional':Qsh>0?'izquierda → derecha':'derecha → izquierda'},
   pressures:{paMean:P.mean,paSys:P.sys,paDia:P.dia,rvSys,rvRatio,drive},jet,restrictiveness:restr,gains,flowScale:fs,rvWallMM,
-  grade:gradeOf(lesion,{gains,qpqs,restr,rvRatio,area,Qsh,jet})};
+  grade:gradeOf(lesion,{gains,qpqs,restr,rvRatio,area,Qsh,jet,transition:timed})};
 }
 // bands of this model (qualitative), not clinical thresholds
-export function gradeOf(lesion,{gains,qpqs,restr,rvRatio,area,Qsh,jet}){
+export function gradeOf(lesion,{gains,qpqs,restr,rvRatio,area,Qsh,jet,transition=false}){
  if(!area)return {key:'none',label:'Sin defecto'};
- if(jet&&jet.sys*jet.dia<0)return {key:'reverse',label:'Cortocircuito bidireccional: presión pulmonar suprasistémica en parte del ciclo'};
- if(Qsh<0)return {key:'reverse',label:'Cortocircuito invertido (derecha → izquierda)'};
+ if(jet&&jet.sys*jet.dia<0)return {key:'reverse',label:transition?'Cortocircuito bidireccional: la presión pulmonar aún iguala a la sistémica (transición normal de las primeras horas)':'Cortocircuito bidireccional: presión pulmonar suprasistémica en parte del ciclo'};
+ if(Qsh<0)return {key:'reverse',label:transition?'Cortocircuito derecha → izquierda: la resistencia pulmonar aún no ha bajado (primeras horas de vida)':'Cortocircuito invertido (derecha → izquierda)'};
  const g=Math.max(...Object.values(gains),0);
  const load=g<.04?'sin sobrecarga de volumen apreciable':g<.12?'sobrecarga de volumen moderada':'sobrecarga de volumen importante';
  const pres=rvRatio>.75?'presión pulmonar casi sistémica':rvRatio>.45?'presión pulmonar elevada':'presión pulmonar normal';

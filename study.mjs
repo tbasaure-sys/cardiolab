@@ -3,6 +3,7 @@
 // the volume overload), the spectral Doppler of the jet and of both outflow tracts, and a strip of measurements with the
 // model's bands. Every image is rendered by the simulator from the same heart that the live probe scans.
 import {shuntState,variantSpec,LESIONS,PVR,SHUNT_SOURCES} from './shunt-model.mjs';
+import {HOURS,hoursLabel,pvrIndexAt,ductClosedShare,TRANSITION_SOURCES} from './transition.mjs';
 import {scanConvert} from './bmode.mjs';
 import {roiAround} from './flow.mjs';
 import {VIEW_INFO} from './views.mjs';
@@ -27,12 +28,13 @@ const PLAN={
 
 export function mountStudy(api){
  // api: {host, figure, engine, views, landmarks(), patient(), ySign(windowPreset), freq(), bodyScale(), onVariant(spec), status(text)}
- const {host,figure}=api;let lesion='asd2',size=.6,pvr='normal',gen=0,timer=0,raf=0,playing=false,cine={lesion:[],chambers:[]},spectra={},open=false;
+ const {host,figure}=api;let lesion='asd2',size=.6,pvr='normal',hoursOn=false,hoursIdx=0,closing=false,gen=0,timer=0,raf=0,playing=false,cine={lesion:[],chambers:[]},spectra={},open=false;
  const ctxL=()=>lessonContext(api.landmarks(),api.views,'ref');
  host.innerHTML=`<p class="micro">Un control lleva el defecto de ausente a grande; la imagen, el color, los espectros y las medidas cambian juntos. Es la misma anatomía que exploras con la sonda.</p>
   <label class="field"><span>Defecto</span><select id="st-lesion">${Object.entries(LESIONS).map(([k,v])=>`<option value="${k}">${esc(v.name)}</option>`).join('')}</select></label>
   <div class="field"><span>Tamaño del defecto <output id="st-size-out"></output></span><input id="st-size" type="range" min="0" max="1" step="0.05" value="${size}"><div class="st-bands" id="st-bands"></div></div>
   <div class="field"><span>Resistencia vascular pulmonar</span><div class="seg" id="st-pvr">${Object.entries(PVR).map(([k,v])=>`<button data-pvr="${k}" class="${k===pvr?'active':''}">${esc(v.name)}</button>`).join('')}</div></div>
+  <div class="field" id="st-hours-field" hidden><span>Horas de vida <output id="st-hours-out"></output></span><label class="check"><input type="checkbox" id="st-hours-on"> Seguir la transición (la resistencia pulmonar baja con la edad)</label><input type="range" id="st-hours" min="0" max="${HOURS.length-1}" step="1" value="0" disabled aria-label="Horas de vida"><label class="check" id="st-closing-row"><input type="checkbox" id="st-closing"> El ductus se cierra solo (recién nacido sano)</label><p class="micro" id="st-hours-note"></p></div>
   <div class="st-actions"><button id="st-play" class="primary">▶ Recorrer de ausente a grande</button><button id="st-figure">Ver el estudio</button><button id="st-live">Explorar en vivo</button></div>
   <div id="st-grade" class="st-grade" aria-live="polite"></div><div id="st-strip" class="st-strip"></div>
   <details class="st-how"><summary>Cómo se calcula y qué es supuesto</summary><p>Modelo docente de circuito: el flujo sistémico sale del índice cardíaco; la presión pulmonar, de la resistencia pulmonar por el flujo pulmonar; el defecto es un orificio (Q = Cd·A·√(2ΔP/ρ)), así que un defecto grande deja de ser restrictivo porque las presiones se igualan. Las cavidades que reciben el volumen extra se agrandan con una deformación reversible del volumen acústico; con presión del VD alta, su pared se engruesa.</p>
@@ -47,7 +49,13 @@ export function mountStudy(api){
  const F=id=>figure.querySelector('#'+id);F('st-close').onclick=()=>showFigure(false);F('st-link').onclick=()=>api.copyLink?.();
  function showFigure(on){open=on;figure.hidden=!on;document.body.classList.toggle('study-open',on);if(on){refresh();loop()}else{cancelAnimationFrame(raf)}}
  // ---------------------------------------------------------------- state → model → UI
- const state=()=>shuntState({lesion,size,pvr,patient:api.patient()});
+ const isNeonate=()=>api.patient().id==='neonate';
+ const timed=()=>hoursOn&&isNeonate();
+ const state=()=>shuntState({lesion,size,pvr,patient:api.patient(),hours:timed()?HOURS[hoursIdx]:null,closing:closing&&lesion==='pda'});
+ // the hours-of-life control exists only for the newborn (the transition is a newborn phenomenon)
+ function syncHours(){const f=$('st-hours-field');f.hidden=!isNeonate();const on=timed();$('st-hours').disabled=!on;$('st-hours-on').checked=hoursOn;$('st-closing').checked=closing;$('st-closing-row').hidden=lesion!=='pda';
+  $('st-hours-out').textContent=on?hoursLabel(HOURS[hoursIdx]):'sin ajuste';host.querySelectorAll('[data-pvr]').forEach(b=>{b.disabled=on;b.title=on?'La resistencia sigue la edad: desactiva «horas de vida» para fijarla':''});
+  $('st-hours-note').textContent=on?`Resistencia pulmonar ${pvrIndexAt(HOURS[hoursIdx]).toFixed(1).replace('.',',')} WU·m² (curva del modelo).${lesion==='pda'&&closing?` En la población, el ${Math.round(ductClosedShare(HOURS[hoursIdx])*100)} % de los recién nacidos sanos ya tiene el ductus cerrado a esta edad.`:''}`:'Con esto activado, el defecto, el color y los espectros cambian con la edad.'}
  function poseFor(p){const t=p.plane?planeThrough(p.plane,ctxL()):api.views[p.view];return {origin:t.origin,u:t.u,d:t.d,n:t.n,depth:t.depth,sector:p.plane?80:(t.sector||80)}}
  function point(at){const lm=api.landmarks();if(at==='ductJet')return lm.ductPulmonary.map((v,i)=>v+(lm.pulmonaryValve[i]-v)*.25);return lm[at]}
  function windowOf(p){return p.plane?'psax':VIEW_INFO[p.view].window}
@@ -56,6 +64,7 @@ export function mountStudy(api){
   const bar=(v,min,max,bands,ticks=[])=>{const x=q=>Math.max(0,Math.min(100,(q-min)/(max-min)*100));return `<span class="st-bar">${bands.map(([a,b,c])=>`<i class="b-${c}" style="left:${x(a)}%;width:${x(b)-x(a)}%"></i>`).join('')}${ticks.map(([t,l])=>`<em style="left:${x(t)}%" title="${esc(l)}"></em>`).join('')}<b style="left:${x(v)}%"></b></span>`};
   const rows=[];
   rows.push(['Defecto',`${s.size?f1(s.defect.diameterMM)+' mm':'—'}`,s.defect.rootRatio!=null&&s.size?`${f2(s.defect.rootRatio)} de la raíz aórtica (${f1(s.defect.rootMM)} mm) ${tag({fuente:['spicer2014']})}${bar(s.defect.rootRatio,0,1,[[0,.5,'ok'],[.5,1,'hi']],[[.5,'½ raíz aórtica: repercusión (Spicer 2014)']])}`:'','modelo']);
+  if(s.transition)rows.push(['Edad',hoursLabel(s.transition.hours),`resistencia pulmonar ${f1(s.pvrIndex)} WU·m²${s.transition.closing?` · ductus abierto al ${Math.round(s.transition.ductOpen*100)} %`:''}`,['modelo',{fuente:TRANSITION_SOURCES}]]);
   rows.push(['Dirección',esc(s.flows.direction),'','modelo']);
   rows.push(['Qp/Qs',f2(s.flows.qpqs),'= (VTI × área) pulmonar / (VTI × área) sistémica'+bar(s.flows.qpqs,.5,4.5,[[.5,1,'rev'],[1,1.15,'ok'],[1.15,1.8,'mid'],[1.8,4.5,'hi']])+'<small>bandas del modelo</small>','modelo']);
   if(s.size){const v=Math.abs(s.jet.sys),dp=4*v*v;rows.push([lesion==='pda'?'Velocidad ductal':'Velocidad del chorro',`${f2(v)} m/s${lesion==='pda'?` · diást. ${f2(Math.abs(s.jet.dia))}`:''}`,`ΔP = 4v² ≈ ${Math.round(dp)} mmHg${lesion.startsWith('vsd')&&s.jet.sys>0?` · PSVD ≈ PAS ${Math.round(s.patient.sbp)} − ${Math.round(dp)} = ${Math.round(s.patient.sbp-dp)} mmHg`:''} ${tag(['ecuacion',{fuente:['quinones2002']}],'ΔP = 4v²')}`,'modelo'])}
@@ -66,15 +75,15 @@ export function mountStudy(api){
   $('st-grade').innerHTML=`<span class="st-chip k-${s.grade.key}">${esc(s.grade.label)}</span>`;
   $('st-size-out').textContent=s.size?`${f1(s.defect.diameterMM)} mm`:'sin defecto';
  }
- function bands(){const pts=[0,.2,.4,.6,.8,1].map(x=>({x,s:shuntState({lesion,size:x,pvr,patient:api.patient()})}));
+ function bands(){const pts=[0,.2,.4,.6,.8,1].map(x=>({x,s:shuntState({lesion,size:x,pvr,patient:api.patient(),hours:timed()?HOURS[hoursIdx]:null,closing:closing&&lesion==='pda'})}));
   $('st-bands').innerHTML=pts.slice(1).map((p,i)=>`<i class="k-${p.s.grade.key}" style="left:${pts[i].x*100}%;width:${(p.x-pts[i].x)*100}%"></i>`).join('')}
  // ---------------------------------------------------------------- rendering
  async function refresh(){
-  const my=++gen,s=state();renderStrip(s);bands();api.onRoute?.({route:'estudio',id:lesion,params:{tam:+size.toFixed(2),rvp:pvr}});
+  const my=++gen,s=state();renderStrip(s);bands();api.onRoute?.({route:'estudio',id:lesion,params:{tam:+size.toFixed(2),...(timed()?{horas:HOURS[hoursIdx],...(closing&&lesion==='pda'?{cierre:1}:{})}:{rvp:pvr})}});syncHours();
   const spec=variantSpec(s);api.status('Aplicando el defecto al corazón simulado…');await api.engine.setVariant(spec);api.onVariant(spec);if(my!==gen)return;
   api.status(`${LESIONS[lesion].name} · ${s.grade.label}`);
   if(!open)return;
-  const P=PLAN[lesion];F('st-title').textContent=`${LESIONS[lesion].name} · ${s.size?f1(s.defect.diameterMM)+' mm':'sin defecto'} · RVP ${PVR[pvr].name.toLowerCase()}`;F('st-sub').textContent=`${api.patient().name} · Qp/Qs ${f2(s.flows.qpqs)} · ${s.grade.label}`;
+  const P=PLAN[lesion];F('st-title').textContent=`${LESIONS[lesion].name} · ${s.size?f1(s.defect.diameterMM)+' mm':'sin defecto'} · ${s.transition?hoursLabel(s.transition.hours):'RVP '+PVR[pvr].name.toLowerCase()}`;F('st-sub').textContent=`${api.patient().name} · Qp/Qs ${f2(s.flows.qpqs)} · ${s.grade.label}`;
   F('st-cap-lesion').textContent=P.lesion.title;F('st-cap-chambers').textContent=P.chambers.title;F('st-cap-jet').textContent=P.jet.title;
   cine={lesion:[],chambers:[]};spectra={};
   const views=[['lesion',P.lesion,true],['chambers',P.chambers,false]];
@@ -103,7 +112,7 @@ export function mountStudy(api){
   const q=pt.map((v,i)=>v-pose.origin[i]),x=q[0]*pose.u[0]+q[1]*pose.u[1]+q[2]*pose.u[2],y=q[0]*pose.d[0]+q[1]*pose.d[1]+q[2]*pose.d[2];
   const jetV=Math.max(Math.abs(s.jet.sys),Math.abs(s.jet.dia));
   // Doppler at a lower frequency than the image (higher Nyquist limit), baseline shifted toward the expected flow
-  const base=key==='rvot'||key==='lvot'?.8:pvr!=='normal'?.5:lesion==='asd2'?.25:.3;
+  const base=key==='rvot'||key==='lvot'?.8:s.pvrIndex>4?.5:lesion==='asd2'?.25:.3;
   const sp=await api.engine.spectrum({pose,theta:Math.atan2(x,y)*180/Math.PI,gateDepth:Math.hypot(x,y),gateLen:.003,mode,freq:3.5,scale:mode==='cw'?Math.max(2,Math.ceil(jetV+.6)):key==='rvot'||key==='lvot'?1.5:null,baseline:base,gain:1,bodyScale:api.bodyScale(),optimize:{range:6,step:1}});
   if(my!==gen)return;spectra[key]=sp;drawSpectra(s);
  }
@@ -131,15 +140,20 @@ export function mountStudy(api){
   for(const key of ['lesion','chambers']){const c=F('st-c-'+key),frames=cine[key];let f=frames[i];for(let d=1;!f&&d<CINE;d++)f=frames[(i-d+CINE)%CINE];if(!f)continue;if(c.width!==f.width||c.height!==f.height){c.width=f.width;c.height=f.height}c.getContext('2d').drawImage(f,0,0)}};raf=requestAnimationFrame(draw)}
  // ---------------------------------------------------------------- controls
  const schedule=()=>{clearTimeout(timer);timer=setTimeout(refresh,250)};
- $('st-lesion').onchange=()=>{lesion=$('st-lesion').value;schedule()};
+ $('st-lesion').onchange=()=>{lesion=$('st-lesion').value;syncHours();schedule()};
  $('st-size').oninput=()=>{size=Number($('st-size').value);renderStrip(state())};$('st-size').onchange=schedule;
  host.querySelectorAll('[data-pvr]').forEach(b=>b.onclick=()=>{pvr=b.dataset.pvr;host.querySelectorAll('[data-pvr]').forEach(x=>x.classList.toggle('active',x===b));schedule()});
+ $('st-hours-on').onchange=()=>{hoursOn=$('st-hours-on').checked;syncHours();renderStrip(state());schedule()};
+ $('st-hours').oninput=()=>{hoursIdx=Number($('st-hours').value);syncHours();renderStrip(state())};$('st-hours').onchange=schedule;
+ $('st-closing').onchange=()=>{closing=$('st-closing').checked;syncHours();renderStrip(state());schedule()};
  $('st-figure').onclick=()=>showFigure(true);
  $('st-live').onclick=()=>{showFigure(false);api.goLive?.(PLAN[lesion].lesion)};
  $('st-play').onclick=async()=>{if(playing){playing=false;$('st-play').textContent='▶ Recorrer de ausente a grande';return}playing=true;$('st-play').textContent='■ Detener';showFigure(true);
   for(const x of [0,.25,.5,.75,1]){if(!playing)break;size=x;$('st-size').value=String(x);await refresh();await new Promise(r=>setTimeout(r,2200))}playing=false;$('st-play').textContent='▶ Recorrer de ausente a grande'};
- renderStrip(state());bands();sourcesReady.then(()=>renderStrip(state())); // links to the sources once their catalog is loaded
+ syncHours();renderStrip(state());bands();sourcesReady.then(()=>renderStrip(state())); // links to the sources once their catalog is loaded
  return {enter(){refresh()},leave(){playing=false;showFigure(false);gen++},get state(){return state()},show:showFigure,refresh,
-  set(o){if(o.lesion){lesion=o.lesion;$('st-lesion').value=lesion}if(o.size!=null){size=o.size;$('st-size').value=String(size)}if(o.pvr){pvr=o.pvr;host.querySelectorAll('[data-pvr]').forEach(x=>x.classList.toggle('active',x.dataset.pvr===pvr))}return refresh()},
+  set(o){if(o.lesion){lesion=o.lesion;$('st-lesion').value=lesion}if(o.size!=null){size=o.size;$('st-size').value=String(size)}if(o.pvr){pvr=o.pvr;host.querySelectorAll('[data-pvr]').forEach(x=>x.classList.toggle('active',x.dataset.pvr===pvr))}
+   if('hours' in o){const i=o.hours==null?-1:HOURS.reduce((b,h,n)=>Math.abs(h-o.hours)<Math.abs(HOURS[b]-o.hours)?n:b,0);hoursOn=i>=0;if(i>=0){hoursIdx=i;$('st-hours').value=String(i)}}
+   if('closing' in o)closing=!!o.closing;syncHours();return refresh()},sync:()=>{syncHours();renderStrip(state());bands()},
   sources:SHUNT_SOURCES};
 }

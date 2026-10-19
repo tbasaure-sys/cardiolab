@@ -480,6 +480,7 @@ function caliperText(){const mm=distanceMM(...display.points)*BODY.k,k=display.m
 function setPatient(id){const p=PATIENT_BY_ID[id];if(!p)return;patient=p;try{localStorage.setItem(PATIENT_KEY,id)}catch{}
  setBodyScale(bodyScale(p));engine.set({bodyScale:BODY.k,hr:p.hr});setHeartRate(p.hr);heartRate=p.hr;display.freq=p.freq;display.points=[];crosshair=null;updatePatientUI();
  if(ready&&!frozen){stopSweep();state.depth=defaultState(state.preset).depth;syncControls();requestSlice()}else renderScan();
+ study?.sync?.();
  dop.key='';requestSpectrum();instrument?.update();status(`Paciente: ${describePatient(p)}`)}
 function updatePatientUI(){$('patient').value=patient.id;$('patient-info').textContent=`${patient.age} · SC ${bsaHaycock(patient.weight,patient.height).toFixed(2).replace('.',',')} m² · FC ${patient.hr}`;$('patient').title=describePatient(patient)}
 $('patient').replaceChildren(...PATIENTS.map(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=`${p.name} · ${String(p.weight).replace('.',',')} kg`;return o}));$('patient').onchange=()=>setPatient($('patient').value);updatePatientUI();
@@ -550,7 +551,8 @@ async function copyLink(){const url=location.href;try{await navigator.clipboard.
 async function applyLink(link){if(!link||!physics||!study||!lessonPanel)return;const q=link.params||{};
  if(PATIENT_BY_ID[q.paciente]&&q.paciente!==patient.id)setPatient(q.paciente);
  if(link.route==='fisica'){physics.setParams(q);if(openPanel!=='physics')showPanel('physics');physics.select(physics.chapters.some(c=>c.id===link.id)?link.id:physics.chapters[0].id)}
- else if(link.route==='estudio'&&LESIONS[link.id]){if(openPanel!=='chd')showPanel('chd');chd.setMode('study');study.show(true);await study.set({lesion:link.id,size:numParam(q.tam,0,1)??.6,pvr:PVR[q.rvp]?q.rvp:'normal'})}
+ else if(link.route==='estudio'&&LESIONS[link.id]){const hrs=numParam(q.horas,0,2000);if(hrs!=null&&patient.id!=='neonate')setPatient('neonate'); // the hours of life belong to the newborn
+  if(openPanel!=='chd')showPanel('chd');chd.setMode('study');study.show(true);await study.set({lesion:link.id,size:numParam(q.tam,0,1)??.6,pvr:PVR[q.rvp]?q.rvp:'normal',hours:hrs,closing:q.cierre==='1'})}
  else if(link.route==='vista'&&VIEW_INFO[link.id]){for(let i=0;i<150&&!ready;i++)await new Promise(r=>setTimeout(r,100));if(openPanel)showPanel(openPanel);if(imageOnly)setImageOnly(false);setEchoMode();await goToView(link.id);setLink(link)} // the live simulator: close the panel that drives the probe
  else if(link.route==='leccion'){if(openPanel!=='lessons')showPanel('lessons');lessonPanel.open(link.id,{mode:['demostracion','practica','examen'].includes(q.modo)?q.modo:undefined,seed:numParam(q.semilla,1,1e9)??undefined})}
 }
