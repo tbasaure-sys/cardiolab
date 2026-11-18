@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+  <head>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <title>CardioLab / Hemodinamia</title>
+    <style>:root {
+  --bg: #0d1318;
+  --surface: #131c23;
+  --line: #29353e;
+  --muted: #94a5b2;
+  --ink: #e6edf2;
+  --accent: #63ddc8;
+  --warn: #ffbb9e;
+  color-scheme: dark;
+}
+[data-theme="light"] {
+  --bg: #f3f6f7;
+  --surface: #fff;
+  --line: #cdd8dd;
+  --muted: #556a75;
+  --ink: #14212a;
+  --accent: #0b7d6c;
+  --warn: #953f1b;
+  color-scheme: light;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font:
+    14px/1.45 "Segoe UI",
+    system-ui,
+    sans-serif;
+}
+header {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 16px clamp(16px, 3vw, 60px);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.brand,
+.status,
+.intro,
+.panel-head,
+.line-foot,
+.segments,
+.check {
+  display: flex;
+  align-items: center;
+}
+.brand {
+  gap: 10px;
+  letter-spacing: 1.1px;
+}
+.brand strong {
+  font-size: 18px;
+}
+.brand svg,
+.eyebrow,
+.step,
+.link {
+  color: var(--accent);
+}
+.brand span,
+.status,
+.meta,
+small,
+.line-foot,
+.empty p,
+label {
+  color: var(--muted);
+}
+.brand span {
+  font-size: 13px;
+}
+.status {
+  margin-left: auto;
+  gap: 8px;
+  font-size: 12px;
+}
+.status i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+main {
+  max-width: 1800px;
+  margin: auto;
+  padding: 27px clamp(16px, 3vw, 60px) 50px;
+}
+.intro,
+.line-foot {
+  justify-content: space-between;
+  gap: 12px;
+}
+.eyebrow,
+.meta,
+.step,
+.caption,
+.line-foot,
+.context h2,
+th {
+  font-family: Consolas, monospace;
+}
+.eyebrow,
+.meta,
+.context h2 {
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+.intro h1 {
+  font-weight: 600;
+  font-size: clamp(26px, 2.5vw, 38px);
+  letter-spacing: -1.2px;
+  margin: 3px 0 0;
+}
+.intro {
+  margin-bottom: 21px;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: var(--ink);
+}
+button,
+input,
+select,
+textarea,
+.segments {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+}
+button {
+  cursor: pointer;
+  padding: 6px 12px;
+  font-weight: 550;
+  background: var(--surface);
+}
+button:hover:enabled,
+summary:hover {
+  color: var(--accent);
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: 16px 34px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 13px 18px;
+  margin-bottom: 18px;
+}
+.context h2 {
+  margin: 0 0 6px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.segments {
+  padding: 2px;
+  width: max-content;
+}
+.segments button {
+  border: 0;
+  background: transparent;
+  font-size: 13px;
+  color: var(--muted);
+}
+.segments button[aria-pressed="true"] {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 13%, var(--surface));
+}
+.workspace,
+.lower {
+  display: grid;
+  gap: 16px;
+  align-items: start;
+}
+.workspace {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+}
+.lower {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  margin-top: 16px;
+}
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  min-width: 0;
+  overflow: hidden;
+}
+.panel-head {
+  min-height: 57px;
+  gap: 12px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.panel-head h2 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0;
+}
+.step {
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--line));
+  border-radius: 5px;
+  padding: 2px 6px;
+  font-size: 13px;
+}
+.panel-head .meta,
+.panel-head button {
+  margin-left: auto;
+}
+.primary {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: transparent;
+}
+.primary:hover:enabled {
+  color: var(--bg);
+  filter: brightness(1.1);
+}
+.body {
+  padding: 15px 16px;
+}
+.workspace .body {
+  max-height: 550px;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+h3 {
+  font-size: 14px;
+  margin: 16px 0 9px;
+}
+label,
+.caption {
+  font-size: 12px;
+  font-weight: 550;
+  display: block;
+}
+label input:not([type="checkbox"]),
+select,
+textarea {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+}
+input,
+select,
+textarea {
+  padding: 6px 8px;
+  min-width: 0;
+}
+input,
+textarea,
+pre,
+.number {
+  font-family: Consolas, monospace;
+}
+textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+#input {
+  height: 147px;
+  margin-top: 7px;
+  padding: 12px;
+  font-size: 13px;
+}
+::placeholder {
+  color: var(--muted);
+  opacity: 0.8;
+}
+.line-foot {
+  font-size: 11px;
+  margin-top: 4px;
+}
+.link {
+  border: none;
+  background: none;
+  font: inherit;
+}
+.fields {
+  display: flex;
+  gap: 10px;
+}
+.fields > label {
+  flex: 1;
+  min-width: 0;
+}
+.empty {
+  border: 1px dashed var(--line);
+  padding: 21px 16px;
+  border-radius: 6px;
+  background: var(--bg);
+}
+.empty b {
+  font-size: 14px;
+  font-weight: 600;
+}
+.empty p {
+  font-size: 13px;
+  margin: 5px 0 0;
+  max-width: 44ch;
+}
+.empty + .empty {
+  margin-top: 10px;
+}
+details {
+  border-top: 1px solid var(--line);
+  margin-top: 13px;
+  padding-top: 10px;
+}
+summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 550;
+}
+details[open] > summary {
+  margin-bottom: 10px;
+}
+small {
+  display: block;
+  margin-top: 6px;
+}
+.check {
+  display: flex;
+  gap: 6px;
+  margin: 8px 0;
+}
+input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+#edit-note label {
+  margin: 9px 0;
+}
+#edit-note textarea {
+  min-height: 64px;
+}
+pre {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  line-height: 1.6;
+}
+pre:empty {
+  display: none;
+}
+.table-wrap {
+  overflow-x: auto;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+}
+th {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 500;
+  text-align: left;
+}
+td,
+th {
+  padding: 5px 4px;
+  border-bottom: 1px solid var(--line);
+}
+tr[data-excluded="true"] {
+  opacity: 0.6;
+}
+td input[data-field] {
+  width: 100%;
+  min-width: 37px;
+  font-size: 12px;
+  padding: 3px;
+  border-radius: 3px;
+}
+#review td:first-child {
+  white-space: nowrap;
+  font-weight: 600;
+}
+#review h3:first-child {
+  margin-top: 0;
+}
+.metric {
+  font-weight: 600;
+  color: var(--accent);
+}
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  border-bottom: 1px solid var(--line);
+  padding: 9px 0;
+}
+.alert:first-child {
+  padding-top: 0;
+}
+.alert p {
+  margin: 0;
+  flex: 1;
+  font-size: 13px;
+}
+.alert b {
+  color: var(--warn);
+}
+.alert button {
+  font-size: 11px;
+}
+.trace {
+  font:
+    12px/1.6 Consolas,
+    monospace;
+  overflow-wrap: anywhere;
+}
+fieldset {
+  border: 1px solid var(--line);
+  margin: 8px 0;
+  padding: 4px 9px;
+}
+fieldset label {
+  display: inline-flex;
+  margin-right: 8px;
+}
+legend {
+  font-size: 12px;
+  color: var(--muted);
+}
+[hidden] {
+  display: none !important;
+}
+@media (max-width: 1099px) {
+  .workspace,
+  .lower {
+    grid-template-columns: 1fr;
+  }
+  .workspace .body {
+    max-height: none;
+  }
+  #output {
+    max-height: 420px;
+    overflow: auto;
+  }
+}
+@media (max-width: 620px) {
+  header {
+    flex-wrap: wrap;
+    gap: 9px;
+  }
+  .brand {
+    gap: 6px;
+  }
+  .brand strong {
+    font-size: 15px;
+  }
+  .brand span {
+    font-size: 11px;
+  }
+  .status {
+    order: 3;
+    width: 100%;
+    margin: 0;
+  }
+  header button {
+    margin-left: auto;
+  }
+  .intro {
+    align-items: start;
+    flex-direction: column;
+  }
+  .context {
+    padding: 11px;
+    gap: 12px;
+  }
+  .segments button {
+    padding: 6px 8px;
+  }
+  main {
+    padding-top: 20px;
+  }
+}
+</style>
+    
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <svg aria-hidden="true" width="36" height="36" viewBox="0 0 36 36">
+          <rect
+            x="1"
+            y="1"
+            width="34"
+            height="34"
+            rx="9"
+            fill="none"
+            stroke="currentColor"
+          />
+          <path
+            d="M5 19h7l4-9 4 17 4-11 2 3h5"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.2"
+            stroke-linejoin="round"
+          /></svg
+        ><strong>CARDIOLAB</strong><span>/ HEMODINAMIA</span>
+      </div>
+      <div class="status"><i></i> sin conexión · datos solo en este equipo</div>
+      <button id="theme">Tema claro</button>
+    </header>
+    <main>
+      <div class="intro">
+        <div>
+          <div class="eyebrow">CATETERISMO CARDÍACO PEDIÁTRICO</div>
+          <h1>Estudio hemodinámico</h1>
+        </div>
+        <button id="example">Cargar ejemplo sintético</button>
+      </div>
+      <section class="context" aria-label="Contexto del estudio">
+        <div>
+          <h2>Circulación</h2>
+          <div class="segments" id="circulation">
+            <button data-value="biventricular" aria-pressed="true">
+              Biventricular</button
+            ><button data-value="univentricular">Univentricular</button
+            ><button data-value="trasplante">Trasplante</button>
+          </div>
+        </div>
+        <div>
+          <h2>Procedimiento</h2>
+          <div class="segments" id="procedure">
+            <button data-value="diagnostico" aria-pressed="true">
+              Diagnóstico</button
+            ><button data-value="intervencion">Intervención</button>
+          </div>
+        </div>
+        <div id="anatomy" hidden>
+          <h2>Circuito</h2>
+          <div class="segments" id="subtype">
+            <button data-value="shunt">Shunt</button
+            ><button data-value="glenn">Glenn</button
+            ><button data-value="fontan">Fontan</button>
+          </div>
+          <label
+            >Ventrículo sistémico
+            <select id="ventricle">
+              <option value="">Sin definir</option>
+              <option>VI</option>
+              <option>VD</option>
+            </select></label
+          >
+        </div>
+      </section>
+      <div class="workspace">
+        <section class="panel">
+          <div class="panel-head">
+            <span class="step">01</span>
+            <h2>Pegar registro</h2>
+          </div>
+          <div class="body">
+            <label for="input" class="caption">Texto del procedimiento</label
+            ><textarea
+              id="input"
+              spellcheck="false"
+              placeholder="Pega aquí el registro de cateterismo…"
+            ></textarea>
+            <div class="line-foot">
+              <span id="source-count">0 líneas</span
+              ><button id="clear" class="link" disabled>Limpiar</button>
+            </div>
+            <h3>Parámetros de Fick</h3>
+            <div class="fields">
+              <label
+                >VO₂ (ml/min/m²)<input
+                  id="vo2"
+                  inputmode="decimal"
+                  placeholder="Sin dato" /></label
+              ><label
+                >Hb (g/dL)<input
+                  id="hb-override"
+                  inputmode="decimal"
+                  placeholder="Del registro"
+              /></label>
+            </div>
+            <details>
+              <summary>Referencia de LaFarge</summary>
+              <div class="fields">
+                <label>Edad (años)<input id="age" inputmode="decimal" /></label
+                ><label
+                  >Sexo<select id="sex">
+                    <option value="">Sin definir</option>
+                    <option value="F">Femenino</option>
+                    <option value="M">Masculino</option>
+                  </select></label
+                >
+              </div>
+              <small id="vo2-ref"></small>
+            </details>
+          </div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <span class="step">02</span>
+            <h2>Revisar datos</h2>
+          </div>
+          <div class="body" id="review"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <span class="step">03</span>
+            <h2>Evolución</h2>
+            <button class="primary" id="copy" disabled>Copiar</button>
+          </div>
+          <div class="body">
+            <div id="report-empty" class="empty">
+              <b>Evolución pendiente</b>
+              <p>
+                El informe se genera a partir de las mediciones y de tus
+                selecciones.
+              </p>
+            </div>
+            <pre id="output"></pre>
+            <details id="edit-note">
+              <summary>Editar evolución</summary>
+              <label
+                >Intervenciones<textarea id="intervention"></textarea></label
+              ><label id="biopsy-label" hidden
+                >Biopsia endomiocárdica<textarea id="biopsy"></textarea></label
+              ><label>Eventos adversos<textarea id="eventos"></textarea></label
+              ><label
+                >Indicaciones · una por línea<textarea
+                  id="indicaciones"
+                ></textarea></label
+              ><label class="check"
+                ><input type="checkbox" id="obs-toggle" /> Incluir observaciones
+                en la evolución</label
+              >
+            </details>
+            <small role="status" id="copy-status"></small>
+          </div>
+        </section>
+      </div>
+      <div class="lower">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Cálculos</h2>
+            <span class="meta">MÉTODO DE FICK</span>
+          </div>
+          <div class="body">
+            <div id="calc"></div>
+            <details>
+              <summary>Diámetros e índices pulmonares</summary>
+              <div class="fields">
+                <label>APD (mm)<input id="rpa" inputmode="decimal" /></label
+                ><label>API (mm)<input id="lpa" inputmode="decimal" /></label
+                ><label
+                  >Ao desc (mm)<input id="ao-diam" inputmode="decimal"
+                /></label>
+              </div>
+              <p id="indices"></p>
+            </details>
+          </div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Alertas</h2>
+            <span class="meta" id="alert-count"></span>
+          </div>
+          <div class="body" id="alerts"></div>
+        </section>
+      </div>
+    </main>
+  <script>(()=>{function q(t,e=0){return Number.isFinite(t)?Number(t.toFixed(e))===0?0 .toFixed(e).replace(".",","):t.toFixed(e).replace(".",","):""}function E(t){let e=String(t??"").trim().replace(/^(?:\\-|[−–])/,"-").replace(",",".");if(!/^[+-]?(?:\d+\.?\d*|\.\d+)$/.test(e))return null;let n=Number(e);return Number.isFinite(n)?n:null}function K(t){return String(t).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim()}var Me={VCS:["vena cava superior"],VCI:["vena cava inferior"],AD:["auricula derecha"],AI:["auricula izquierda"],VD:["ventriculo derecho"],VI:["ventriculo izquierdo"],TAP:["tap distal","tronco de arteria pulmonar"],APD:["ap derecha","apd distal","arteria pulmonar derecha"],API:["ap izquierda","api distal","arteria pulmonar izquierda"],AP:["arteria pulmonar"],AOASC:["ao asc","aorta ascendente","ao ascendente"],AODESC:["ao desc","ao d","aorta descendente","ao descendente"],AO:["aorta"],VP:["vena pulmonar"],VPSD:[],VPID:[],VPSI:[],VPII:[],SANO:["conducto sano"],STENT:["intrastent"],FONTAN:["circuito de fontan"],FENESTRACION:["fenestracion"],PANI:[]},Re=new Map(Object.entries(Me).flatMap(([t,e])=>[t,...e].map(n=>[K(n),t]))),ze={AOASC:"Ao asc",AODESC:"Ao desc",AO:"Ao",FONTAN:"Fontan",SANO:"Conducto Sano",STENT:"Intrastent",FENESTRACION:"Fenestración"};function I(t,e=!1){return e?{APD:"PCP der",API:"PCP izq"}[t]??"PCP":ze[t]??t}function ne(t){let e=K(t).replace(/[.:]/g,"").replace(/\s+/g," "),n=/^pcp (der(?:echa)?|izq(?:uierda)?)$/.exec(e);if(n)return{site:n[1].startsWith("der")?"APD":"API",wedge:!0};let s=/^(apd|api|ap)\s*[we]$/.exec(e);if(s)return{site:s[1].toUpperCase(),wedge:!0};let a=Re.get(e);return a?{site:a,wedge:!1}:null}var L="[+-]?(?:\\d+(?:[.,]\\d+)?|[.,]\\d+)",Ue=["ph","pco2","po2","hco3","be","sat"],xe=t=>t.replace(/\\-|[−–](?=\d)/g,"-");function Z(t){let e=[],n=0,s=/(?:^|[\s;|])(?:nombres?(?:\s+(?:completos?|social|legal|cl[ií]nico|y\s+apellidos?))?(?:\s+(?:del?\s+)?paciente)?|apellidos?(?:\s+(?:paterno|materno|del paciente))?|r\.?u\.?[nt]\.?|ficha(?:\s+cl[ií]nica)?|paciente(?=\s*[:#\t]|\s*$))(?=$|[\s:#.-])\s*[:#-]?/gi;for(let a of String(t??"").replace(/\r\n?/g,`
+`).split(`
+`)){let r=/^\s*paciente\s+(.+)$/i.exec(a);if(r&&/^\p{Lu}[\p{L}'’.-]*(?:\s+(?:\p{Lu}[\p{L}'’.-]*|de|del|la|las|los))*$/u.test(r[1].trim())){n=0;continue}let c=[...a.matchAll(s)];if(c.length){let o=c.at(-1),p=a.slice(o.index+o[0].length).trim();!p||/^(?:\([^)]*\)|(?:del?|y)\s+[\p{L} ]+)?\s*[:#-]$/u.test(p)?n+=c.length:n=0;continue}if(n&&a.trim()){if(!fe(a.trimStart())&&!me(a,{accesses:[]})&&!/^\s*(?:procedimiento|presiones|gases|muestras de gases|accesos vasculares|datos y cálculos hemodinámicos|intervenciones|indicaciones|eventos adversos|hallazgos|observaciones)\b/i.test(a)){n=Math.max(0,n-a.trim().split(/\t+/).length);continue}n=0}/\b\d{1,2}\.?\d{3}\.?\d{3}\s*-\s*[\dk]\b/i.test(a)||e.push(a)}return e.join(`
+`)}function Be(t,e,n){let s=xe(e.trim()).replace(/\s*mm\s*hg\.?\s*$/i,"").trim(),a={...t,line:n},r=new RegExp("^("+L+")\\s*/\\s*("+L+")(?:\\s*\\(\\s*m?\\s*:?\\s*("+L+")\\s*\\))?$","i").exec(s);if(r){a.sys=E(r[1]);let l=["VD","VI"].includes(t.site);return a[l&&!r[3]?"edp":"dia"]=E(r[2]),r[3]&&(a.mean=E(r[3])),a}let c=new RegExp("^("+L+")\\s*a\\s*:\\s*("+L+")\\s*v\\s*:\\s*("+L+")$","i").exec(s);if(c)return{...a,mean:E(c[1]),a:E(c[2]),v:E(c[3])};let o=new RegExp("([avm])\\s*:?\\s*("+L+")","gi"),p=[...s.matchAll(o)];if(p.length&&!s.replace(o,"").replace(/[\s,;]+/g,"")){let l={a:"a",v:"v",m:"mean"};for(let[,h,b]of p)a[l[h.toLowerCase()]]=E(b);return a}let u=E(s);return u===null?null:{...a,mean:u}}function Qe(t,e,n){let s=e.includes("	")?e.split("	"):e.trim().split(/\s+/);if(s.length!==6)return null;let a={site:t,line:n};for(let[r,c]of s.entries()){let o=c.trim().replace(/%$/,"");if(/^(?:|[-—–]|s\/d|n\/d)$/i.test(o))continue;let p=E(o);if(p===null)return null;a[Ue[r]]=p}return Object.keys(a).length>2?a:null}var Ge={weightKg:"peso",heightCm:"talla",hr:"frecuencia cardiaca|fc",hct:"hematocrito|hcto",hb:"hemoglobina|hb",vo2:"vo2"},Pe="(?![\\d.,]*\\d)";function me(t,e){let n=K(t).replace(/₂/g,"2"),s=!1;for(let[p,u]of Object.entries(Ge)){let l=new RegExp("\\b(?:"+u+")\\s*:?\\s*("+L+")"+Pe,"i").exec(n);l&&(e[p]=E(l[1]),s=!0)}let a=new RegExp("\\bfio2\\s*:?\\s*("+L+")"+Pe+"\\s*(%)?").exec(n);if(a){let p=E(a[1]),u=!a[2]&&p>1&&p<21;e.fio2Ambiguous=u||p<=0||p>100,e.fio2=e.fio2Ambiguous?void 0:a[2]||p>1?p/100:p,s=!0}let r=/\btot\s*:?\s*(\d+(?:[.,]\d+)?(?:\s+(?:con|sin)\s+cuff)?)/.exec(n);r&&(e.tot=r[1],s=!0);let c=/\banestesia\s+(general|local|regional)|\bsedacion\b/.exec(n);c&&(e.anesthesia=c[1]?"anestesia "+c[1]:"sedación",s=!0);let o=new RegExp("^(vena|arteria)\\s+(femoral|yugular)\\s+(derecha|izquierda)\\s*:?\\s*("+L+")\\s*(?:french|fr)\\b").exec(n);return o&&(e.accesses.push({vessel:o[1],site:o[2],side:o[3],fr:E(o[4])}),s=!0),s}function fe(t){let e=t.indexOf("	");if(e>=0){let s=ne(t.slice(0,e));if(s)return[s,t.slice(e+1)]}let n=/^(.+?)\s*:\s*(.+)$/.exec(t);if(n&&ne(n[1]))return[ne(n[1]),n[2]];for(let s of t.matchAll(/\s+/g)){let a=ne(t.slice(0,s.index));if(a){let r=t.slice(s.index+s[0].length);if(/^(?:[+\d.,\\−–-]|[avm]\s*[:\d ])/i.test(r))return[a,r]}}return null}function Ce(t){var p;let e={pressures:[],gases:[],data:{accesses:[]},unrecognized:[]},n=[],s=!1,a=null,r={intervenciones:"intervention","eventos adversos":"eventos",indicaciones:"indicaciones"};function c(u){let l=a==="indicaciones"?u.replace(/^\s*(?:\d+[.)]|[-•])\s*/,""):u;l.trim()&&e.data[a].push(l.trim())}let o=Z(t).split(`
+`);for(let u=0;u<o.length;u++){let l=xe(o[u].trimStart().replace(/ +$/,""));if(!l.trim())continue;let h=K(l),b=/^(intervenciones|eventos adversos|indicaciones)\s*(?::\s*(.*)|$)/i.exec(l);if(b){a=r[K(b[1])],(p=e.data)[a]??(p[a]=[]),c(b[2]??""),s=!1;continue}let y=/^procedimiento\s*:\s*(.*)$/i.exec(l);if(y){a=null,s=!y[1],y[1]&&(e.data.procedure=y[1].trim());continue}if(/^(?:lugar|sitio|presiones|muestras de gases|gases|accesos vasculares|datos y calculos hemodinamicos|informe cateterismo|hallazgos|calculos|observaciones)\b/.test(h)){s=!1,a=null;continue}if(a){let m=/^(?:peso|talla|frecuencia cardiaca|fc|hct|hcto|hematocrito|hemoglobina|hb|fio[2₂]|vo[2₂]|vena (?:femoral|yugular)|arteria (?:femoral|yugular)|procedimiento realizado)\b/i.test(h);if(!(fe(l)||/^pfd\s*v[di]\s*:?\s*[-+\d]/.test(h)||m&&me(l,{accesses:[]}))&&!/^[^:\d]+:\s*$/.test(l)){c(l);continue}a=null}if(me(l,e.data)){s=!1;continue}let d=new RegExp("^pfd\\s*(vi|vd)\\s*:?\\s*("+L+")$","i").exec(l);if(d){n.push({site:d[1].toUpperCase(),wedge:!1,edp:E(d[2]),line:l});continue}let S=fe(l);if(S){let[m,A]=S,O=m.wedge?null:Qe(m.site,A,l);if(O){e.gases.push(O);continue}let w=A;/^(AD|AI)$/.test(m.site)&&E(A)!==null&&/^\s*a\s*:/i.test(o[u+1]??"")&&/^\s*v\s*:/i.test(o[u+2]??"")&&(w+=" "+o[++u].trim()+" "+o[++u].trim());let D=Be(m,w,l);if(D){e.pressures.push(D);continue}}(s||/^cateterismo\b/i.test(l))&&!S?e.data.procedure=l.trim():e.unrecognized.push(l.trim()),s=!1}for(let u of n)e.pressures.some(l=>l.site===u.site&&l.edp===u.edp)||e.pressures.push(u);return e}var j=t=>Number.isFinite(t)&&t>0,H=t=>Number.isFinite(t)?t:null;function re(t,e){return j(t)&&j(e)?H(Math.sqrt(t*e/3600)):null}function _e(t,e,n,s=!0){if(!j(t)||!Number.isFinite(e)||e<0||e>100)return null;let a=s?n??0:0;return!Number.isFinite(a)||a<0?null:H(t*1.36*e/100+.003*a)}function Y(t,e){return Number.isFinite(t)&&Number.isFinite(e)?H(t-e):null}function ge(t){let e=d=>_e(t.hb,t["sat"+d],t["po2"+d],t.useDissolved),[n,s,a,r]=["Ao","Mv","Pa","Pv"].map(e),c=Y(n,s),o=Y(r,a),p=Y(r,s),u=d=>j(t.vo2)&&j(d)?H(t.vo2/d/10):null,l=u(c),h=u(o),b=u(p);function y(d,S,m){let A=Y(d,S);return A!==null&&j(m)?H(A/m):null}return{cap:j(t.hb)?H(t.hb*1.36):null,ds:c,dp:o,de:p,qs:l,qp:h,qep:b,qpqs:j(l)&&j(h)?H(h/l):null,shuntLR:Y(h,b),shuntRL:Y(l,b),rvs:y(t.pam,t.pvc,l),rvp:y(t.pap,t.pai,h)}}function Oe(t,e,n,s,a,r,c){return!j(t)||!j(e)?null:H((Math.log(t/10)-(n+s*e+a*e**2+r*e**3))/Math.sqrt(c))}var De=(t,e)=>Oe(t,e,-1.36,3.394,-2.508,.66,.027),Fe=(t,e)=>Oe(t,e,-1.348,2.884,-1.954,.466,.028);function ce(t,e,n){return[t,e,n].every(j)?H(3.14*(t**2+e**2)/(4*n)):null}function le(t,e,n){return[t,e,n].every(j)?H((t+e)/n):null}function Q(t,e){return[t,e].every(Number.isFinite)?t-e:null}function we(t,e){return[t,e].every(Number.isFinite)&&e>0?100*t/e:null}function Ne(t,e,n){return![t,n].every(s=>Number.isFinite(s)&&s>0)||!["M","F"].includes(e)?null:138.1-(e==="M"?11.49:17.04)*Math.log(t)+.378*n}var se=["Traslado a UPC-P.","Reposo en cama hasta mañana.","Realimentar al despertar bien.","Monitoreo habitual post-cateterismo según protocolo.","Completar profilaxis antibiótica con Cefazolina.","Paracetamol ev SOS en caso de dolor y/o fiebre (máximo cada 6 horas).","Ondansetron ev SOS en caso de nauseas y/o vómitos (máximo cada 6 horas).","Mañana RxTx AP y ecocardiograma."],ae=["Procedimiento sin incidentes ni complicaciones.","Los accesos vasculares son retirados sin problemas."],M=Number.isFinite,R=t=>M(t)?String(Number(t.toFixed(3))).replace(".",","):"";function T(t,e,n="",s){return M(e)?[t,s===void 0?R(e):q(e,s),n].filter(Boolean).join(" "):""}function Ve(t){let e=[["a",t.a],["v",t.v]].filter(([,n])=>M(n)).map(([n,s])=>n+R(s));if(M(t.sys)){let n=t.edp??t.dia;return[R(t.sys)+(M(n)?"/"+R(n):"")+(M(t.mean)?" (m "+R(t.mean)+")":""),...e].join(", ")}return[...e,...[["m",t.mean],["diastólica ",t.dia],["PFD ",t.edp]].filter(([,n])=>M(n)).map(([n,s])=>n+R(s))].join(", ")}function We(t){let e=[];t.anesthesia&&e.push("bajo "+t.anesthesia),t.tot&&e.push("TOT "+t.tot);let n=M(t.fio2)?"FiO2 "+R(100*t.fio2)+"%":"";return!e.length&&!n?"":"Procedimiento realizado "+e.join(", ")+(n?(e.length?" y ":"con ")+n:"")+"."}function Ie(t,e,n,s,a=[],r=[]){let c=["INFORME CATETERISMO CARDIACO PEDIATRICO"];function o(d,S){let m=S.map(A=>A?.trim()).filter(Boolean);m.length&&c.push([d,...m].join(`
+`))}let{data:p,pressures:u,gases:l}=t,h=re(p.weightKg,p.heightCm);o("Procedimiento:",[p.procedure,We(p)]),o("Accesos Vasculares:",p.accesses.map(({vessel:d,site:S,side:m,fr:A})=>d.charAt(0).toUpperCase()+d.slice(1)+" "+S+" "+m+": "+R(A)+" French."));let b=d=>d.some(Boolean)?d.filter(Boolean).join("; ")+".":"";o("Datos y Cálculos Hemodinámicos:",[b([T("Peso:",p.weightKg,"Kg"),T("Talla:",p.heightCm,"cm"),T("Superficie Corporal:",h,"m²",2)]),b([T("Frecuencia Cardiaca:",p.hr,"lpm")]),b([M(p.hct)?"Hematocrito: "+R(p.hct)+"%":"",T("Hemoglobina:",n.hb,"g/dL")])]),o("Presiones (mmHg):",[u.filter(d=>Ve(d)).map(d=>I(d.site,d.wedge)+" "+Ve(d)).join(" · ")]),o("Gases (pH / PaCO2 / PaO2 / HCO3 / BE / Sat):",l.map(d=>{let S=["ph","pco2","po2","hco3","be","sat"].map((m,A)=>M(d[m])?(A===0?q(d[m],2):R(d[m]))+(m==="sat"?"%":""):"s/d");return I(d.site)+" "+S.join(" / ")})),o("Cálculos:",[[T("Qs",s.qs,"L/min/m²",1),T("Qp",s.qp,"L/min/m²",1),T("Qep",s.qep,"L/min/m²",1),T("Qp:Qs",s.qpqs,"",2),T("RVSi",s.rvs,"U Wood·m²",1),T("RVPi",s.rvp,"U Wood·m²",1),T("GTP",Q(n.pap,n.pai),"mmHg",0),T("Nakata",ce(e.rpaMm,e.lpaMm,h),"mm²/m²",1),T("McGoon",le(e.rpaMm,e.lpaMm,e.aoMm),"",2)].filter(Boolean).join(" · ")]),o("Hallazgos:",a.map(d=>"- "+d));let y=e.intervention??p.intervention?.join(`
+`);return o("Intervenciones:",[y?.trim()||(p.intervention||e.procedureType==="intervencion"?"":"Estudio diagnóstico. No se realizan intervenciones.")]),o("Eventos adversos:",e.eventos??p.eventos??ae),o("Indicaciones:",(e.indicaciones??p.indicaciones??se).filter(d=>d.trim()).map((d,S)=>S+1+") "+d)),e.includeObservations&&o("Observaciones:",r.filter(d=>!e.dismissed?.includes(d.id)).map(d=>d.text)),c.join(`
+
+`)}function qe(t){let e=s=>t.gases.some(a=>a.site===s),n=["AP","APD","API"].filter(e);return{circulation:"biventricular",subtype:"shunt",mvSource:e("VCI")?"flamm":"VCS",paiSource:t.pressures.some(s=>s.site==="AI"&&Number.isFinite(s.mean))?"AI":"cuna",aoSamples:["AO","AOASC","AODESC"].filter(e).slice(0,1),paSamples:n.length?n:["TAP"].filter(e),pvSamples:[...new Set(t.gases.map(s=>s.site).filter(s=>/^VP(?:SD|ID|SI|II)?$/.test(s)))],useDissolved:!0,intervention:t.data?.intervention?.join(`
+`)??"",procedureType:t.data?.intervention?.length&&!/no se realizan intervenciones|sin intervenci[oó]n|estudio diagn[oó]stico/i.test(t.data.intervention.join(" "))?"intervencion":"diagnostico",eventos:[...t.data?.eventos??ae],indicaciones:[...t.data?.indicaciones??se],includeObservations:!1,dismissed:[]}}function Ee(t,e){return{...e,mvSource:"VCS",aoSamples:e.aoSamples.slice(0,1),paSamples:e.paSamples.slice(0,1),pvSamples:e.pvSamples.slice(0,1)}}function J(t,e){return[...new Set(e)].map(n=>t.gases.find(s=>s.site===n)).filter(Boolean)}function G(t){return Number.isFinite(t)&&t>=0&&t<=100}function ve(t,e){let n={},s={useDissolved:e.useDissolved};for(let c of["hb","vo2"])s[c]=e[c]??t.data[c]??null,n[c]=e[c]!=null?"ingreso manual":s[c]!=null?"registro":"sin dato";function a(c,o,p){let u=J(t,o),l=u.map(b=>I(b.site)).join(", "),h=p?"Flamm (3 VCS + VCI)/4":u.length>1?"promedio "+l:l;for(let b of["sat","po2"]){let y=b+c,d=u.filter(A=>Number.isFinite(A[b])).length,S=u.length===o.length&&d===u.length;if(s[y]=null,n[y]=h||"sin muestra",b==="sat"&&u.some(A=>Number.isFinite(A.sat)&&!G(A.sat))){n[y]+=" (saturación fuera de rango)";continue}if(!d||u.length!==o.length||!S&&b==="sat")continue;let m=u.reduce((A,O,w)=>A+(O[b]??0)*(p?.[w]??1),0);s[y]=m/(p?4:u.length),S||(n[y]+=" (PaO₂ faltante = 0)")}}a("Ao",e.aoSamples),a("Pa",e.paSamples),a("Pv",e.pvSamples),e.mvSource==="flamm"?a("Mv",["VCS","VCI"],[3,1]):a("Mv",["VCS"]);function r(c,o,p=!1){let u=o.map(y=>t.pressures.find(d=>d.site===y&&!d.wedge)).filter(Boolean),l=u.find(y=>Number.isFinite(y.mean)),h=p&&u.find(y=>[y.sys,y.dia].every(Number.isFinite)),b=l||h;s[c]=l?l.mean:h?(b.sys+2*b.dia)/3:null,n[c]=b?I(b.site)+(l?" media":" (sistólica + 2 × diastólica)/3"):"sin dato"}if(r("pam",["AOASC","AODESC","PANI","AO"],!0),r("pvc",["VCS","AD"]),r("pap",["AP","APD","API","TAP"]),e.paiSource==="AI")r("pai",["AI"]);else{let c=t.pressures.filter(p=>p.wedge),o=[...new Set(c.map(p=>p.site))].map(p=>c.find(u=>u.site===p)).filter(p=>Number.isFinite(p.mean));s.pai=o.length?o.reduce((p,u)=>p+u.mean,0)/o.length:null,n.pai=o.length?"cuña: "+o.map(p=>I(p.site,!0)).join(", "):"sin dato"}return{inputs:s,trace:n}}var X=Object.freeze({adMean:8,edp:12,wedgeTolerance:3,gradient:20,atrialStep:7,ventricularStep:5,greatVesselStep:5,aoSat:95,papMean:20,rvpi:3,singleVentricleTpg:6,pvDilution:4,qpqsMin:.1,qpqsMax:5});function Te(t,e,n,s,a=X){let r=[],c=(m,A)=>r.push({id:m,level:"warn",text:A}),o=J(t,e.aoSamples),p=J(t,e.pvSamples),u=t.gases.filter(m=>Number.isFinite(m.sat)&&!G(m.sat));u.length&&c("invalid-saturation","Saturación fuera de rango (0–100%): "+u.map(m=>I(m.site)+" "+q(m.sat,1)+"%").join(", ")+". Revisa la muestra.");for(let[m,A]of[["hco3","HCO₃"],["be","BE"]]){let O=o.map(f=>f[m]).filter(Number.isFinite),w=p.map(f=>f[m]).filter(Number.isFinite);if(!O.length||!w.length)continue;let D=O.reduce((f,C)=>f+C,0)/O.length,i=Math.min(...w),g=Math.max(...w);if(i<D-a.pvDilution){let f=i===g?q(i,1):q(i,1)+"–"+q(g,1);c("pv-dilution",`VP con ${A} ${f} vs ${q(D,1)} en Ao: probable dilución por flush; la sat calculada puede estar subestimada.`);break}}t.data.fio2Ambiguous?c("fio2-ambiguous","FiO₂ ambigua: confirma si es fracción o porcentaje."):Number.isFinite(t.data.fio2)||c("missing-fio2","FiO₂ no consignada."),n.hb>0||c("missing-hb","Falta Hb: sin cálculo de Fick."),n.vo2>0||c("missing-vo2","Falta VO₂: ingrésalo para calcular flujos.");let l=new Map,h=new Set;for(let m of t.pressures)for(let A of[["mean","a","v"],["sys","dia"]]){if(!A.every(D=>Number.isFinite(m[D])))continue;let O=A.join("/")+":"+A.map(D=>m[D]).join("/"),w=I(m.site,m.wedge);l.has(O)&&l.get(O)!==w?h.add(l.get(O)+" y "+w):l.set(O,w)}h.size&&c("duplicate-series",[...h].join(", ")+" tienen series idénticas: posible copia."),Number.isFinite(n.pap)&&t.pressures.some(m=>m.wedge&&Number.isFinite(m.mean)&&m.mean>n.pap)&&c("wedge-gt-pa","Cuña mayor que la presión media de AP.");let b=[["ds","sistémica"],["dp","pulmonar"],["de","efectiva"]].filter(([m])=>Number.isFinite(s[m])&&s[m]<=0);b.length&&c("nonpositive-diff","Diferencia AV ≤ 0 ("+b.map(([,m])=>m).join(", ")+"): revisa saturaciones."),Number.isFinite(s.qpqs)&&(s.qpqs<a.qpqsMin||s.qpqs>a.qpqsMax)&&c("qpqs-range","Qp:Qs fuera de rango plausible.");let y=["Ao","Mv","Pa","Pv"].filter(m=>Number.isFinite(n["po2"+m])).length,S=[o,p,J(t,e.paSamples),J(t,e.mvSource==="flamm"?["VCS","VCI"]:["VCS"])].some(m=>m.some(A=>Number.isFinite(A.po2))&&m.some(A=>!Number.isFinite(A.po2)));return n.useDissolved&&(y>0&&y<4||S)&&c("partial-po2","PaO₂ incompleta: el O₂ disuelto se calculó solo en algunos sitios (como iFlows)."),r}var V=Number.isFinite,z=(...t)=>t.every(V),P=t=>q(t,0),_=t=>q(t,1);function $e(t,e,n,s,a=X){let r=[],c=(i,g=!1)=>t.pressures.find(f=>f.site===i&&f.wedge===g),o=e.circulation==="univentricular",p=i=>t.gases.find(g=>g.site===i)?.sat,u=c("AD"),l=c("VD"),h=c("VI"),b=["AOASC","AO","AODESC"].map(i=>c(i)).find(i=>z(i?.sys,i?.dia)),y=t.data.fio2,d=e.procedureType==="intervencion"?"Procedimiento hemodinámico intervencional realizado":"Estudio hemodinámico diagnóstico realizado";if(V(y)&&!t.data.fio2Ambiguous&&(d+=" con FiO2 "+P(y*100)+"%"),/general/i.test(t.data.anesthesia??"")&&(d+=", bajo anestesia general"),(t.pressures.length||t.gases.length||V(y))&&r.push(d+"."+([s.qs,s.qp,s.qep].some(V)?" Los cálculos hemodinámicos fueron realizados utilizando la ecuación de Fick.":"")),!o&&(V(u?.mean)||V(l?.edp))){let i=[];if(V(u?.mean)){let f=["a","v"].filter(N=>V(u[N])).map(N=>N+P(u[N])),C=f.length?f.join(", ")+" y ":"";i.push("AD: "+C+"m"+P(u.mean)+" mmHg")}V(l?.edp)&&i.push("PFDVD: "+P(l.edp)+" mmHg");let g=u?.mean>a.adMean||l?.edp>a.edp;r.push("Presiones de llenado "+(g?"elevadas":"normales")+" ("+i.join("; ")+").")}if(o){let i=["VD","VI"].includes(e.systemicVentricle)&&c(e.systemicVentricle);z(i?.sys,i?.edp)&&r.push(`Ventrículo sistémico con presión ${P(i.sys)}/${P(i.edp)} mmHg.`);let g=[];for(let f of["AD","AI"]){let C=c(f),N=[["a","a"],["v","v"],["mean","m"]].filter(([F])=>V(C?.[F])).map(([F,B])=>B+" "+P(C[F]));N.length&&g.push(f+": "+N.join(", ")+" mmHg")}for(let f of[l,h])V(f?.edp)&&!(f===i&&V(f.sys))&&g.push("PFD"+f.site+": "+P(f.edp)+" mmHg");for(let f of["APD","API","AP"]){let C=c(f,!0)?.mean;V(C)&&g.push(I(f,!0)+": "+P(C)+" mmHg")}if(g.length&&r.push("Presiones de llenado medidas ("+g.join("; ")+")."),e.subtype==="glenn"){let f=c("VCS")?.mean;V(f)?r.push(`Presión media de VCS/AP ${P(f)} mmHg (VCS).`):V(n.pap)&&r.push(`Presión media de VCS/AP ${P(n.pap)} mmHg (AP).`)}if(e.subtype==="fontan"&&V(c("FONTAN")?.mean)){let f=c("FENESTRACION")?.mean;r.push("Presión media del circuito de Fontan "+P(c("FONTAN").mean)+" mmHg"+(V(f)?"; fenestración m "+P(f)+" mmHg":"")+".")}if(e.subtype==="shunt"){let f=["APD","API"].map(C=>c(C)).filter(Boolean).flatMap(C=>{let N=z(C.sys,C.dia)?P(C.sys)+"/"+P(C.dia):V(C.mean)?"m "+P(C.mean):"";return N?[C.site+" "+N]:[]});f.length&&r.push("Presión de ramas pulmonares "+f.join(", ")+" mmHg.")}}else{let i=z(h?.sys,h?.edp)?h:b,g=we(l?.sys,i?.sys);z(g,l?.edp)&&r.push(`Presión sistólica de VD ${P(g)}% sistémica (VD: ${P(l.sys)}/${P(l.edp)} vs. ${i.site==="VI"?"VI":"Ao"}: ${P(i.sys)}/${P(i.edp??i.dia)} mmHg).`)}let S=c("APD",!0)?.mean,m=c("API",!0)?.mean;!o&&z(S,m,h?.edp)&&(Math.max(Math.abs(S-h.edp),Math.abs(m-h.edp))<=a.wedgeTolerance?r.push(`Presión de enclavamiento pulmonar bilateral igual a la presión de fin de diástole del ventrículo izquierdo, descartando obstrucción a través de las venas pulmonares y válvula mitral (PCP der: ${P(S)}; PCP izq: ${P(m)}; PFDVI: ${P(h.edp)} mmHg).`):r.push(`Presiones de enclavamiento PCP der ${P(S)}, PCP izq ${P(m)} y PFDVI ${P(h.edp)} mmHg.`));let A=new Map;function O(i,g,f=g){let C=i.map(k=>c(k)),N=[];for(let k=1;k<C.length;k++){let ie=C[k-1],oe=C[k];if(!z(ie?.sys,oe?.sys))continue;let ye=ie.sys-oe.sys;N.push(ye),A.set(ie.site+"/"+oe.site,{a:ie,b:oe,g:ye})}if(!N.length||!g)return;let F=N.some(k=>k>=a.gradient);if(!(N.length===i.length-1)&&!F)return;let He=C.filter(k=>V(k?.sys)).map(k=>I(k.site)+" "+P(k.sys)).join(", ");r.push((F?"Obstrucción al "+g:"Sin obstrucción significativa al "+f)+" ("+He+" mmHg).")}let w=V(c("TAP")?.sys)?"TAP":"AP";if(o){e.subtype==="shunt"&&O(["VD","SANO"]);for(let i of["APD","API"])O(["SANO",i]),O([w,i]);O(["AOASC","AODESC"])}else O(["VD",w],"tracto de salida del ventrículo derecho"),O(["VI","AOASC","AODESC"],"tracto de salida del ventrículo izquierdo o del cayado aórtico","tracto de salida del ventrículo izquierdo ni del cayado aórtico");for(let{a:i,b:g,g:f}of A.values())(o||f>=a.gradient)&&r.push(`Gradiente peak to peak ${P(f)} mmHg entre ${I(i.site)} y ${I(g.site)}.`);if(!o){let i=["MV","AD","VD","AP"],g=[n.satMv,p("AD"),p("VD"),n.satPa],f=["auricular","ventricular","de grandes vasos"],C=[a.atrialStep,a.ventricularStep,a.greatVesselStep],N=!1;for(let F=0;F<3;F++)![g[F],g[F+1]].every(G)||g[F+1]-g[F]<C[F]||(N=!0,r.push(`Salto oximétrico significativo a nivel ${f[F]} (${i[F]} ${P(g[F])}%, ${i[F+1]} ${P(g[F+1])}%), sugiriendo shunt de izquierda a derecha.`));!N&&g.every(G)&&r.push("No hay salto oximétrico significativo al lado derecho del corazón ("+i.map((F,B)=>F+" "+P(g[B])+"%").join(", ")+")."),[n.satAo,n.satPv].every(G)&&n.satAo<a.aoSat&&n.satPv>=a.aoSat&&r.push(`Saturación aórtica disminuida (VP ${P(n.satPv)}%; Ao ${P(n.satAo)}%), sugiriendo shunt de derecha a izquierda.`)}z(s.qp,s.qep,s.shuntLR,s.shuntRL,s.qpqs)&&r.push(`Se estima un débito pulmonar (Qp) de ${_(s.qp)} L/min/m², Qep ${_(s.qep)} L/min/m², shunt de izquierda a derecha ${_(s.shuntLR)} L/min/m² y de derecha a izquierda ${_(s.shuntRL)} L/min/m². Qp:Qs ${q(s.qpqs,2)}.`);let D=Q(n.pap,n.pai);if(z(D,s.rvp)){let i=o?D>a.singleVentricleTpg?" elevado":" normal":"";r.push(`Presión media de arteria pulmonar ${n.pap>a.papMean?"elevada":"normal"} (${P(n.pap)} mmHg), con gradiente transpulmonar${i} de ${P(D)} mmHg e índice de RVP estimado de ${_(s.rvp)} U Wood·m².`)}if(z(s.qs,s.rvs)&&r.push(`Índice cardíaco (Qs) ${_(s.qs)} L/min/m²; índice de RVS ${_(s.rvs)} U Wood·m².`),e.circulation==="trasplante"&&e.biopsy?.trim()&&r.push("Biopsia endomiocárdica: "+e.biopsy.trim().replace(/\.$/,"")+"."),e.intervention?.trim()){r.push(e.intervention);for(let{a:i,b:g,g:f}of A.values()){let C=F=>t.pressures.filter(B=>B.site===F&&!B.wedge)[1]?.sys,N=Q(C(i.site),C(g.site));V(N)&&r.push(`Gradiente peak to peak ${P(f)} mmHg pre a ${P(N)} mmHg post entre ${I(i.site)} y ${I(g.site)}.`)}}return r}var v=t=>document.getElementById(t);function x(t,e,n){let s=document.createElement(t);return e!=null&&(s.textContent=e),n&&(s.className=n),s}function he(t,e){let n=x("div",null,"empty");return n.append(x("b",t),x("p",e)),n}var Ke=`Procedimiento: Cateterismo diagnóstico
+Peso: 20 Kg.; Talla: 115 cm.
+Frecuencia Cardiaca: 90 lpm.
+Hemoglobina: 14 g/dL. VO2: 150
+Presiones:
+AD 5 a:6 v:5
+VD 26/5
+AP 24/10 (15)
+AI 7 a:8 v:7
+VI 92/7
+Ao Asc 90/50 (65)
+Muestras de Gases:
+VCS 7,36 40 38 23 -1 70
+AP 7,36 41 40 23 -1 72
+Aorta 7,40 37 90 24 0 97
+VP 7,41 36 99 24 0 98`,ee=new Map,U=new Set,Se=new Set,W={},pe=new Set,Ze={sys:"Sist.",dia:"Diast.",mean:"Media",a:"a",v:"v",edp:"PFD"},Ye={ph:"pH",pco2:"PCO₂",po2:"PO₂",hco3:"HCO₃",be:"BE",sat:"Sat %"},je={aoSamples:"Aorta",paSamples:"Arteria pulmonar",pvSamples:"Venas pulmonares"},Ae={"hb-override":"hb",vo2:"vo2",age:"ageYears",rpa:"rpaMm",lpa:"lpaMm","ao-diam":"aoMm"},de="",te=!1,ue=0;function Le(){ee.clear(),Se.clear(),U.clear(),pe.clear();for(let t of Object.keys(W))delete W[t];for(let t of[...Object.keys(Ae),"sex","ventricle","intervention","biopsy"])v(t).value="";v("indicaciones").value=se.join(`
+`),v("eventos").value=ae.join(`
+`),v("obs-toggle").checked=!1}function Je(t,e){let n=new Map;return t[e].map(s=>{let a=e+"|"+s.line,r=n.get(a)??0;return n.set(a,r+1),{row:s,key:a+"|"+r}})}function be(t){let e=x("div",null,"table-wrap"),n=x("table"),s=x("tr");for(let r of t)s.append(x("th",r));return n.createTHead().append(s),e.append(n),[e,n.createTBody()]}function Xe(t,e,n){let[s,a]=be(["Sitio",...Object.values(e)]);for(let{row:r,key:c}of t){let o=a.insertRow(),p=I(r.site,r.wedge);o.dataset.site=r.site,o.setAttribute("data-excluded",String(U.has(c)));let u=x("input");u.type="checkbox",u.checked=!U.has(c),u.setAttribute("aria-label","Incluir "+p+" en "+n),u.oninput=()=>{u.checked?U.delete(c):U.add(c),$()};let l=o.insertCell(),h=x("label");h.append(u,document.createTextNode(p)),l.append(h);for(let[b,y]of Object.entries(e)){let d=x("input");d.inputMode="decimal",d.dataset.field=b,d.setAttribute("aria-label",p+" · "+y),d.value=String(r[b]??"").replace(".",","),d.oninput=()=>{let S=ee.get(c)??{};S[b]=E(d.value),ee.set(c,S),d.setAttribute("aria-invalid",String(d.value.trim()!==""&&S[b]===null)),$(!1)},o.insertCell().append(d)}}return s}function ke(t,e,n,s){let a=x("label",t),r=x("select");r.id=e;for(let[c,o]of n)r.add(new Option(o,c));return r.value=s[e],r.oninput=()=>{W[e]=r.value,$(!1)},a.append(r),a}function et(t,e,n,s){let a=v("review");if(a.replaceChildren(),!de.trim()){a.append(he("Presiones y gases","Las mediciones reconocidas aparecerán aquí para que puedas revisarlas y editarlas."));return}for(let[l,h,b]of[["pressures",Ze,"Presiones"],["gases",Ye,"Gases"]])a.append(x("h3",b+" · "+e[l].length+(l==="pressures"?" (mmHg)":""))),e[l].length?a.append(Xe(e[l],h,b)):a.append(x("small","Sin mediciones reconocidas."));let r=x("details");r.id="sources",r.open=s,r.append(x("summary","Fuentes de cálculo"));let c=x("div",null,"fields");c.append(ke("Venosa mixta","mvSource",[["VCS","VCS"],["flamm","Flamm (3 VCS + VCI)/4"]],n),ke("Presión auricular izq.","paiSource",[["AI","Aurícula izquierda"],["cuna","Cuñas pulmonares"]],n)),r.append(c);let o=[...new Set(t.gases.map(l=>l.site))];for(let[l,h]of Object.entries(je)){let b=x("fieldset");b.append(x("legend",h));for(let y of o){let d=x("label",null,"check"),S=x("input");S.type="checkbox",S.dataset.sampleGroup=l,S.value=y,S.checked=n[l].includes(y),S.oninput=()=>{W[l]=o.filter(m=>m===y?S.checked:n[l].includes(m)),$()},d.append(S,document.createTextNode(I(y))),b.append(d)}r.append(b)}let p=x("input");p.type="checkbox",p.checked=n.useDissolved,p.oninput=()=>{W.useDissolved=p.checked,$(!1)};let u=x("label",null,"check");u.append(p,document.createTextNode("Incluir oxígeno disuelto")),r.append(u),a.append(r),t.unrecognized.length&&a.append(x("h3","Líneas sin asignar"),x("small","edita la línea en 01 para asignarla"),x("pre",t.unrecognized.join(`
+`)))}var tt=[["qs","Qs","L/min/m²",2],["qp","Qp","L/min/m²",2],["qep","Qep","L/min/m²",2],["qpqs","Qp:Qs","",2],["rvp","RVPi","U Wood·m²",1],["rvs","RVSi","U Wood·m²",1],["gtp","GTP","mmHg",0],["shuntLR","Shunt I → D","L/min/m²",2],["shuntRL","Shunt D → I","L/min/m²",2]],nt={hb:["Hemoglobina","g/dL"],vo2:["Consumo de O₂ indexado","mL/min/m²"],satAo:["Sat. aórtica","%"],satPa:["Sat. arterial pulmonar","%"],satPv:["Sat. venosa pulmonar","%"],satMv:["Sat. venosa mixta","%"],po2Ao:["PaO₂ aórtica","mmHg"],po2Pa:["PaO₂ arterial pulmonar","mmHg"],po2Pv:["PaO₂ venosa pulmonar","mmHg"],po2Mv:["PaO₂ venosa mixta","mmHg"],pam:["Presión arterial media","mmHg"],pvc:["Presión venosa central","mmHg"],pap:["Presión arterial pulmonar media","mmHg"],pai:["Presión auricular izquierda","mmHg"]};function st(t,e,n,s,a,r){let c=v("calc"),o=v("trace")?.open;if(c.replaceChildren(),!t){c.append(he("Sin resultados","Ingresa el registro y el VO₂ para calcular flujos y resistencias."));return}let p=ve(e,Ee(e,n)),u=ge(p.inputs),[l,h]=be(["Parámetro","Selección actual","Como iFlows","Unidad"]);for(let[S,m,A,O]of tt){let w=h.insertRow();for(let[D,i]of[m,...[[a,s],[u,p.inputs]].map(([g,f])=>q(S==="gtp"?Q(f.pap,f.pai):g[S],O)||"—"),A].entries()){let g=w.insertCell();if(g.textContent=i,S==="rvp"&&(D===1||D===2)){let f=D===1?a.rvp:u.rvp;Number.isFinite(f)&&f>=X.rvpi&&g.append(" · elevada")}g.className=D===1?"number metric":"number"}}let b=x("details");b.id="trace",b.open=o??!1,b.append(x("summary","Trazabilidad del cálculo"));let[y,d]=be(["Entrada","Valor","Origen"]);for(let[S,m]of Object.entries(r)){let A=d.insertRow(),[O,w]=nt[S],D=Number.isFinite(s[S])?q(s[S],2)+" "+w:"—";for(let i of[O,D,m])A.insertCell().textContent=i}b.append(y,x("small","Como iFlows usa VCS y la primera muestra seleccionada de cada grupo.")),c.append(l,b)}function $(t=!0){ue++,v("copy-status").textContent="";let e=v("input").value,n=Z(e);e!==n&&(v("input").value=n),(te||de&&!n.trim())&&Le(),te=!1,de=n;let s=!!n.trim(),a=Ce(n),r={};for(let i of["pressures","gases"]){r[i]=Je(a,i);for(let{key:g,row:f}of r[i])Object.assign(f,ee.get(g));a[i]=r[i].filter(g=>!U.has(g.key)).map(g=>g.row)}let c=new Set(Object.values(r).flat().map(i=>i.key));for(let i of[...ee.keys(),...U])c.has(i)||(ee.delete(i),U.delete(i));let o={...qe(a),...W};for(let i of["intervention","eventos","indicaciones"])Se.has(i)||(v(i).value=Array.isArray(o[i])?o[i].join(`
+`):o[i]);let p=new Set(a.gases.map(i=>i.site));for(let i of Object.keys(je))o[i]=o[i].filter(g=>p.has(g));for(let[i,g]of Object.entries(Ae))o[g]=E(v(i).value);Object.assign(o,{sex:v("sex").value,systemicVentricle:v("ventricle").value,intervention:v("intervention").value,biopsy:v("biopsy").value,indicaciones:v("indicaciones").value.split(`
+`),eventos:v("eventos").value.split(`
+`).filter(i=>i.trim()),includeObservations:v("obs-toggle").checked,dismissed:[...pe]});for(let[i,g]of[["circulation",o.circulation],["subtype",o.subtype],["procedure",o.procedureType??"diagnostico"]])for(let f of v(i).children)f.setAttribute("aria-pressed",String(f.dataset.value===g));v("anatomy").hidden=o.circulation!=="univentricular",v("biopsy-label").hidden=o.circulation!=="trasplante",v("source-count").textContent=(s?n.split(`
+`).length:0)+" líneas",v("clear").disabled=!s,v("hb-override").placeholder=a.data.hb!=null?String(a.data.hb).replace(".",","):"Del registro",v("vo2").placeholder=a.data.vo2!=null?String(a.data.vo2).replace(".",","):"Sin dato";let{inputs:u,trace:l}=ve(a,o),h=ge(u),b=s?Te(a,o,u,h):[],y=$e(a,o,u,h),d=a.gases.length>0||a.pressures.length>0||a.data.accesses.length>0||Object.values(a.data).some(i=>Array.isArray(i)?i.length>0:i!=null);v("output").textContent=d?Ie(a,o,u,h,y,b):"",v("report-empty").hidden=d,v("copy").disabled=!d;let S=Ne(o.ageYears,o.sex,a.data.hr);if(v("vo2-ref").textContent=S!=null?"LaFarge: "+q(S)+" ml/min/m² (referencia)":"Requiere edad, sexo y frecuencia cardíaca.",t)et(a,r,o,v("sources")?.open);else{for(let i of["mvSource","paiSource"])v(i)&&(v(i).value=o[i]);for(let i of document.querySelectorAll("#sources [data-sample-group]"))i.checked=o[i.dataset.sampleGroup].includes(i.value)}st(s,a,o,u,h,l);let m=re(a.data.weightKg,a.data.heightCm),{rpaMm:A,lpaMm:O,aoMm:w}=o;v("indices").textContent=[["Nakata",ce(A,O,m),"mm²/m²"],["McGoon",le(A,O,w),""],["Z APD",De(A,m),""],["Z API",Fe(O,m),""]].map(([i,g,f])=>i+" "+(q(g,2)||"—")+" "+f).join(" · ");let D=b.filter(i=>!pe.has(i.id));v("alert-count").textContent=s?String(D.length):"",v("alerts").replaceChildren(),D.length||v("alerts").append(he(s?"Sin alertas pendientes":"Sin registro para evaluar",s?"No hay observaciones pendientes de revisión.":"Las observaciones de calidad aparecerán al ingresar datos."));for(let i of D){let g=x("div",null,"alert"),f=x("button","Descartar");f.dataset.alertId=i.id,f.onclick=()=>{pe.add(i.id),$(!1)},g.append(x("b","!"),x("p",i.text),f),v("alerts").append(g)}}v("input").addEventListener("beforeinput",t=>{let e=t.target;te=!!(e.value&&e.selectionStart===0&&e.selectionEnd===e.value.length)});v("input").addEventListener("paste",t=>{t.preventDefault();let e=t.currentTarget;te=!!(e.value&&e.selectionStart===0&&e.selectionEnd===e.value.length),e.setRangeText(Z(t.clipboardData.getData("text/plain")),e.selectionStart,e.selectionEnd,"end"),$()});v("input").oninput=()=>$();for(let t of[...Object.keys(Ae),"sex","ventricle","obs-toggle"])v(t).oninput=()=>$(!1);for(let t of["intervention","biopsy","eventos","indicaciones"]){let e=v(t);e.oninput=()=>{let n=Z(e.value);n!==e.value&&(e.value=n),Se.add(t),$(!1)},e.onpaste=n=>{n.preventDefault(),e.setRangeText(Z(n.clipboardData.getData("text/plain")),e.selectionStart,e.selectionEnd,"end"),e.oninput()}}for(let[t,e]of[["circulation","circulation"],["subtype","subtype"],["procedure","procedureType"]])v(t).onclick=n=>{n.target.dataset.value&&(W[e]=n.target.dataset.value,$(!1))};v("theme").onclick=()=>{let t=document.documentElement.dataset.theme!=="light";document.documentElement.dataset.theme=t?"light":"dark",v("theme").textContent=t?"Tema oscuro":"Tema claro"};v("example").onclick=()=>{de.trim()&&!window.confirm("¿Reemplazar el registro actual por el ejemplo sintético?")||(te=!0,v("input").value=Ke,$())};v("clear").onclick=()=>{te=!0,v("input").value="",$(),v("input").focus()};v("copy").onclick=async()=>{let t=ue;try{if(!navigator.clipboard?.writeText)throw Error();await navigator.clipboard.writeText(v("output").textContent),t===ue&&(v("copy-status").textContent="Evolución copiada.")}catch{if(t!==ue)return;let e=document.createRange();e.selectNodeContents(v("output"));let n=window.getSelection();n.removeAllRanges(),n.addRange(e),v("copy-status").textContent=document.execCommand("copy")?"Evolución copiada.":"Texto seleccionado. Usa Ctrl+C para copiar."}};Le();$();})();
+</script>
+</body>
+</html>
