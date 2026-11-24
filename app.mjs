@@ -103,6 +103,9 @@ function makeView(id,isPatient){
   const tip=new THREE.Mesh(new THREE.BoxGeometry(.016,.006,.009),new THREE.MeshStandardMaterial({color:0x35444e}));tip.position.y=.003;probe.add(tip);
   const mark=new THREE.Mesh(new THREE.SphereGeometry(.0022,12,8),new THREE.MeshBasicMaterial({color:0x63ddc8}));mark.position.set(.009,.010,0);probe.add(mark);
   const cable=new THREE.Mesh(new THREE.CylinderGeometry(.0016,.0016,.04,8),new THREE.MeshStandardMaterial({color:0x6c7c86}));cable.position.y=.06;probe.add(cable);scene.add(probe);
+  // In the heart view the probe now rests almost on the heart (the thorax is fitted to it): its handle would hide the very
+  // plane the view is there to show. Only the footprint and the marker stay, the footprint see-through.
+  if(!isPatient){body.visible=false;cable.visible=false;tip.material.transparent=true;tip.material.opacity=.55;tip.material.depthWrite=false;mark.scale.setScalar(.6)}
   const point=new THREE.Mesh(new THREE.SphereGeometry(.0018,12,8),new THREE.MeshBasicMaterial({color:0xffe98c}));point.visible=false;scene.add(point);
   const targetFan=new THREE.Line(new THREE.BufferGeometry(),new THREE.LineDashedMaterial({color:0xffb454,dashSize:.004,gapSize:.003,transparent:true,opacity:.95}));targetFan.visible=false;scene.add(targetFan);
   const lesionMark=new THREE.Mesh(new THREE.SphereGeometry(.0045,18,12),new THREE.MeshBasicMaterial({color:0xff5d6c,transparent:true,opacity:.9,depthTest:false}));lesionMark.visible=false;lesionMark.renderOrder=5;scene.add(lesionMark);
@@ -692,7 +695,9 @@ engine.ready.then(async()=>{
  // window presets start exactly on the reference views computed from the anatomy
  const BASE={plax:'plax',psax:'psaxPM',apical:'a4c',subcostal:'sc4c',ssn:'ssn'};
  presetsFromViews=()=>{for(const [k,v] of Object.entries(BASE)){const t=simViews[v];if(t){const [x,z]=skinParams(t.origin);Object.assign(PRESETS[k],{x,z,target:t.origin.map((o,i)=>o+t.d[i]*.08),up:[...t.u],depth:t.depth})}}};presetsFromViews();
- if(ready&&!frozen&&state.tilt===0&&state.rock===0&&state.rotation===0)preset(state.preset);
+ // the probe starts on the reference view of its window. Not through preset(): that needs the cutting worker to be ready,
+ // and when the simulator finished loading first the probe stayed on the atlas' rough starting point (a worse first image)
+ if(!frozen&&state.tilt===0&&state.rock===0&&state.rotation===0){Object.assign(state,defaultState(state.preset),{mode:state.mode,gain:state.gain});if(ready){syncControls();requestSlice()}}
  const common={views:simViews,engine,state:()=>({...state}),apply:applyState,status:text=>status(text)};
  const ySign=w=>scanYSign(PRESET_OF_WINDOW[w]||'plax',pediatricDisplay);
  coach=mountCoach({...common,host:$('coach'),setTarget:setTargetPose,ySign,imageOnly:setImageOnly});
