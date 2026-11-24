@@ -142,6 +142,16 @@ body.cabina .machine-console:not(.full) .capture-bank .machine-key,body.cabina .
 body.cabina .machine-console:not(.full) #console-auto{margin:0}
 body.cabina .machine-console:not(.full) #console-auto,body.cabina .machine-console:not(.full) #console-cursor{display:none}
 body.cabina .machine-console:not(.full) .console-knobs{padding-right:365px}
+/* a view heading grows when its title and its checks do not fit in one line (narrow three-view layouts): at a fixed height
+   the wrapped lines were cut off */
+.view-heading{height:auto;min-height:48px;flex-wrap:wrap}
+.heading-checks{flex-wrap:wrap;min-width:0}
+/* the tools of the compact console (reset, TGC, shortcuts, full console) sit in a row of their own above the knobs, in the
+   normal flow: placed over the knob row with a reserved margin, they covered the last knobs whenever the console was
+   narrower than that margin allowed (cabina with three views, zoomed browsers) */
+body.cabina .machine-console:not(.full){display:flex;flex-direction:column}
+body.cabina .machine-console:not(.full) .deck-tools{position:static;order:-1;flex-wrap:wrap;justify-content:flex-end;margin:0 0 4px}
+body.cabina .machine-console:not(.full) .console-knobs{padding-right:0;grid-template-columns:repeat(auto-fit,minmax(72px,1fr));row-gap:8px}
 @media(max-width:999px){#layout-toggle{display:none}.deck>*{min-width:0}body.cabina #pose-controls{grid-template-columns:1fr}body.cabina .machine-console:not(.full) .console-knobs{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:650px){.header-right .status{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
 @media(max-width:650px){.header-right #sources-top{font-size:10px;padding:5px 7px}.header-right .status{max-width:80px}.brand{font-size:16px}}
