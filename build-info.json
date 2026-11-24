@@ -1,12 +1,12 @@
 {
- "files": 163,
- "bytes": 71445248,
+ "files": 164,
+ "bytes": 71455835,
  "largest": [
   "assets/tissue-fine.bin.gz",
   3500153
  ],
  "sha256": {
-  "app.mjs": "7ec6e90ffb8a133182fa8f33e37296598f123abe8caa47332426d6192d34da26",
+  "app.mjs": "6d73f5725805a2bc90f17de724c5a67ff1ccbf6389f6fca01e317672b3b910e6",
   "attribute.mjs": "ee0a544b4fc281a1e69f1d904855f5908f819d8c65d0615e1559ce840825c80e",
   "audio.mjs": "881e4e70a1bc742aca5c6a68304b01a54033c709cfe8b5f57d3fc35c91d573ab",
   "beam-map.mjs": "ed991ddc0c85494d3b300c9906886542d5736dc025570ccf543c298f9a5a34bc",
@@ -25,8 +25,8 @@
   "drills.mjs": "78625d6930207955e5ed841392728531cfdaf6b0897a2b61f567967ec3ff7765",
   "echo4d.html": "e3a739134b2f08e49759e0f12af3e583379005009aea3edd42e3335fe617d4f5",
   "echo4d.mjs": "3a20a77c8d319e5714239fc6108cf7bb5312dada34d60579995ae8bae332e2c0",
-  "exam-engine.mjs": "9d6109c8c4c0f6dd00d6d188cacd11b1eb861ef48af76e4d564b4bcb21d99964",
-  "exam.mjs": "a6932e70bfbbf7cf8826037304e788a588fd5aecfc7b32d29bba260c5f2df2d8",
+  "exam-engine.mjs": "8a49b5a269f7e0c54a62181140595f0336ee122b94fcfbc8f563983214891fcb",
+  "exam.mjs": "ba2f8a87a3fabb3d7d5fe7f6df3bac167f673fe7698aa9c3ed6de5a31571bfc9",
   "flow.mjs": "250cc9485b82f4688aa6b4c82745ffe0bf67fc11d0bb7e7e3899606dff82e9ac",
   "geometry.mjs": "140141553ec7fec3f733eab11d8779d9fb0a2cff94e224db0a5ae43b5e1ae136",
   "image-quality.mjs": "757253fd60e0227803bb64b58a9ff62fac6224b5d69b8c57c33a7bb9eaaa855f",
@@ -64,7 +64,7 @@
   "tests/cxr.test.mjs": "593967c6fcb9ce80989fe09837a9c4808981f8395164b6593e1ad2cb79131c84",
   "tests/cycle.test.mjs": "b718e68e966ee279f1f9b3317dbe9f8f87c2c34f5c60f8fccebfcd504e27e0c9",
   "tests/drills.test.mjs": "b0e294b0c45e9e30551b12b7121ef61bd0f26f9c95300cbb3813502d1bd83965",
-  "tests/exam.test.mjs": "41e88230bccddfc048a5335622dea03ba236c7fb333935f067194adddfc44738",
+  "tests/exam.test.mjs": "331f8e1f6fcd9ba12edde84a299ebbf35ba2b1e3278cf995a628056fe33f27c2",
   "tests/image-quality.test.mjs": "f3fd472e7c3ceb781aa55a1d37f6ebf0d7eb3b6d965796b5bd0182809af47550",
   "tests/lesson-export.test.mjs": "1e98a36ca9396fe50384aae4bd18d9b62b8d832beebb063767c77f8db53cc9d5",
   "tests/lessons.test.mjs": "90f43c23492021459553a361cf850306fb2458bcf5ca0500c3fdbf8751a8b51f",
@@ -85,6 +85,7 @@
   "tests/zscores.test.mjs": "3734c384989cd98560f9f9191a8fe499e3e436b9cc69798214950786df29256e",
   "tissue.mjs": "9bd4cdba4e79cc8f53ad701bc8a1d0d55f08479c2df61d53c90a0721f401b25f",
   "tools/build-views.mjs": "9dc8c3b24e0f54f538e4b0d02b4f8d432283d1f837ac94eea9b7b19f69310852",
+  "tour.mjs": "01007cb57fcd7f59dbec516070a0f8b2ec6b5556a1160bd67f007d452095b17d",
   "transition.mjs": "2c1ee632c3f3c438d1cab94fc54533a859f0b784ccc8084262161e0e31356a53",
   "tutor.mjs": "fef2c84489e374c08c0ed66d7e7d98f81331483ab657fe02d4799cec4407dc48",
   "valves.mjs": "09433d464d0b64154a39492423d9c0af53a786024ad5d03206933a5ef0f641d6",

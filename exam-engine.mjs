@@ -42,6 +42,8 @@ export function truthOf(lesion,state){
  const none=lesion==='normal'||!state.size;
  return {lesion:none?'normal':lesion,diameterMM:none?0:state.defect.diameterMM,velocity:none?0:Math.max(Math.abs(state.jet.sys),Math.abs(state.jet.dia)),
   direction:none?'sin cortocircuito':state.flows.direction,severity:none?'none':state.grade.key,qpqs:none?1:state.flows.qpqs,
+  // RV systolic pressure of the model and the tricuspid jet that carries it (only a heart with a defect has the jet to measure)
+  rvSys:state.pressures.rvSys,trV:none?0:state.tr.v,
   // the exact geometry the plane offset is measured against (atlas metres)
   radiusAtlas:none?0:state.defect.atlasRadiusM,k:state.patient.k};
 }
@@ -69,7 +71,7 @@ export function windowsCovered(acqs,views,{min=70}={}){
 const ORDER=['small','moderate','large'];
 // how far a numeric answer is, in units of its tolerance
 const band=(err,tol)=>Math.abs(err)<=tol?1:Math.abs(err)<=2*tol?.5:0;
-export const TOL={size:t=>Math.max(1.5,.2*t),velocity:t=>Math.max(.25,.12*t),qpqs:()=>.35};
+export const TOL={size:t=>Math.max(1.5,.2*t),velocity:t=>Math.max(.25,.12*t),qpqs:()=>.35,rvsp:t=>Math.max(8,.2*t)};
 export const POINTS={lesion:25,size:10,velocity:10,direction:10,severity:10,windows:10,sites:20,documentation:5};
 
 // report: {lesion, diameterMM, velocity, direction, severity, qpqs}; acqs and sites as above; views: reference views by id
@@ -84,6 +86,7 @@ export function gradeExam(c,report,acqs,sites,views){
   {const a=report.velocity,has=Number.isFinite(a);const tol=TOL.velocity(T.velocity);add('velocity','Velocidad máxima del chorro (m/s)',T.velocity,has?a:null,has?a-T.velocity:null,tol,has?band(a-T.velocity,tol):0,POINTS.velocity)}
   add('direction','Dirección del cortocircuito',T.direction,report.direction||null,null,null,report.direction===T.direction?1:0,POINTS.direction);
   {const a=report.severity,t=T.severity,ia=ORDER.indexOf(a),it=ORDER.indexOf(t);add('severity','Repercusión (bandas del modelo)',t,a||null,null,null,a===t?1:ia>=0&&it>=0&&Math.abs(ia-it)===1?.5:0,POINTS.severity)}
+  if(Number.isFinite(report.rvsp))add('rvsp','Presión sistólica del VD estimada (opcional)',T.rvSys,report.rvsp,report.rvsp-T.rvSys,TOL.rvsp(T.rvSys),band(report.rvsp-T.rvSys,TOL.rvsp(T.rvSys)),0,'No suma puntos: se estima con el chorro tricuspídeo (4v² + presión de AD) o, en una CIV, con PAS − 4v²');
   if(Number.isFinite(report.qpqs))add('qpqs','Qp/Qs (opcional)',T.qpqs,report.qpqs,report.qpqs-T.qpqs,TOL.qpqs(),band(report.qpqs-T.qpqs,TOL.qpqs()),0,'No suma puntos: es una estimación voluntaria')
  }else{
   // nothing to size: reporting a defect where there is none costs the diagnosis, and the numbers are not scored

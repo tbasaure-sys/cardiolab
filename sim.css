@@ -370,3 +370,7 @@ body.study-open .workspace{display:none}.bedside-figure[hidden]{display:none}bod
 .knob-unit[hidden]{display:none}
 .drill-check ul{list-style:none;padding:0;margin:6px 0}.drill-check li{font-size:12px;line-height:1.45;padding:4px 0;border-top:1px solid var(--line)}.drill-check li div{color:#ffcf99;font-size:11.5px}
 .drill-check .ok b{color:#7ff0b4}.drill-check .bad b{color:#ff9c8a}.drill-check p{font-size:12px;margin:6px 0}
+/* first-visit tour (tour.mjs): a corner card and an outline, never a modal */
+.tour-card{position:fixed;right:18px;bottom:18px;z-index:70;width:min(360px,92vw);background:#15212a;border:1px solid #4fa89a;border-radius:10px;padding:12px 14px;box-shadow:0 14px 34px #000c;font-size:13px;line-height:1.45}
+.tour-card strong{font-size:14px}.tour-card p{margin:6px 0 10px}.tour-nav{display:flex;gap:6px;align-items:center}.tour-nav span{margin:0 auto 0 6px;font-size:11px;color:var(--muted)}.tour-nav button{font-size:12px;padding:3px 10px}
+.tour-ring{outline:2px solid #63ddc8!important;outline-offset:3px;border-radius:8px}

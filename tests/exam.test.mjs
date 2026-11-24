@@ -44,6 +44,9 @@ test('a perfect report on a good study scores everything; each wrong answer cost
  const wrong=gradeExam(c,{...perfect(c),lesion:'asd2'},acqs,sites,views);assert.ok(wrong.total<full.total);assert.equal(wrong.items.find(i=>i.id==='lesion').pts,0);
  const near=gradeExam(c,{...perfect(c),lesion:'vsdm'},acqs,sites,views);assert.equal(near.items.find(i=>i.id==='lesion').pts,POINTS.lesion*.4,'same level, other defect');
  const none=gradeExam(c,{lesion:'normal'},[],sites,views);assert.ok(none.percent<15,`${none.percent}`);
+ // the RV pressure is an optional answer: graded against the model, without points
+ const rv=gradeExam(c,{...perfect(c),rvsp:c.truth.rvSys+3},acqs,sites,views).items.find(i=>i.id==='rvsp');assert.equal(rv.max,0);assert.equal(rv.frac,1);assert.ok(Math.abs(4*c.truth.trV**2+c.state.pressures.raMean-c.truth.rvSys)<1e-9);
+ assert.equal(gradeExam(c,{...perfect(c),rvsp:c.truth.rvSys+60},acqs,sites,views).items.find(i=>i.id==='rvsp').frac,0);assert.equal(full.items.some(i=>i.id==='rvsp'),false);
 });
 test('numeric answers are graded in bands of their tolerance',()=>{
  const c=[...Array(200).keys()].map(i=>makeCase(i+1)).find(x=>x.lesion==='asd2');const T=c.truth,tol=TOL.size(T.diameterMM);
