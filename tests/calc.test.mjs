@@ -26,8 +26,8 @@ test('LVOT from the apex: the trace follows the ejection away from the probe and
 test('the trace follows the display, so the settings matter: gain, scale and aliasing',()=>{
  normal();const ok=traceVTI(lvotSpec({}),HR),low=traceVTI(lvotSpec({gain:.3}),HR),high=traceVTI(lvotSpec({gain:2.5}),HR);
  assert.ok(low.vti<ok.vti*.85,`low gain under-traces: ${low.vti} vs ${ok.vti}`);assert.ok(high.noise,'high gain: the noise floor is traced');
- // the positive flow after ejection does not fit above a baseline at 80 %: it wraps to the far edge and is not traced as ejection
- assert.equal(ok.wrapped,true);assert.ok(ok.vMax<1.4);
+ // at the valve the blood moves as a plug during ejection and stands still in diastole: nothing wraps at this scale
+ assert.ok(!ok.wrapped&&!ok.clipped);assert.ok(ok.vMax<1.4);
  const small=traceVTI(lvotSpec({scale:.5,baseline:.5}),HR);assert.ok(small.clipped||small.wrapped,'scale below the velocity');assert.ok(small.vti<ok.vti*.5);
 });
 test('CW through a restrictive VSD: peak gradient of the jet, mean gradient lower, only systole traced',()=>{
@@ -47,5 +47,5 @@ test('the calculation sheet: each formula, and nothing from inputs that make no 
  assert.equal(qpqs(20,20,20,20),1);assert.equal(qpqs(30,20,20,20),1.5);assert.equal(qpqs(20,28.284271247461902,20,20).toFixed(6),'2.000000');
  for(const bad of [bernoulli(NaN),rvspFromTR(-1),shortening(20,30),strokeVolume(0,20),qpqs(1,0,1,1),cardiacIndex(3,0)])assert.equal(bad,null);
  for(const c of SHEET){assert.ok(c.name&&c.formula&&c.source.length&&c.inputs.length);const empty=Object.fromEntries(c.inputs.map(i=>[i[0],NaN]));assert.equal(c.run(empty),null,c.id)}
- assert.ok(SHEET.find(c=>c.id==='qpqs').note.includes('no reproduce'),'the limit of the simulator is stated where it applies');
+ assert.ok(/anillo/.test(SHEET.find(c=>c.id==='qpqs').note)&&/se invierte/.test(SHEET.find(c=>c.id==='qpqs').note),'where and how to measure, and the inversion with a duct, are stated where they apply');
 });

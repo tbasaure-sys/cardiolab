@@ -62,7 +62,7 @@ export function createBMode(){
   const eF=.06*K,eW=.0025*(6/freq),elevAt=r=>.45*eW*(H?.85:1)*Math.sqrt(1+((r*K-eF)/(.58*eF))**2)/K; // sub-ray offset (atlas units)
   const alphaNp=(db)=>db*freq*.1151*100; // per metre (one-way), from dB/cm/MHz
   const cell=.00016*(4/freq)/K*(H?1:1.25); // speckle cell ~ scales with wavelength (physical), expressed in atlas units
-  const p=[0,0,0],q=[0,0,0],wv=[0,0,0];let meanLungDepth=0,lungHits=0;
+  const p=[0,0,0],q=[0,0,0],wv=[0,0,0],lungK=new Int32Array(lines).fill(samples);let meanLungDepth=0,lungHits=0;
   // colour Doppler box (angles in degrees relative to the beam axis, radii as fractions of depth)
   let cj0=1,cj1=0,ck0=1,ck1=0,cv=null;const vel=[0,0,0];
   if(color&&color.flow){const r=color.roi;cj0=Math.max(0,Math.floor(((r.center-r.half)*Math.PI/180+sector/2)/sector*lines));cj1=Math.min(lines-1,Math.ceil(((r.center+r.half)*Math.PI/180+sector/2)/sector*lines));
@@ -113,7 +113,7 @@ export function createBMode(){
       if(trl)TR.pSpec[k]+=(specular*.8*directivity*ew)**2;
       if(trc){TR.cum.iface-=20*Math.log10(Math.max(1e-9,1-rc*rc));TR.events.push({k,kind:'iface',from:prevLab,to:lab,rc,cosi,specular,r})}
       I*=Math.max(0,1-rc*rc);
-      if(lab===LABEL.LUNG&&!inLung){inLung=true;lungAt=r;lungCos=cosi;if(!eo){meanLungDepth+=r;lungHits++}I*=.02;if(trc){TR.cum.shadow+=33.98;TR.events.push({k,kind:'lung',r})}}
+      if(lab===LABEL.LUNG&&!inLung){inLung=true;lungAt=r;lungCos=cosi;if(!eo)lungK[j]=k;if(!eo){meanLungDepth+=r;lungHits++}I*=.02;if(trc){TR.cum.shadow+=33.98;TR.events.push({k,kind:'lung',r})}}
       if(lab===LABEL.BONE){I*=.35;if(trc){TR.cum.shadow+=9.12;TR.events.push({k,kind:'bone',r})}}
      }
     }
@@ -181,7 +181,8 @@ export function createBMode(){
   // near-field reverberation: echoes from the chest wall and anterior pericardium bounce between the probe face and those
   // layers and return again at twice their depth (a faint ghost of the anterior wall inside the RV); weaker in THI
   {const lim=Math.min(samples>>1,Math.round(.03/drp)),g=H?.035:.07;
-   for(let j=0;j<lines;j++){const b=j*samples;for(let k=4;k<lim;k++){const k2=2*k+1;if(TR&&j===TR.j)TR.pRev[k2]+=g*g*(re[b+k]*re[b+k]+im[b+k]*im[b+k]);re[b+k2]+=g*re[b+k];im[b+k2]+=g*im[b+k]}}}
+   // (not the pleura: its reverberations are the A-lines above, which depend on how the pleura faces the probe and how far it is)
+   for(let j=0;j<lines;j++){const b=j*samples,top=Math.min(lim,lungK[j]-1);for(let k=4;k<top;k++){const k2=2*k+1;if(TR&&j===TR.j)TR.pRev[k2]+=g*g*(re[b+k]*re[b+k]+im[b+k]*im[b+k]);re[b+k2]+=g*re[b+k];im[b+k2]+=g*im[b+k]}}}
   // point spread: axial (pulse length) and lateral (beam width, focused)
   const lambda=.00154/freq,sigA=Math.max(.8,(1.15*lambda)/drp),focusR=focus*depth*K;
   convolveAxial(re,lines,samples,sigA);convolveAxial(im,lines,samples,sigA);
