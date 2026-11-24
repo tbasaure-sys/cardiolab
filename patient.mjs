@@ -14,4 +14,6 @@ export const PATIENT_BY_ID=Object.fromEntries(PATIENTS.map(p=>[p.id,p]));
 // Haycock formula (m²), weight in kg and height in cm
 export function bsaHaycock(weight,height){return .024265*weight**.5378*height**.3964}
 export function bodyScale(p){return Math.sqrt(bsaHaycock(p.weight,p.height)/bsaHaycock(ATLAS_ADULT.weight,ATLAS_ADULT.height))}
+// age in years from the preset's label («3 días», «6 meses», «2 años», «adulto»)
+export function ageYears(p){const a=String(p.age||''),n=parseFloat(a);if(/día/.test(a))return n/365;if(/mes/.test(a))return n/12;if(/adulto/.test(a))return 30;return n||6}
 export function describePatient(p){return `${p.name} · ${p.age} · ${String(p.weight).replace('.',',')} kg · ${p.height} cm · SC ${bsaHaycock(p.weight,p.height).toFixed(2).replace('.',',')} m²`}

@@ -19,7 +19,7 @@ export function createSimEngine({workers=Math.max(1,Math.min(3,(navigator.hardwa
   if(m.type==='views'){const p=pending.get(m.id);if(p){pending.delete(m.id);p.resolve(m.views)}return}
   if(m.type==='warp'){const p=pending.get(m.id);if(p){pending.delete(m.id);p.resolve(m.points)}return}
   if(m.type==='probe'){const p=pending.get(m.id);if(p){pending.delete(m.id);p.resolve(m.labels??m.label)}return}
-  if(m.type==='variant'){const p=pending.get(m.id);if(p&&--p.left===0){pending.delete(m.id);p.resolve(m.info)}return}
+  if(m.type==='variant'||m.type==='fit'){const p=pending.get(m.id);if(p&&--p.left===0){pending.delete(m.id);p.resolve(m.info)}return}
   if(m.type==='frame'){w.busy=false;const p=pending.get(m.id);pending.delete(m.id);
    if(p?.resolve)p.resolve(m.frame);
    else if(m.key===key){frames.set(m.phaseIndex,m.frame);lastFrame={...m.frame,phaseIndex:m.phaseIndex,ms:m.ms};for(const f of listeners)f(lastFrame)}
@@ -49,6 +49,8 @@ export function createSimEngine({workers=Math.max(1,Math.min(3,(navigator.hardwa
   for(let d=0;d<CINE_PHASES;d++){const f=frames.get((idx-d+CINE_PHASES)%CINE_PHASES);if(f)return f}return lastFrame}
  function renderOnce(pose,extra={}){return ready.then(()=>new Promise((resolve,reject)=>{queue.unshift({pose,params:{...params,lines:128,...extra,phase:extra.phase??.05},resolve,reject});pump()}))}
  function setVariant(spec){variantSeq++;key='';frames=new Map();queue.length=0;const id=++seq;return new Promise(resolve=>{pending.set(id,{left:pool.length,resolve});for(const w of pool)w.postMessage({type:'variant',id,spec})})}
+ // the patient's thorax fit (thorax-fit.mjs) in every worker; cached frames belong to the previous thorax
+ function setFit(age){variantSeq++;key='';frames=new Map();queue.length=0;const id=++seq;return new Promise(resolve=>{pending.set(id,{left:pool.length,resolve});for(const w of pool)w.postMessage({type:'fit',id,age})})}
  function set(values){Object.assign(params,values)}
  // spectral Doppler: one cardiac cycle of spectral lines, computed on the last worker (never blocks the cine queue for long)
  function spectrum(spec){return ready.then(()=>new Promise(resolve=>{const id=++seq;pending.set(id,{resolve});pool[pool.length-1].postMessage({type:'spectrum',id,spec:{hr:params.hr,...spec}})}))}
@@ -62,5 +64,5 @@ export function createSimEngine({workers=Math.max(1,Math.min(3,(navigator.hardwa
  // AP chest projection of the current variant (cxr.mjs): silhouette, cardiothoracic ratio and the reference ratio
  function cxr(){return ready.then(()=>new Promise(resolve=>{const id=++seq;pending.set(id,{resolve});pool[pool.length-1].postMessage({type:'cxr',id})}))}
  function getViews(){return ready.then(()=>new Promise(resolve=>{const id=++seq;pending.set(id,{resolve});pool[0].postMessage({type:'views',id})}))}
- return {warp,lvVolume,cxr,mmode,debug:()=>({queue:queue.length,pending:pending.size,busy:pool.map(w=>w.busy),key:key.slice(-40),frames:frames.size}),ready,show,frameFor,renderOnce,setVariant,set,getViews,spectrum,probe,params,onFrame:f=>listeners.add(f),get landmarks(){return landmarks},get cached(){return frames.size},get failed(){return failed}};
+ return {warp,lvVolume,cxr,mmode,debug:()=>({queue:queue.length,pending:pending.size,busy:pool.map(w=>w.busy),key:key.slice(-40),frames:frames.size}),ready,show,frameFor,renderOnce,setVariant,setFit,set,getViews,spectrum,probe,params,onFrame:f=>listeners.add(f),get landmarks(){return landmarks},get cached(){return frames.size},get failed(){return failed}};
 }

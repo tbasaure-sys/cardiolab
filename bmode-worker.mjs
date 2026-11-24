@@ -3,7 +3,8 @@ import {loadTissue,HeartMotion,ventricularContraction,LABEL,gunzip} from './tiss
 import {buildViews,fanObstruction} from './views.mjs';
 import {createBMode} from './bmode.mjs';
 import {buildValves,sliceValves,setValveVariant} from './valves.mjs';
-import {placeAtlasPositions} from './geometry.mjs';
+import {placeAtlasPositions,setBodyFit} from './geometry.mjs';
+import {createFit} from './thorax-fit.mjs';
 import {applyVariant,valveVariant} from './chd-data.mjs';
 import {buildFlow,lesionJets} from './flow.mjs';
 import {renderSpectrum,optimizeAim} from './spectral.mjs';
@@ -29,6 +30,8 @@ self.onmessage=async e=>{
   }
   // messages that arrive while the volume is still loading wait for it (never dropped)
   if(!tissue){if(!initDone)throw Error('Simulador sin inicializar');await initDone}
+  // the patient's thorax fit (thorax-fit.mjs): the same in the tissue lookups and in the skin the views are built on
+  if(m.type==='fit'){setBodyFit(m.age);tissue.setFit(m.age==null?null:createFit(m.age));normalP=null;self.postMessage({type:'fit',id:m.id});return}
   if(m.type==='variant'){normalP=null;tissue.reset();variant=m.spec||{id:'normal'};const info=applyVariant(tissue,variant);setValveVariant(valves,tissue,valveVariant(variant));flow.jets=lesionJets(tissue,variant);flow.scale=variant.params?.hemo?.flowScale||null;info.jets=flow.jets.length;self.postMessage({type:'variant',id:m.id,info});return}
   if(m.type==='render'){
    setHeartRate(m.params.hr||null); // beat timing at the patient's heart rate (cycle.mjs)
@@ -48,7 +51,7 @@ self.onmessage=async e=>{
   if(m.type==='spectrum'){const spec={...m.spec};setHeartRate(spec.hr||null);if(spec.optimize){spec.theta=optimizeAim(tissue,flow,motion,spec,spec.optimize);delete spec.optimize}const sp=renderSpectrum(tissue,flow,motion,spec);self.postMessage({type:'spectrum',id:m.id,spectrum:sp},[sp.data.buffer]);return}
   if(m.type==='mmode'){setHeartRate(m.spec.hr||null);const mm=renderMMode(engine,tissue,valves,motion,m.spec);self.postMessage({type:'mmode',id:m.id,mmode:mm},[mm.data.buffer]);return} // one scan line through the beat (mmode.mjs)
   if(m.type==='cxr'){ // AP chest projection with the chambers' enlargement, and the same chest without it (reference silhouette)
-   const variantP=projectChest(tissue,{remodel:tissue.remodel||null});normalP=tissue.remodel?(normalP||projectChest(tissue,{remodel:null})):variantP;
+   const variantP=projectChest(tissue,{remodel:tissue.remodel||null});normalP=tissue._lesion?(normalP||projectChest(tissue,{remodel:tissue.fit||null})):variantP;
    self.postMessage({type:'cxr',id:m.id,variant:variantP,normal:{metrics:normalP.metrics}});return}
   if(m.type==='lvVolume'){setHeartRate(m.hr||null);self.postMessage({type:'lvVolume',id:m.id,curve:lvVolumeCurve(tissue,motion,{phases:m.phases||40,k:m.k||1})});return}
   if(m.type==='views'){const views=buildViews(tissue.landmarks,fanObstruction(tissue,LABEL.LUNG,LABEL.BONE));self.postMessage({type:'views',id:m.id,views});return}

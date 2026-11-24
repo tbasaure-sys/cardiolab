@@ -3,10 +3,12 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import zlib from 'node:zlib';
 import {parseTissue,LABEL} from '../tissue.mjs';import {buildViews,fanObstruction,VIEW_INFO,VIEW_CARD,SWEEPS,nearestView,planeAgreement,markerClock} from '../views.mjs';
 import {lessonContext,lessonForSweep,lessonForView,validateLesson,resolveState,maneuverAgrees,planeThrough} from '../lesson-engine.mjs';
-import {poseFromState} from '../geometry.mjs';
+import {poseFromState,setBodyFit} from '../geometry.mjs';import {createFit,fitAgeFor} from '../thorax-fit.mjs';import {PATIENTS,ageYears} from '../patient.mjs';
 
 const meta=JSON.parse(fs.readFileSync(new URL('../assets/tissue.json',import.meta.url)));
 const tissue=parseTissue(meta,zlib.gunzipSync(fs.readFileSync(new URL(`../assets/${meta.fine.file}`,import.meta.url))),zlib.gunzipSync(fs.readFileSync(new URL(`../assets/${meta.coarse.file}`,import.meta.url))));
+// as the app runs: the thorax fitted to the heart (thorax-fit.mjs), here for the child and older presets (age factor 1)
+setBodyFit(1);tissue.setFit(createFit(1));
 const lm=tissue.landmarks,views=buildViews(lm,fanObstruction(tissue,LABEL.LUNG,LABEL.BONE)),ctx=lessonContext(lm,views);
 const sources=JSON.parse(fs.readFileSync(new URL('../lessons/sources.json',import.meta.url))).sources;
 
@@ -48,5 +50,10 @@ test('guided sweeps: valid lessons whose maneuvers match the probe motion betwee
 test('the precomputed views (assets/views.json) match the computation',async()=>{
  const {VIEWS_VERSION}=await import('../views.mjs');const pre=JSON.parse(fs.readFileSync(new URL('../assets/views.json',import.meta.url)));
  assert.equal(pre.version,VIEWS_VERSION);assert.equal(pre.geometrySHA256,meta.geometrySHA256);
- assert.deepEqual(pre.views,JSON.parse(JSON.stringify(views)),'regenerate with: node tools/build-views.mjs');
+ assert.deepEqual(pre.fits['1'],JSON.parse(JSON.stringify(views)),'regenerate with: node tools/build-views.mjs');
+ // one set per thorax fit of the patient presets; each is the computation on that patient's chest
+ const ages=[...new Set(PATIENTS.map(p=>fitAgeFor(ageYears(p))))];assert.deepEqual(Object.keys(pre.fits).sort(),ages.map(String).sort());
+ for(const age of ages){if(age===1)continue;setBodyFit(age);tissue.setFit(createFit(age));
+  assert.deepEqual(pre.fits[String(age)],JSON.parse(JSON.stringify(buildViews(lm,fanObstruction(tissue,LABEL.LUNG,LABEL.BONE)))),`fit ${age}: regenerate with: node tools/build-views.mjs`)}
+ setBodyFit(1);tissue.setFit(createFit(1));
 });

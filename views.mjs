@@ -1,6 +1,6 @@
 // Standard pediatric TTE views defined from atlas landmarks (not from hand-placed poses),
 // plus plane-agreement scoring and maneuver hints for the acquisition coach.
-import {surface,poseFromState,defaultState,PRESETS,CHEST_X,CHEST_Y,BODY} from './geometry.mjs';
+import {surface,insideBody,skinParams,poseFromState,defaultState,PRESETS,CHEST_X,CHEST_Y,BODY} from './geometry.mjs';
 
 const add=(a,b)=>a.map((v,i)=>v+b[i]),sub=(a,b)=>a.map((v,i)=>v-b[i]),mul=(a,k)=>a.map(v=>v*k);
 const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],norm=a=>Math.hypot(...a),unit=a=>mul(a,1/(norm(a)||1));
@@ -11,7 +11,7 @@ const deg=r=>r*180/Math.PI,rad=d=>d*Math.PI/180;
 
 // Find where a line from `target` going back along -dir meets the chest surface.
 function skinAlong(target,dir){
- let lo=0,hi=.35;const inside=t=>{const p=sub(target,mul(dir,t)),s=surface(p[0],p[2]);return p[1]>s[1]};
+ let lo=0,hi=.35;const inside=t=>insideBody(sub(target,mul(dir,t)));
  for(let i=0;i<48;i++){const m=(lo+hi)/2;if(inside(m))lo=m;else hi=m}
  return sub(target,mul(dir,(lo+hi)/2));
 }
@@ -19,9 +19,9 @@ function skinAlong(target,dir){
 // The contact point is searched on the chest surface ∩ plane, near the window, avoiding ribs and lung when a
 // tissue model is given.
 function skinOnPlane(c,n,W,obstruct,span=.07){
- let best=null;const step=span>.04?.002:.001;
+ let best=null;const step=span>.04?.002:.001,[wx,wz]=skinParams(W); // the search runs in skin coordinates around the window
  for(let ix=-span;ix<=span+1e-9;ix+=step)for(let iz=-span;iz<=span+1e-9;iz+=step){
-  const x=W[0]+ix,z=W[2]+iz;if(x<-.11||x>.11||z<-.155||z>.2)continue;
+  const x=wx+ix,z=wz+iz;if(x<-.11||x>.11||z<-.155||z>.2)continue;
   const s=surface(x,z),d=dot(sub(s,c),n);if(Math.abs(d)>(step>.001?.0012:.0007))continue;
   const cost=norm(sub(s,W))*40+(obstruct?obstruct(s):0);
   if(!best||cost<best.cost)best={s,cost};
@@ -42,17 +42,27 @@ export function clockText(u){const h=Math.round(markerClock(u))%12||12;return `$
 
 // Acoustic obstruction of a fan (ribs, lung) from a contact point toward a target, in the plane with normal n.
 export function fanObstruction(tissue,LUNG,BONE,CARTILAGE=6){
- return (o,target,n)=>{const d0=sub(target,o),L=norm(d0),d=mul(d0,1/L),u=n?unit(cross(d,n)):unit(cross(d,[0,0,1]));let cost=0;
+ const f=(o,target,n)=>{const d0=sub(target,o),L=norm(d0),d=mul(d0,1/L),u=n?unit(cross(d,n)):unit(cross(d,[0,0,1]));let cost=0;
   for(let a=-36;a<=36;a+=9){const c=Math.cos(rad(a)),s=Math.sin(rad(a)),dir=add(mul(d,c),mul(u,s)),w=1-Math.abs(a)/60;
-   for(let r=.002;r<L*.95;r+=.0015){const p=add(o,mul(dir,r)),l=tissue.tissueAt(p[0],p[1],p[2]);if(l===BONE){cost+=4*w*(r<.03?1.5:1);break}if(l===CARTILAGE){cost+=1.2*w;break}if(l===LUNG){cost+=3*w;break}}}
-  return cost}}
+   for(let r=.002;r<L*.95;r+=.0015){const p=add(o,mul(dir,r)),l=tissue.bodyAt?tissue.bodyAt(p[0],p[1],p[2]):tissue.tissueAt(p[0],p[1],p[2]);if(l===BONE){cost+=4*w*(r<.03?1.5:1);break}if(l===CARTILAGE){cost+=1.2*w;break}if(l===LUNG){cost+=3*w;break}}}
+  return cost};
+ // how far the heart and great vessels reach in the fan of a pose (atlas metres): the depth a view needs
+ f.reach=pose=>{let far=0;const o=pose.origin,d=pose.d,u=pose.u;
+  for(let a=-28;a<=28;a+=4){const c=Math.cos(rad(a)),s=Math.sin(rad(a)),dir=add(mul(d,c),mul(u,s));
+   // chambers and their walls (labels 10–14, 20–23), aorta and pulmonary artery (24, 25); veins behind the atria do not count
+   for(let r=.01;r<.24;r+=.002){const l=tissue.lookup(o[0]+dir[0]*r,o[1]+dir[1]*r,o[2]+dir[2]*r);if(((l>=10&&l<=14)||(l>=20&&l<=25))&&r>far)far=r}}
+  return far};
+ return f}
 
 export function buildViews(lm,obstruct=null){
  const apex=lm.lvApexCavity,mv=lm.mitralValve,tv=lm.tricuspidValve,av=lm.aorticValve,pv=lm.pulmonaryValve;
  const long=unit(sub(mv,apex)); // apex → base
  const head=[0,0,1],pLeft=[1,0,0],pRight=[-1,0,0];
  const views={},o=obstruct;
- const PARA=surface(.004,.012),APEX_W=skinAlong(apex,unit(sub(mid(mv,tv),apex))),SUBX=surface(CHEST_X+.004,-.128),SSN=surface(CHEST_X,.13);
+ // windows in skin coordinates (the same spot of skin whatever the patient's thorax fit). Subcostal: just below the
+ // xiphoid (its tip is at z ≈ −0.048 in the atlas), where the probe is pressed in and angled up under the sternum.
+ const PARA_P=[.004,.012],SUB_P=[CHEST_X+.004,-.085],SSN_P=[CHEST_X,.13];
+ const PARA=surface(...PARA_P),APEX_W=skinAlong(apex,unit(sub(mid(mv,tv),apex))),SUBX=surface(...SUB_P),SSN=surface(...SSN_P);
  // Parasternal long axis: plane through apex, mitral and aortic valves; marker to the right shoulder
  {const n=unit(cross(sub(av,apex),sub(mv,apex))),c=add(mid(mv,av),mul(long,-.01));
   views.plax=planePose({c,n,window:PARA,target:c,markerToward:add(head,mul(pRight,.9)),depth:.15,obstruct:o});
@@ -98,7 +108,7 @@ export function buildViews(lm,obstruct=null){
  // contains both AV valves (septum ⟂ to the beam — the classic view for the atrial septum).
  {const tgt=mid(mv,tv,lm.asdSecundum);let origin=SUBX;
   const fit=(org)=>{const n=unit(cross(sub(lm.asdSecundum,org),sub(mid(mv,tv),org)));return {c:dot(sub(apex,org),n)**2*.2,n}};
-  let best=null;for(let ix=-.024;ix<=.024+1e-9;ix+=.003)for(let iz=-.025;iz<=.02+1e-9;iz+=.003){const org=surface(SUBX[0]+ix,SUBX[2]+iz),f=fit(org),cost=f.c*4e4+(o?o(org,tgt,f.n):0)+norm(sub(org,SUBX))*30;if(!best||cost<best.cost)best={cost,org,n:f.n}}
+  let best=null;for(let ix=-.024;ix<=.024+1e-9;ix+=.003)for(let iz=-.03;iz<=.012+1e-9;iz+=.003){const org=surface(SUB_P[0]+ix,SUB_P[1]+iz),f=fit(org),cost=f.c*4e4+(o?o(org,tgt,f.n):0)+norm(sub(org,SUBX))*30;if(!best||cost<best.cost)best={cost,org,n:f.n}}
   origin=best.org;const d=unit(sub(tgt,origin));let u=unit(cross(d,best.n));if(dot(u,pLeft)<0)u=mul(u,-1);
   views.sc4c={origin,u,d,n:unit(cross(u,d)),depth:.19,sector:85};views.sc4c.meta={center:tgt,landmarks:{'Septo interauricular':lm.asdSecundum,'Válvula mitral':mv,'Válvula tricúspide':tv}};
   // subcostal short axis / IVC view: marker to the head, plane through the IVC entering the right atrium
@@ -109,7 +119,7 @@ export function buildViews(lm,obstruct=null){
  // Suprasternal long axis of the aortic arch: probe in the notch above the manubrium; plane through the notch,
  // the ascending and the descending aorta
  {const arch=lm.archTop,asc=add(av,mul(unit(sub(arch,av)),.035)),desc=lm.ductAortic;
-  let best=null;for(let ix=-.02;ix<=.02+1e-9;ix+=.002)for(let iz=0;iz<=.02+1e-9;iz+=.002){const org=surface(SSN[0]+ix,SSN[2]+iz) /* never below the notch (manubrium) */,n=unit(cross(sub(asc,org),sub(desc,org))),tgt=add(arch,[0,0,-.012]);const cost=(o?o(org,tgt,n):0)+norm(sub(org,SSN))*40;if(!best||cost<best.cost)best={cost,org,n,tgt}}
+  let best=null;for(let ix=-.02;ix<=.02+1e-9;ix+=.002)for(let iz=0;iz<=.02+1e-9;iz+=.002){const org=surface(SSN_P[0]+ix,SSN_P[1]+iz) /* never below the notch (manubrium) */,n=unit(cross(sub(asc,org),sub(desc,org))),tgt=add(arch,[0,0,-.012]);const cost=(o?o(org,tgt,n):0)+norm(sub(org,SSN))*40;if(!best||cost<best.cost)best={cost,org,n,tgt}}
   let d=unit(sub(best.tgt,best.org));d=unit(sub(d,mul(best.n,dot(d,best.n))));let u=unit(cross(d,best.n));if(dot(u,head)<0)u=mul(u,-1);
   views.ssn={origin:best.org,u,d,n:unit(cross(u,d)),depth:.18,sector:80};views.ssn.meta={center:arch,landmarks:{'Arco aórtico':arch,'Aorta ascendente':asc,'Istmo aórtico':desc}};}
  // ---------------------------------------------------------------- extended pediatric views (derived landmarks)
@@ -118,7 +128,7 @@ export function buildViews(lm,obstruct=null){
  // a sweep step: same contact and same marker as `base`, the beam tilted until the plane contains `target` (pure tilt)
  const tiltOf=(base,target,depth=base.depth)=>poseAt(base.origin,cross(base.u,sub(target,base.origin)),target,base.u,depth,base.sector);
  const has=(...k)=>k.every(x=>lm[x]);
- const HIGH=surface(PARA[0]+.004,PARA[2]+.034);
+ const HIGH=surface(PARA_P[0]+.004,PARA_P[1]+.034);
  // parasternal long-axis sweep: tilted toward the right hip (RV inflow: RA, tricuspid valve, RV) and toward the left
  // shoulder (RV outflow: infundibulum, pulmonary valve, main PA)
  if(has('raCentre')){views.plaxRVIn=tiltOf(views.plax,mid(tv,lm.raCentre),.14);views.plaxRVIn.meta={center:tv,landmarks:{'Válvula tricúspide':tv,'Aurícula derecha':lm.raCentre,...(lm.coronarySinus?{'Seno coronario':lm.coronarySinus}:{})}}}
@@ -152,6 +162,8 @@ export function buildViews(lm,obstruct=null){
  // patient's left); tilted further back, the left atrium with the pulmonary veins («cangrejo»)
  if(has('rpa','ascendingAorta')){const org=views.ssn.origin,axis=unit(sub(lm.ductAortic,lm.ascendingAorta)),d=unit(sub(lm.rpa,org)),n=unit(sub(axis,mul(d,dot(d,axis))));
   views.ssnSAX=poseAt(org,n,mid(lm.rpa,lm.rpaProximal),pLeft,.17);views.ssnSAX.meta={center:lm.rpaProximal,landmarks:{'Rama pulmonar derecha':lm.rpaProximal,'Arco aórtico':lm.archTop,...(lm.laCentre?{'Aurícula izquierda':lm.laCentre}:{})}}}
+ // depth: no deeper than the heart and great vessels reach in the fan, plus a margin (the heart fills the sector)
+ if(o?.reach)for(const v of Object.values(views))v.depth=Math.min(v.depth,Math.max(.06,Math.round((o.reach(v)+.012)*1000)/1000));
  // landmarks and centre are used for scoring: keep them on the ideal plane itself (project the near ones, drop far ones)
  for(const v of Object.values(views)){
   const proj=p=>sub(p,mul(v.n,dot(sub(p,v.origin),v.n)));v.meta.center=proj(v.meta.center);
@@ -163,7 +175,7 @@ export function buildViews(lm,obstruct=null){
 
 // version of the view definitions: bump when buildViews changes, then regenerate assets/views.json (tools/build-views.mjs);
 // tests/views.test.mjs fails when the precomputed file no longer matches the computation
-export const VIEWS_VERSION=2;
+export const VIEWS_VERSION=3;
 export const VIEW_INFO={
  plax:{name:'Paraesternal eje largo',short:'PLAX',window:'plax',clock:'10–11',goal:'VI, septo, raíz aórtica, válvula mitral y AI en un mismo corte; ápex a la izquierda de la pantalla y aorta a la derecha.',checks:['Septo y pared posterior casi horizontales y paralelos','Válvula aórtica y mitral visibles a la vez','El ápex no se ve (es normal)'],pitfall:'Si el VI se ve redondo o el septo muy inclinado, estás oblicuo: rota o inclina, no te conformes.'},
  psaxAV:{name:'Paraesternal eje corto · válvula aórtica',short:'PSAX-VA',window:'psax',clock:'1–2',goal:'La válvula aórtica en corte transversal (la «Y» de Mercedes) rodeada por AD, VD, tracto de salida y arteria pulmonar.',checks:['Tres velos aórticos visibles','Tricúspide a la izquierda y pulmonar a la derecha de la pantalla'],pitfall:'Una aorta ovalada indica que el plano está oblicuo al anillo.'},

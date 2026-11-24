@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {PRESETS,defaultState,poseFromState,toWorld,toPlane,inSector,surface,chestRadius,chestDepth,rad,sub,norm} from './geometry.mjs';
-import {scanYSign,screenToPlane,CHEST_Y,CHEST_X,placeAtlasPositions,BODY,setBodyScale,physical,tightenSkin} from './geometry.mjs';
-import {PATIENTS,PATIENT_BY_ID,bsaHaycock,bodyScale,describePatient} from './patient.mjs';
+import {scanYSign,screenToPlane,CHEST_Y,CHEST_X,placeAtlasPositions,BODY,setBodyScale,physical,tightenSkin,setBodyFit,skinParams,placeThorax} from './geometry.mjs';
+import {fitAgeFor} from './thorax-fit.mjs';
+import {PATIENTS,PATIENT_BY_ID,bsaHaycock,bodyScale,describePatient,ageYears} from './patient.mjs';
 import {PHN,PHN_SOURCE,zScore,formatZ} from './zscores.mjs';
 import {mountTutor} from './tutor.mjs';
 import {mountVideoImage} from './video-image.mjs';
@@ -39,7 +40,7 @@ import {LESIONS,PVR} from './shunt-model.mjs';
 import {ecgValue,setHeartRate} from './cycle.mjs';
 
 // patient size first: every default depth below is scaled to it
-const PATIENT_KEY='cardiolab.patient.v1';let patient=(()=>{try{return PATIENT_BY_ID[localStorage.getItem(PATIENT_KEY)]}catch{return null}})()||PATIENT_BY_ID.child;setBodyScale(bodyScale(patient));
+const PATIENT_KEY='cardiolab.patient.v1';let patient=(()=>{try{return PATIENT_BY_ID[localStorage.getItem(PATIENT_KEY)]}catch{return null}})()||PATIENT_BY_ID.child;setBodyScale(bodyScale(patient));setBodyFit(fitAgeFor(ageYears(patient))); // size and thorax of the patient (thorax-fit.mjs)
 const $=id=>document.getElementById(id),state={...defaultState(),mode:'echo'},scan=$('scan'),ctx=scan.getContext('2d',{willReadFrequently:true});
 let beam=null,planeMap=null,mainValves=null,sketch=createSketch(),manifest,meshes=[],byId=new Map(),views=[],worker,ready=false,busy=false,pending=null,revision=0,active=null,selected=null,crosshair=null;
 let frozen=false,sweeping=false,sweepStart=0,sweepBase=0,recording=null,dragging=false,latestRequestedAt=0,frameCount=0;
@@ -47,7 +48,7 @@ let tutor=null,pediatricDisplay=true,instrument=null,references=null,videoImage=
 // simulated B-mode: engine, cardiac phase, cine cache of scan-converted images
 // the standard views are precomputed (assets/views.json, tools/build-views.mjs); the worker computes them only as a fallback
 const viewsPromise=fetch('assets/views.json').then(r=>r.ok?r.json():null).catch(()=>null);
-const engine=createSimEngine();engine.set({bodyScale:BODY.k,hr:patient.hr});setHeartRate(patient.hr);display.freq=patient.freq;let phase=0,study=null,exam=null,tour=null,phaseLock=null,blockedWindows=null,lessonPanel=null,beatSpeed=1,heartRate=patient.hr,lastTick=performance.now(),lastPoseChange=0,simQuick=false,simViews=null,coach=null,chd=null,targetPose=null,lesion=null,overlayContours=false;
+const engine=createSimEngine();engine.setFit(BODY.fit.age);engine.set({bodyScale:BODY.k,hr:patient.hr});setHeartRate(patient.hr);display.freq=patient.freq;let phase=0,study=null,exam=null,tour=null,phaseLock=null,blockedWindows=null,lessonPanel=null,beatSpeed=1,heartRate=patient.hr,lastTick=performance.now(),lastPoseChange=0,simQuick=false,simViews=null,viewsPre=null,presetsFromViews=null,coach=null,chd=null,targetPose=null,lesion=null,overlayContours=false;
 const scanCache=new WeakMap();let scanCacheKey='';
 const latencies=[],poseLog=[],controls=[];let lastInputAt=0;let projection={cx:0,cy:30,scale:1},scanWidth=600,scanHeight=400;
 const status=(text,error=false)=>{$('status').textContent=text;$('status').classList.toggle('error',error)};
@@ -106,14 +107,15 @@ function makeView(id,isPatient){
   const lesionMark=new THREE.Mesh(new THREE.SphereGeometry(.0045,18,12),new THREE.MeshBasicMaterial({color:0xff5d6c,transparent:true,opacity:.9,depthTest:false}));lesionMark.visible=false;lesionMark.renderOrder=5;scene.add(lesionMark);
   let torso=null;
   if(isPatient){
-    const positions=[],indices=[],rings=48,sides=72;
-    for(let r=0;r<=rings;r++){const z=-.205+r*.49/rings;for(let i=0;i<sides;i++){const angle=2*Math.PI*i/sides,p=[CHEST_X+chestRadius(z)*Math.cos(angle),CHEST_Y+chestDepth(z)*Math.sin(angle),z];
-      // the front of the chest follows the tightened skin the probe sits on (blended out toward the flanks)
-      const w=Math.max(0,Math.min(1,-Math.sin(angle)*3)),q=w?tightenSkin(p):p;positions.push(...p.map((v,k)=>v+(q[k]-v)*w))}}
+    const indices=[],rings=48,sides=72;
+    const shell=()=>{const positions=[],t=[0,0,0];for(let r=0;r<=rings;r++){const z=-.205+r*.49/rings;for(let i=0;i<sides;i++){const angle=2*Math.PI*i/sides,p=[CHEST_X+chestRadius(z)*Math.cos(angle),CHEST_Y+chestDepth(z)*Math.sin(angle),z];
+      // the front of the chest follows the tightened skin the probe sits on (blended out toward the flanks), in this patient's thorax
+      const w=Math.max(0,Math.min(1,-Math.sin(angle)*3)),q=w?tightenSkin(p):p;placeThorax(p.map((v,k)=>v+(q[k]-v)*w),t);positions.push(t[0],t[1],t[2])}}return positions};
     for(let r=0;r<rings;r++)for(let i=0;i<sides;i++){const a=r*sides+i,b=r*sides+(i+1)%sides,c=a+sides,d=b+sides;indices.push(a,b,d,a,d,c)}
-    const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geo.setIndex(indices);geo.computeVertexNormals();
+    const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(shell(),3));geo.setIndex(indices);geo.computeVertexNormals();
     torso=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:0xb4c3ce,transparent:true,opacity:.14,depthWrite:false,side:THREE.DoubleSide,roughness:.7}));scene.add(torso);
     const outline=new THREE.LineSegments(new THREE.EdgesGeometry(geo,16),new THREE.LineBasicMaterial({color:0x6a7c88,transparent:true,opacity:.28}));scene.add(outline);
+    torso.refit=()=>{geo.setAttribute('position',new THREE.Float32BufferAttribute(shell(),3));geo.computeVertexNormals();geo.computeBoundingSphere();geo.computeBoundingBox();outline.geometry.dispose();outline.geometry=new THREE.EdgesGeometry(geo,16)};
     const sternumLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(CHEST_X,CHEST_Y-.129,-.14),new THREE.Vector3(CHEST_X,CHEST_Y-.129,.16)]),new THREE.LineDashedMaterial({color:0x607988,dashSize:.005,gapSize:.005,transparent:true,opacity:.4}));sternumLine.computeLineDistances();scene.add(sternumLine);
   }
   const view={host,renderer,scene,camera,orbit,fan,border,ray,probe,point,anatomical,torso,isPatient,targetFan,lesionMark};resetCamera(view);
@@ -139,7 +141,7 @@ function updateView(v,pose){
 function bindProbeDrag(view){
   const canvas=view.renderer.domElement,raycaster=new THREE.Raycaster();
   function move(event){if(!dragging||frozen||!ready)return;const rect=canvas.getBoundingClientRect();raycaster.setFromCamera(new THREE.Vector2((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1),view.camera);
-    const hits=raycaster.intersectObject(view.torso).filter(h=>h.point.y<0);if(!hits.length)return;const point=hits[0].point;const bx=state.x,bz=state.z;state.x=clamp(point.x,-.110,.110);state.z=clamp(point.z,-.155,.2);if(Math.abs(state.x-bx)>Math.abs(state.z-bz))noteManeuver('x',bx,state.x);else noteManeuver('z',bz,state.z);stopSweep();syncControls();requestSlice()}
+    const hits=raycaster.intersectObject(view.torso).filter(h=>h.point.y<0);if(!hits.length)return;const point=hits[0].point,[sx,sz]=skinParams([point.x,point.y,point.z]);const bx=state.x,bz=state.z;state.x=clamp(sx,-.110,.110);state.z=clamp(sz,-.155,.2);if(Math.abs(state.x-bx)>Math.abs(state.z-bz))noteManeuver('x',bx,state.x);else noteManeuver('z',bz,state.z);stopSweep();syncControls();requestSlice()}
   canvas.addEventListener('pointerdown',event=>{if(event.button!==0||frozen)return;dragging=true;canvas.setPointerCapture(event.pointerId);move(event)});
   canvas.addEventListener('pointermove',move);for(const name of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(name,()=>dragging=false);
 }
@@ -511,7 +513,7 @@ function animate(now){requestAnimationFrame(animate);frameCount++;videoImage?.ti
 async function boot(){
   manifest=await (await fetch('assets/anatomy.json')).json();const buffer=await gunzip(await (await fetch('assets/anatomy.bin.gz')).arrayBuffer()); // gzip: half the download
   const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',buffer))].map(b=>b.toString(16).padStart(2,'0')).join('');if(hash!==manifest.geometrySHA256)throw Error('La geometría no coincide con su manifiesto');
-  meshes=manifest.objects.map(m=>{const positions=placeAtlasPositions(m.kind,new Float32Array(buffer,m.positionOffset,m.positionCount)),indices=new Uint32Array(buffer,m.indexOffset,m.indexCount);const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.BufferAttribute(positions,3));geometry.setIndex(new THREE.BufferAttribute(indices,1));geometry.computeVertexNormals();const item={...m,positions,indices,geometry};byId.set(m.id,item);return item});
+  meshes=manifest.objects.map(m=>{const positions=placeAtlasPositions(m.kind,new Float32Array(buffer,m.positionOffset,m.positionCount)),indices=new Uint32Array(buffer,m.indexOffset,m.indexCount),atlas=m.kind==='bone'?positions.slice():null;if(atlas)fitBone(atlas,positions);const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.BufferAttribute(positions,3));geometry.setIndex(new THREE.BufferAttribute(indices,1));geometry.computeVertexNormals();const item={...m,positions,indices,geometry,atlas};byId.set(m.id,item);return item});
   views=[makeView('patient-view',true),makeView('heart-view',false)];bindProbeDrag(views[0]);
   beam=mountBeamMap({view:views[1],byId,colorFor,onSelect:id=>{if(active)select(id,null)}});
   beam.onFollow=on=>{$('beam-align').classList.toggle('active',on);$('beam-align').setAttribute('aria-pressed',String(on));if(active)views.forEach(v=>updateView(v,active.pose))};
@@ -529,8 +531,19 @@ function setConsoleValue(key,value){if(!ready)return;if(key==='cgain'){display.c
 function addCaliper(x,y){if(realEcho()||!active||active.id!==revision||!inSector(x,y,active.pose))return;if(display.points.length===2)display.points=[];display.points.push([x,y]);crosshair=toWorld(active.pose,x,y);views.forEach(v=>updateView(v,active.pose));renderScan();logDisplay()}
 // caliper distance in physical mm; with a named measurement, its PHN Z-score for this patient's BSA
 function caliperText(){const mm=distanceMM(...display.points)*BODY.k,k=display.measureKind,z=k?zScore(k,mm/10,bsaHaycock(patient.weight,patient.height)):null;return `${mm.toFixed(1).replace('.',',')} mm${z!=null?` · ${PHN[k].name} ${formatZ(z)} (${PHN_SOURCE.label})`:''}`}
+// bones of the 3D views in this patient's thorax (atlas positions → fitted positions, in place)
+function fitBone(atlas,positions){const t=[0,0,0];for(let i=0;i<atlas.length;i+=3){placeThorax([atlas[i],atlas[i+1],atlas[i+2]],t);positions[i]=t[0];positions[i+1]=t[1];positions[i+2]=t[2]}}
+// The patient's thorax (thorax-fit.mjs): skin and bones of the 3D views, the simulator's tissue and the standard views all
+// move together. The probe stays on the same spot of skin; when it was on a standard view it goes to that view again.
+function refitThorax(){const age=fitAgeFor(ageYears(patient));if(BODY.fit?.age===age)return;const near=active&&simViews&&!imageOnly?nearestView(active.pose,simViews):null;
+ setBodyFit(age);engine.setFit(age);
+ for(const m of meshes)if(m.atlas){fitBone(m.atlas,m.positions);m.geometry.attributes.position.needsUpdate=true;m.geometry.computeVertexNormals();m.geometry.computeBoundingSphere();m.geometry.computeBoundingBox()}
+ views[0]?.torso?.refit?.();
+ if(!simViews)return;
+ const swap=v=>{for(const k of Object.keys(simViews))delete simViews[k];Object.assign(simViews,v);presetsFromViews?.();if(near?.score>=55)goToView(near.id,false);else if(ready&&!frozen)requestSlice()};
+ const pre=viewsPre?.[String(age)];if(pre)swap(pre);else engine.getViews().then(v=>{if(BODY.fit?.age===age)swap(v)})}
 function setPatient(id){const p=PATIENT_BY_ID[id];if(!p)return;patient=p;try{localStorage.setItem(PATIENT_KEY,id)}catch{}
- setBodyScale(bodyScale(p));engine.set({bodyScale:BODY.k,hr:p.hr});setHeartRate(p.hr);heartRate=p.hr;display.freq=p.freq;display.points=[];crosshair=null;updatePatientUI();
+ setBodyScale(bodyScale(p));refitThorax();engine.set({bodyScale:BODY.k,hr:p.hr});setHeartRate(p.hr);heartRate=p.hr;display.freq=p.freq;display.points=[];crosshair=null;updatePatientUI();
  if(ready&&!frozen){stopSweep();state.depth=defaultState(state.preset).depth;syncControls();requestSlice()}else renderScan();
  study?.sync?.();
  dop.key='';requestSpectrum();instrument?.update();status(`Paciente: ${describePatient(p)}`)}
@@ -584,8 +597,8 @@ const PRESET_OF_WINDOW={plax:'plax',psax:'psax',apical:'apical',subcostal:'subco
 const LESION_AT={asd2:'asdSecundum',asd1:'asdPrimum',vsdpm:'vsdPerimembranous',vsdm:'vsdMuscular',avsd:'asdPrimum',pda:['ductAortic','ductPulmonary'],coarct:'ductAortic'};
 // standard views: go to one (plane map), and the card naming the view the probe is closest to (where the probe goes and
 // what the view shows). Both stay hidden while the answer is being tested (heart hidden, or «Leer la imagen» open).
-async function goToView(id){const t=simViews?.[id];if(!t||!ready||imageOnly)return;const {solveState}=await import('./views.mjs');
- const sol=solveState(t,PRESET_OF_WINDOW[VIEW_INFO[id].window]);applyState({...sol.state,mode:state.mode,depth:physical(t.depth)},{animate:true});status(`${VIEW_INFO[id].name} · ${VIEW_CARD[id]?.probe||''}`)}
+async function goToView(id,animate=true){const t=simViews?.[id];if(!t||!ready||imageOnly)return;const {solveState}=await import('./views.mjs');
+ const sol=solveState(t,PRESET_OF_WINDOW[VIEW_INFO[id].window]);applyState({...sol.state,mode:state.mode,depth:physical(t.depth)},{animate});status(`${VIEW_INFO[id].name} · ${VIEW_CARD[id]?.probe||''}`)}
 function updateViewCard(){const el=$('view-card'),hide=imageOnly||openPanel==='drills'||(openPanel==='lessons'&&!!lessonPanel?.run); // during a lesson the panel names the view
  planeMap?.setEnabled(!hide&&$('plane-map').checked);
  const near=!hide&&active&&simViews?nearestView(active.pose,simViews):null;planeMap?.setCurrent(near?.score>=55?near.id:null);
@@ -665,11 +678,11 @@ function tutorApi(){return {
   r.setPixelRatio(pr);r.setSize(size.x,size.y,false);v.camera.aspect=aspect;v.camera.updateProjectionMatrix();r.render(v.scene,v.camera);return c}),canvases:()=>({probe:views[0].renderer.domElement,plane:views[1].renderer.domElement,scan}),pediatric:()=>pediatricDisplay,
  metadata:()=>exportMetadata()}}
 engine.ready.then(async()=>{
- {const pre=await viewsPromise;simViews=pre&&pre.version===VIEWS_VERSION&&(!manifest||pre.geometrySHA256===manifest.geometrySHA256)?pre.views:await engine.getViews()}
+ {const pre=await viewsPromise;viewsPre=pre&&pre.version===VIEWS_VERSION&&(!manifest||pre.geometrySHA256===manifest.geometrySHA256)?pre.fits:null;simViews={...(viewsPre?.[String(BODY.fit.age)]||await engine.getViews())}} // its own container: every module keeps this object, refitThorax swaps its contents
  try{const byName={};for(const m of meshes)if(m.kind==='heart')byName[m.sourceName]={sourceName:m.sourceName,positions:m.positions,indices:m.indices};mainValves=buildValves(byName,engine.landmarks);beam?.setValves(mainValves);if(active){beam.update(active,selected);views.forEach(v=>updateView(v,active.pose))}}catch(e){console.warn('valvas del mapa del haz',e)}
  // window presets start exactly on the reference views computed from the anatomy
  const BASE={plax:'plax',psax:'psaxPM',apical:'a4c',subcostal:'sc4c',ssn:'ssn'};
- for(const [k,v] of Object.entries(BASE)){const t=simViews[v];if(t)Object.assign(PRESETS[k],{x:t.origin[0],z:t.origin[2],target:t.origin.map((o,i)=>o+t.d[i]*.08),up:[...t.u]})}
+ presetsFromViews=()=>{for(const [k,v] of Object.entries(BASE)){const t=simViews[v];if(t){const [x,z]=skinParams(t.origin);Object.assign(PRESETS[k],{x,z,target:t.origin.map((o,i)=>o+t.d[i]*.08),up:[...t.u],depth:t.depth})}}};presetsFromViews();
  if(ready&&!frozen&&state.tilt===0&&state.rock===0&&state.rotation===0)preset(state.preset);
  const common={views:simViews,engine,state:()=>({...state}),apply:applyState,status:text=>status(text)};
  const ySign=w=>scanYSign(PRESET_OF_WINDOW[w]||'plax',pediatricDisplay);

@@ -13,7 +13,7 @@
 //   pulmonary resistance values, discharge coefficient, interatrial driving pressure, how much a chamber enlarges for a
 //   given extra flow. The categories shown («sin sobrecarga», «moderada», «importante», «restrictivo»…) are bands of
 //   this model, not clinical thresholds.
-import {bsaHaycock,bodyScale} from './patient.mjs';
+import {bsaHaycock,bodyScale,ageYears} from './patient.mjs';
 import {pvrIndexAt,ductOpenFraction} from './transition.mjs';
 
 export const MODEL_VERSION=3;
@@ -34,7 +34,6 @@ const ASD_DRIVE=[[3.5,4],[10,.6],[26,-1.2]];
 const asdDriveAt=i=>{const t=ASD_DRIVE;if(i<=t[0][0])return t[0][1];for(let n=1;n<t.length;n++)if(i<=t[n][0])return t[n-1][1]+(t[n][1]-t[n-1][1])*(i-t[n-1][0])/(t[n][0]-t[n-1][0]);return t.at(-1)[1]};
 const recruitAt=i=>Math.max(0,Math.min(1,(10-i)/6.5));
 const lerpTable=(t,x)=>{if(x<=t[0][0])return t[0][1];for(let i=1;i<t.length;i++)if(x<=t[i][0]){const [a,b]=[t[i-1],t[i]];return a[1]+(b[1]-a[1])*(x-a[0])/(b[0]-a[0])}return t.at(-1)[1]};
-const ageYears=p=>{const a=String(p.age||'');const n=parseFloat(a);if(/día/.test(a))return n/365;if(/mes/.test(a))return n/12;if(/adulto/.test(a))return 30;return n||6};
 // flow through an orifice (L/min) for a pressure difference (mmHg), signed
 function orifice(areaM2,dP,duty=1){const v=Math.sqrt(2*Math.abs(dP)*ASSUME.mmHg/ASSUME.rho);return Math.sign(dP)*ASSUME.cd*areaM2*v*duty*60000}
 // solve Q = g(Q) for a decreasing g by bisection on [lo,hi]

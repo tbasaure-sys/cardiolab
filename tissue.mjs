@@ -1,5 +1,6 @@
 // Acoustic tissue model: label volumes built by build_tissue_volume.py plus procedural layers.
 // Works in the browser, in workers and in Node (tests).
+import {atlasSurface} from './geometry.mjs';
 
 export const LABEL={AIR:0,SOFT:1,LUNG:2,BONE:3,LIVER:4,FAT:5,CARTILAGE:6,LV_MYO:10,RV_MYO:11,LA_WALL:12,RA_WALL:13,PAPILLARY:14,
  LV_BLOOD:20,RV_BLOOD:21,LA_BLOOD:22,RA_BLOOD:23,AO_BLOOD:24,PA_BLOOD:25,CAVA_BLOOD:26,PV_BLOOD:27,CORONARY:28,CS_BLOOD:29,
@@ -75,6 +76,22 @@ function thinFossa(t){
   if(Math.abs(s-s0)<=FOSSA_HALF){d[idx]=L.FOSSA;membrane++}else{d[idx]=s<s0?L.LA_BLOOD:L.RA_BLOOD;opened++}}
  return {centre:c,normal:u.map(v=>+v.toFixed(4)),radiusM:FOSSA_R,membraneM:2*FOSSA_HALF,membraneVoxels:membrane,openedVoxels:opened};
 }
+// The procedural liver of the atlas has a flat top: it leaves a wedge of unlabelled soft tissue under the heart and behind
+// the epigastric wall. In patients the dome of the liver lies against the diaphragm there — it is the acoustic window of
+// every subcostal view. At load that wedge becomes liver: soft tissue lower than the heart's inferior surface (+12 mm),
+// deeper than the abdominal wall (12 mm under the anterior skin), not further left than the left lobe reaches, in front of
+// the spine. A teaching correction of the atlas (declared), part of the reference anatomy (Tissue.reset keeps it).
+const DOME={above:.012,wall:.012,left:.035,back:.06,low:-.135};
+function fillLiverDome(t){
+ const L=LABEL,fd=t.fine.data,[nx,ny,nz]=t.fine.dims,h=t.fh,o=t.fo;let zBottom=Infinity;
+ for(let k=0;k<nz&&zBottom===Infinity;k++)for(let j=0;j<ny&&zBottom===Infinity;j+=2)for(let i=0;i<nx;i+=2){const l=fd[((k*ny+j)*nx+i)*2];if(l>=10&&l<=23){zBottom=o[2]+k*h;break}}
+ if(zBottom===Infinity)return null;const zTop=zBottom+DOME.above;let fine=0,coarse=0;
+ const inWedge=(x,y,z)=>z<zTop&&z>DOME.low&&x<DOME.left&&y<DOME.back&&y-atlasSurface(x,z)[1]>DOME.wall;
+ for(let k=0;k<nz;k++){const z=o[2]+k*h;if(z>=zTop)break;for(let j=0;j<ny;j++){const y=o[1]+j*h;for(let i=0;i<nx;i++){const idx=((k*ny+j)*nx+i)*2;if(fd[idx]===L.SOFT&&inWedge(o[0]+i*h,y,z)){fd[idx]=L.LIVER;fine++}}}}
+ const cd=t.coarse.data,[cx,cy,cz]=t.coarse.dims,ch=t.coarse.spacing,co=t.co;
+ for(let k=0;k<cz;k++){const z=co[2]+k*ch;if(z>=zTop)break;for(let j=0;j<cy;j++){const y=co[1]+j*ch;for(let i=0;i<cx;i++){const idx=(k*cy+j)*cx+i;if(cd[idx]===L.SOFT&&inWedge(co[0]+i*ch,y,z)){cd[idx]=L.LIVER;coarse++}}}}
+ return {heartBottomZ:+zBottom.toFixed(4),topZ:+zTop.toFixed(4),fineVoxels:fine,coarseVoxels:coarse,rule:DOME};
+}
 // Landmarks derived from the label volume at load (the atlas file lists only the hand-placed ones): chamber centres,
 // superior vena cava, pulmonary veins, coronary sinus, branch pulmonary arteries and their bifurcation, ascending and
 // descending aorta at the level of the heart. Used to build the extra standard views (views.mjs). One pass over the volume.
@@ -94,10 +111,11 @@ export function deriveLandmarks(t){
 }
 export class Tissue{
  constructor(meta,fine,coarse){
-  this.meta=meta;this.fine=fine;this.coarse=coarse;this.landmarks=meta.landmarks;this.edits=[];this.effusionMM=0;
+  this.meta=meta;this.fine=fine;this.coarse=coarse;this.landmarks=meta.landmarks;this.edits=[];this.effusionMM=0;this._lesion=null;this._fit=null;this._warp=null;
   const [nx,ny,nz]=fine.dims;this.fnx=nx;this.fny=ny;this.fnz=nz;this.fo=fine.origin;this.fh=fine.spacing;this.fi=1/fine.spacing;
   const [cx,cy,cz]=coarse.dims;this.cnx=cx;this.cny=cy;this.cnz=cz;this.co=coarse.origin;this.ci=1/coarse.spacing;
   if(this.landmarks?.asdSecundum&&!meta.fossaThinned)this.fossa=thinFossa(this);
+  if(!meta.liverDomeFilled)this.liverDome=fillLiverDome(this);
   if(this.landmarks?.pulmonaryValve&&!this.landmarks.svc)Object.assign(this.landmarks,deriveLandmarks(this));
  }
  // nearest-voxel lookup → label (and distance outside the heart envelope, metres; Infinity when unknown)
@@ -111,6 +129,17 @@ export class Tissue{
   return this.coarse.data[(cz*this.cny+cy)*this.cnx+cx];
  }
  get lastDistance(){return this._dist}
+ // Warps between the world the probe sees and this reference volume: the patient's thorax fit (thorax-fit.mjs, identity
+ // inside the heart) and the chamber remodelling of a lesion (remodel.mjs). `remodel` is what every consumer applies:
+ // world → inverse → reference; reference → forward → world. Setting it sets the lesion's part only.
+ get remodel(){return this._warp}
+ set remodel(r){this._lesion=r||null;this._compose()}
+ get fit(){return this._fit}
+ setFit(f){this._fit=f||null;this._compose()}
+ _compose(){const a=this._lesion,b=this._fit;
+  this._warp=!a?b:!b?a:{gains:a.gains,forward:(p,out=[0,0,0])=>b.forward(a.forward(p,out),out),inverse:(p,out=[0,0,0])=>a.inverse(b.inverse(p,out),out)}}
+ // label at a point of the fitted body without any lesion (windows, obstruction): the thorax as the probe finds it
+ bodyAt(x,y,z){if(!this._fit)return this.tissueAt(x,y,z);const q=this._fit.inverse([x,y,z]);return this.tissueAt(q[0],q[1],q[2])}
  // Label at a world point after runtime layers (pericardium, effusion). Skin layers depend on the ray and are added by the renderer.
  tissueAt(x,y,z){
   const lab=this.lookup(x,y,z),d=this._dist;
