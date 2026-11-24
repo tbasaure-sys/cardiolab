@@ -11,6 +11,7 @@ import {setHeartRate} from './cycle.mjs';
 import {createPhantom,wireOverlay} from './phantom.mjs';
 import {lvVolumeCurve} from './physio.mjs';
 import {projectChest} from './cxr.mjs';
+import {renderMMode} from './mmode.mjs';
 const phantom=createPhantom();
 
 let normalP=null,tissue=null,flow=null,valves=[],motion=null,engine=createBMode(),variant={id:'normal'},initDone=null;
@@ -45,6 +46,7 @@ self.onmessage=async e=>{
    return;
   }
   if(m.type==='spectrum'){const spec={...m.spec};setHeartRate(spec.hr||null);if(spec.optimize){spec.theta=optimizeAim(tissue,flow,motion,spec,spec.optimize);delete spec.optimize}const sp=renderSpectrum(tissue,flow,motion,spec);self.postMessage({type:'spectrum',id:m.id,spectrum:sp},[sp.data.buffer]);return}
+  if(m.type==='mmode'){setHeartRate(m.spec.hr||null);const mm=renderMMode(engine,tissue,valves,motion,m.spec);self.postMessage({type:'mmode',id:m.id,mmode:mm},[mm.data.buffer]);return} // one scan line through the beat (mmode.mjs)
   if(m.type==='cxr'){ // AP chest projection with the chambers' enlargement, and the same chest without it (reference silhouette)
    const variantP=projectChest(tissue,{remodel:tissue.remodel||null});normalP=tissue.remodel?(normalP||projectChest(tissue,{remodel:null})):variantP;
    self.postMessage({type:'cxr',id:m.id,variant:variantP,normal:{metrics:normalP.metrics}});return}

@@ -16,6 +16,7 @@ import {mountPlaneMap,WINDOW_COLORS} from './plane-map.mjs';
 import {mountCoach} from './coach.mjs';
 import {mountCHD} from './chd-panel.mjs';
 import {mountExam} from './exam.mjs';
+import {shorteningFraction} from './mmode.mjs';
 import {mountDrills} from './drills.mjs';
 import {mountPhoneProbe} from './phone-probe.mjs';
 import {VARIANT_BY_ID} from './chd-data.mjs';
@@ -141,7 +142,7 @@ function bindProbeDrag(view){
 }
 
 function syncEngine(){engine.set({gain:state.gain,freq:display.freq,tgc:[...display.tgc],focus:display.focus,dynamicRange:display.dr,harmonic:display.thi})}
-function requestSim(quick=false){if(!simEcho()||!ready)return;syncEngine();simQuick=quick;engine.show(poseFromState(state),phase,{quick})}
+function requestSim(quick=false){if(!simEcho()||!ready)return;syncEngine();if(dop.mode==='m')requestSpectrum();simQuick=quick;engine.show(poseFromState(state),phase,{quick})}
 function requestSlice(){
   if(!ready)return;requestSpectrum();lastPoseChange=performance.now();requestSim(dragging||sweeping||(performance.now()-lastInputAt<180));revision++;latestRequestedAt=performance.now();pending={type:'slice',id:revision,state:{...state},pose:poseFromState(state),requestedAt:latestRequestedAt};status('Muestreando el plano…');dispatch();
 }
@@ -201,7 +202,7 @@ function renderScan(){
 new ResizeObserver(()=>renderScan()).observe($('scan-view'));
 scan.addEventListener('click',e=>{
   if(!active||realEcho())return;
-  if(simEcho()&&dop.mode&&dop.geom){const rr=scan.getBoundingClientRect(),py=e.clientY-rr.top;if(py>dop.geom.hImg){const g=dop.geom,sp=dop.spec;if(sp&&py>=g.y0&&py<=g.y0+g.H){dop.caliper=sp.top-(py-g.y0)/g.H*(sp.top-sp.bottom);renderScan()}return}}const r=scan.getBoundingClientRect(),[x,y]=screenToPlane(projection,e.clientX-r.left,e.clientY-r.top);if(!inSector(x,y,active.pose))return;
+  if(simEcho()&&dop.mode&&dop.geom){const rr=scan.getBoundingClientRect(),py=e.clientY-rr.top;if(py>dop.geom.hImg){const g=dop.geom,sp=dop.spec,px=e.clientX-rr.left;if(sp&&py>=g.y0&&py<=g.y0+g.H){if(sp.mode==='m'){if(px>=g.x0&&px<=g.x0+g.W)addMCaliper(dop.beat-sweepBeats()*(1-(px-g.x0)/g.W),(py-g.y0)/g.H*sp.depth)}else{dop.caliper=sp.top-(py-g.y0)/g.H*(sp.top-sp.bottom);renderScan()}}return}}const r=scan.getBoundingClientRect(),[x,y]=screenToPlane(projection,e.clientX-r.left,e.clientY-r.top);if(!inSector(x,y,active.pose))return;
   if(askingPixel&&simEcho()){askPixel(x,y);return}
   if(display.measuring){addCaliper(x,y);return}
   if(simEcho()&&dop.mode){aimDoppler(x,y);return}
@@ -270,7 +271,7 @@ function drawRuler(p,cy,scale,ySign,w){const dPhys=physical(p.depth),x=w-12;ctx.
  const fy=cy+ySign*display.focus*p.depth*scale;ctx.fillStyle='#ffd166';ctx.beginPath();ctx.moveTo(x+6,fy-5);ctx.lineTo(x+1,fy);ctx.lineTo(x+6,fy+5);ctx.closePath();ctx.fill();ctx.restore()}
 function drawSim(){
  const w=scanWidth,h=scanHeight,ratio=Math.min(devicePixelRatio,1.7);if(!w||!h)return;const p=poseFromState(state),ySign=scanYSign(state.preset,pediatricDisplay);
- const hImg=dop.mode?Math.round(h*.55):h; // spectral Doppler shares the screen with the 2D image (top)
+ const hImg=dop.mode==='m'?Math.round(h*.45):dop.mode?Math.round(h*.55):h; // spectral Doppler shares the screen with the 2D image (top)
  projection=simProjection(w,hImg,p,ySign);const {cx,cy,scale}=projection;
  ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#05080b';ctx.fillRect(0,0,scan.width,scan.height);
  // the screen only shows the frames the machine acquired: at a low frame rate motion gets choppy
@@ -308,33 +309,60 @@ function drawTutorOverlay(w,h,sector){
  if(blockedWindows?.includes(state.preset)){ctx.save();ctx.fillStyle='#05080b';ctx.fill(sector);ctx.fillStyle='#e0a24a';ctx.font='13px Segoe UI, sans-serif';ctx.textAlign='center';ctx.fillText('Ventana no disponible en este caso',w/2,h*.42);ctx.fillStyle='#94a5b2';ctx.font='11px Segoe UI, sans-serif';ctx.fillText('(gas, pulmón o apósito: busca una ventana alternativa)',w/2,h*.42+17);ctx.restore()}
 }
 // ---------------------------------------------------------------- spectral Doppler (PW / CW)
-const dop={mode:null,theta:0,depth:.55,baseline:.5,scale:null,spec:null,key:'',pending:false,caliper:null,beat:0};
+const dop={mode:null,theta:0,depth:.55,baseline:.5,scale:null,spec:null,key:'',pending:false,caliper:null,beat:0,sweep:100,mcal:[],mkind:'',mm:{}};
+// strip width in beats for the sweep speed (mm/s over a nominal 150 mm strip), at the patient's heart rate
+const sweepBeats=()=>150/dop.sweep*heartRate/60;
 let specCanvas=null;
-function dopSpec(){const p=poseFromState(state);return {pose:p,theta:dop.theta,gateDepth:dop.depth*p.depth,gateLen:.003,mode:dop.mode,freq:display.freq,scale:dop.mode==='cw'?(dop.scale||4):dop.scale,baseline:dop.baseline,gain:1,bodyScale:BODY.k}}
+function dopSpec(){const p=poseFromState(state);if(dop.mode==='m')return {pose:p,theta:dop.theta,cols:320,mode:'m',freq:display.freq,bodyScale:BODY.k,image:[state.gain,display.tgc,display.dr,display.focus,display.thi]};return {pose:p,theta:dop.theta,gateDepth:dop.depth*p.depth,gateLen:.003,mode:dop.mode,freq:display.freq,scale:dop.mode==='cw'?(dop.scale||4):dop.scale,baseline:dop.baseline,gain:1,bodyScale:BODY.k}}
 let dopTimer=0;
-const specKey=spec=>JSON.stringify([spec.pose.origin,spec.pose.u,spec.pose.d,spec.theta,spec.gateDepth,spec.mode,spec.freq,spec.scale,spec.baseline,spec.bodyScale,chdVariantKey]);
+const specKey=spec=>JSON.stringify([spec.pose.origin,spec.pose.u,spec.pose.d,spec.pose.depth,spec.theta,spec.gateDepth,spec.mode,spec.freq,spec.scale,spec.baseline,spec.bodyScale,spec.image,heartRate,chdVariantKey]);
 function requestSpectrum(){if(!dop.mode||!ready)return;clearTimeout(dopTimer);dopTimer=setTimeout(async()=>{const spec=dopSpec(),key=specKey(spec);if(key===dop.key)return;dop.key=key;
  if(dop.optimize){dop.optimize=false;spec.optimize={range:10,step:1}}
+ if(spec.mode==='m'){syncEngine();const {image,mode,...ms}=spec,mm=await engine.mmode(ms);if(dop.key!==key)return;dop.spec={...mm,mode:'m'};updateDopReadout();return}
  const sp=await engine.spectrum(spec);if(dop.key!==key)return;
  if(spec.optimize)dop.optimized=(dop.optimized||0)+1;
  if(sp.theta!==spec.theta){dop.theta=sp.theta;dop.key=specKey({...spec,theta:sp.theta});renderScan()} // the worker refined the cursor angle
  dop.spec=sp;updateDopReadout()},160)}
 let chdVariantKey='normal';
 function setDopMode(mode){if(!ready)return;if(mode&&(state.mode!=='echo'||echoSource!=='sim')){state.mode='echo';echoSource='sim';$('echo-source').value='sim';for(const m of ['anatomy','echo'])$(`mode-${m}`).classList.toggle('active',m==='echo');$('echo-tools').hidden=false;$('sim-tools').hidden=false;syncControls()}
- dop.mode=dop.mode===mode?null:mode;dop.spec=null;dop.key='';dop.caliper=null;dop.scale=null;$('dop-tools').hidden=!dop.mode;$('dop-scale').innerHTML=dop.mode==='cw'?[2,3,4,5,6].map(v=>`<option value="${v}"${v===4?' selected':''}>Escala ${v} m/s</option>`).join(''):'<option value="">Escala: Nyquist</option><option value="0.5">±0,5 m/s</option><option value="1">±1,0 m/s</option><option value="1.5">±1,5 m/s</option>';
- requestSpectrum();renderScan();instrument?.update();status(dop.mode?`Doppler ${dop.mode.toUpperCase()} · pulsa la imagen para colocar ${dop.mode==='pw'?'el volumen de muestra':'la línea'}`:'Doppler espectral apagado')}
-function aimDoppler(x,y){dop.theta=Math.max(-45,Math.min(45,Math.atan2(x,y)*180/Math.PI));dop.depth=Math.max(.05,Math.min(.97,Math.hypot(x,y)/poseFromState(state).depth));dop.caliper=null;requestSpectrum();renderScan()}
-function updateDopReadout(){const sp=dop.spec;if(!sp)return;
+ dop.mode=dop.mode===mode?null:mode;dop.spec=null;dop.key='';dop.caliper=null;dop.scale=null;dop.mcal=[];$('dop-tools').hidden=!dop.mode;$('dop-scale').hidden=$('dop-baseline').hidden=dop.mode==='m';$('m-kind').hidden=dop.mode!=='m';$('dop-scale').innerHTML=dop.mode==='cw'?[2,3,4,5,6].map(v=>`<option value="${v}"${v===4?' selected':''}>Escala ${v} m/s</option>`).join(''):'<option value="">Escala: Nyquist</option><option value="0.5">±0,5 m/s</option><option value="1">±1,0 m/s</option><option value="1.5">±1,5 m/s</option>';
+ requestSpectrum();renderScan();instrument?.update();status(dop.mode==='m'?'Modo M · pulsa la imagen para orientar la línea (perpendicular al septo y a la pared posterior); congela y pulsa la tira dos veces para medir':dop.mode?`Doppler ${dop.mode.toUpperCase()} · pulsa la imagen para colocar ${dop.mode==='pw'?'el volumen de muestra':'la línea'}`:mode==='m'?'Modo M apagado':'Doppler espectral apagado')}
+function aimDoppler(x,y){dop.mcal=[];dop.theta=Math.max(-45,Math.min(45,Math.atan2(x,y)*180/Math.PI));dop.depth=Math.max(.05,Math.min(.97,Math.hypot(x,y)/poseFromState(state).depth));dop.caliper=null;requestSpectrum();renderScan()}
+function updateDopReadout(){const sp=dop.spec;if(!sp)return;if(sp.mode==='m'){status(mText()||'Modo M · congela (Espacio) y pulsa la tira dos veces para medir una distancia');return}
  // after 'Medir con Doppler continuo', move the baseline so the jet envelope has the whole screen
  if(dop.autoBase&&Math.abs(sp.vPeak)>.5){dop.autoBase=false;const b=sp.vPeak>0?.15:.85;if(b!==dop.baseline){dop.baseline=b;$('dop-baseline').value=String(b);requestSpectrum();return}}
  status(`${sp.mode==='pw'?'PW':'CW'} · Vmáx ${Math.abs(sp.vPeak).toFixed(2)} m/s (${sp.vPeak>=0?'hacia':'alejándose de'} la sonda) · ΔP ${(4*sp.vPeak*sp.vPeak).toFixed(0)} mmHg`)}
 function drawDopplerCursor(p,cx,cy,scale,ySign){if(!dop.mode)return;const t=rad(dop.theta),R=p.depth*scale,ex=cx+Math.sin(t)*R,ey=cy+ySign*Math.cos(t)*R;ctx.save();ctx.strokeStyle='rgba(240,240,240,.8)';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(ex,ey);ctx.stroke();ctx.setLineDash([]);
  if(dop.mode==='pw'){const r=dop.depth*p.depth*scale,g=.0015/BODY.k*scale+2,px=cx+Math.sin(t)*r,py=cy+ySign*Math.cos(t)*r,nx=Math.cos(t),ny=-ySign*Math.sin(t);ctx.lineWidth=2;for(const s of [-1,1]){const qx=px+Math.sin(t)*g*s,qy=py+ySign*Math.cos(t)*g*s;ctx.beginPath();ctx.moveTo(qx-nx*6,qy-ny*6);ctx.lineTo(qx+nx*6,qy+ny*6);ctx.stroke()}}
  ctx.restore()}
+// M-mode measurements: two points on the strip → distance (mm, physical) and time (ms at the patient's heart rate);
+// named as the diastolic and systolic minor axis they give the shortening fraction (mmode.mjs)
+function mMeasure(){if(dop.mcal.length<2||!dop.spec)return null;const [p,q]=dop.mcal;return {mm:Math.abs(q.d-p.d)*1000*BODY.k,ms:Math.abs(q.b-p.b)*60000/heartRate}}
+function mText(){const m=mMeasure(),f1=v=>v.toFixed(1).replace('.',','),dd=dop.mm.LVIDd,ds=dop.mm.LVIDs,fs=shorteningFraction(dd,ds);
+ return [m?`Modo M · ${f1(m.mm)} mm · ${Math.round(m.ms)} ms`:'',dd!=null?`DdVI ${f1(dd)} mm`:'',ds!=null?`DsVI ${f1(ds)} mm`:'',fs!=null?`FA ${Math.round(fs*100)} %`:''].filter(Boolean).join(' · ')}
+function addMCaliper(b,d){if(dop.mcal.length===2)dop.mcal=[];dop.mcal.push({b,d});const m=mMeasure();if(m&&dop.mkind)dop.mm[dop.mkind]=m.mm;updateDopReadout();renderScan()}
+function drawMMode(w,h,hImg){
+ const x0=44,y0=hImg+4,W=w-x0-12,H=h-hImg-44,sp=dop.spec,wb=sweepBeats(),beatNow=dop.beat;ctx.save();ctx.fillStyle='#000';ctx.fillRect(0,hImg,w,h-hImg);ctx.strokeStyle='#22313a';ctx.strokeRect(x0,y0,W,H);dop.geom={x0,y0,W,H,hImg};
+ if(sp&&sp.mode==='m'){const IW=Math.max(1,Math.round(W)),IH=Math.max(1,Math.round(H));if(!specCanvas||specCanvas.width!==IW||specCanvas.height!==IH){specCanvas=document.createElement('canvas');specCanvas.width=IW;specCanvas.height=IH}
+  const sc=specCanvas.getContext('2d'),img=sc.createImageData(IW,IH),a=img.data;
+  for(let x=0;x<IW;x++){const b=beatNow-wb*(1-x/IW),c=Math.floor((((b%1)+1)%1)*sp.cols)*sp.samples;for(let yy=0;yy<IH;yy++){const v=sp.data[c+Math.min(sp.samples-1,Math.floor(yy/IH*sp.samples))],i=(yy*IW+x)*4;a[i]=v*.96;a[i+1]=v;a[i+2]=v*1.04;a[i+3]=255}}
+  sc.putImageData(img,0,0);ctx.drawImage(specCanvas,x0,y0,W,H);
+  // depth axis (physical cm), same scale as the 2D image above
+  const cm=sp.depth*BODY.k*100,step=cm>12?2:1;ctx.font='10px Consolas';ctx.fillStyle='#9fb2bd';ctx.textAlign='right';
+  for(let d=0;d<=cm+1e-9;d+=step){const y=y0+d/cm*H;ctx.fillText(String(d),x0-4,y+3);ctx.strokeStyle='#1c2a32';ctx.beginPath();ctx.moveTo(x0,y);ctx.lineTo(x0+4,y);ctx.stroke()}
+  ctx.fillText('cm',x0-4,y0+H+12);ctx.textAlign='left';const label=(t,y,col)=>{ctx.fillStyle='rgba(0,0,0,.72)';ctx.fillRect(x0+3,y-10,ctx.measureText(t).width+8,13);ctx.fillStyle=col;ctx.fillText(t,x0+7,y)};label(`Modo M · ${dop.sweep} mm/s`,y0+12,'#e6edf2');
+  const X=b=>x0+W*(1-(beatNow-b)/wb),Y=d=>y0+d/sp.depth*H;ctx.strokeStyle='#ffe398';ctx.fillStyle='#ffe398';ctx.lineWidth=1.4;
+  const pts=dop.mcal.map(p=>[X(p.b),Y(p.d)]).filter(p=>p[0]>=x0&&p[0]<=x0+W);for(const [x,y] of pts){ctx.beginPath();ctx.moveTo(x-5,y);ctx.lineTo(x+5,y);ctx.moveTo(x,y-5);ctx.lineTo(x,y+5);ctx.stroke()}
+  if(pts.length===2){ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(...pts[0]);ctx.lineTo(...pts[1]);ctx.stroke();ctx.setLineDash([])}
+  const t=mText();if(t)label(t.replace('Modo M · ',''),y0+27,'#ffe398');
+ }else{ctx.fillStyle='#8aa1ae';ctx.font='12px Segoe UI';ctx.textAlign='center';ctx.fillText('Calculando el modo M…',x0+W/2,y0+H/2)}
+ ctx.strokeStyle='#2fe07a';ctx.lineWidth=1.2;ctx.beginPath();for(let x=0;x<=W;x+=2){const b=beatNow-wb*(1-x/W),yy=h-20-ecgValue(((b%1)+1)%1)*20;x?ctx.lineTo(x0+x,yy):ctx.moveTo(x0+x,yy)}ctx.stroke();
+ ctx.restore()}
 function drawSpectrum(w,h,hImg){
+ if(dop.mode==='m'){drawMMode(w,h,hImg);return}
  const x0=44,y0=hImg+4,W=w-x0-12,H=h-hImg-44,sp=dop.spec;ctx.save();ctx.fillStyle='#000';ctx.fillRect(0,hImg,w,h-hImg);
  ctx.strokeStyle='#22313a';ctx.strokeRect(x0,y0,W,H);
- const windowBeats=2.4,beatNow=dop.beat;
+ const windowBeats=sweepBeats(),beatNow=dop.beat;
  dop.geom={x0,y0,W,H,hImg};
  if(sp){const IW=Math.max(1,Math.round(W)),IH=Math.max(1,Math.round(H));if(!specCanvas||specCanvas.width!==IW||specCanvas.height!==IH){specCanvas=document.createElement('canvas');specCanvas.width=IW;specCanvas.height=IH}
   const sc=specCanvas.getContext('2d'),img=sc.createImageData(IW,IH),a=img.data;
@@ -362,6 +390,8 @@ function moveColorBox(x,y){const c=engine.params.color,p=poseFromState(state),sp
 function focusColorOn(point){if(!point)return;setColor({on:true,roi:roiAround(poseFromState(state),point,{half:engine.params.color.roi.half,span:.05})})}
 $('dop-scale').onchange=()=>{const v=$('dop-scale').value;dop.scale=v?Number(v):null;dop.caliper=null;requestSpectrum()};
 $('dop-baseline').onchange=()=>{dop.baseline=Number($('dop-baseline').value);dop.caliper=null;requestSpectrum()};
+$('dop-sweep').onchange=()=>{dop.sweep=Number($('dop-sweep').value);dop.mcal=[];renderScan()};
+$('m-kind').onchange=()=>{dop.mkind=$('m-kind').value;dop.mcal=[];const m=dop.mkind;status(m?`Modo M · mide ${m==='LVIDd'?'el diámetro diastólico (el mayor, al final de la diástole)':'el diámetro sistólico (el menor)'} de borde a borde de la cavidad`:'Modo M · distancia libre');renderScan()};
 // CW line through a lesion at its systolic position (the heart moves under a fixed line). Each lesion is measured
 // from the window that best aligns the beam with its jet, as in practice.
 const CW_PLAN={ebstein:{view:'a4c',why:'apical 4 cámaras: el jet de insuficiencia tricuspídea va alineado con el haz'},vsdpm:{view:'plax',why:'paraesternal largo: el jet de la CIV va hacia la sonda'},vsdm:{view:'plax',why:'paraesternal largo: jet hacia la sonda'},coarct:{view:'ssn',why:'supraesternal: el haz sigue la aorta descendente'},lvh:{view:'a3c',why:'apical 3 cámaras: el tracto de salida alineado con el haz'},pda:{view:'psaxAV',why:'eje corto inclinado hacia la bifurcación pulmonar: el jet ductal vuelve por el tronco hacia la sonda'}};
@@ -487,7 +517,7 @@ function updatePatientUI(){$('patient').value=patient.id;$('patient-info').textC
 $('patient').replaceChildren(...PATIENTS.map(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=`${p.name} · ${String(p.weight).replace('.',',')} kg`;return o}));$('patient').onchange=()=>setPatient($('patient').value);updatePatientUI();
 function drawCalipers(){if(!active||!display.points.length)return;const {cx,cy,scale,ySign}=projection;ctx.save();ctx.strokeStyle='#ffe398';ctx.fillStyle='#ffe398';ctx.lineWidth=1.5;const points=display.points.map(p=>[cx+p[0]*scale,cy+p[1]*scale*ySign]);for(const [x,y] of points){ctx.beginPath();ctx.moveTo(x-5,y-5);ctx.lineTo(x+5,y+5);ctx.moveTo(x-5,y+5);ctx.lineTo(x+5,y-5);ctx.stroke()}if(points.length===2){ctx.beginPath();ctx.moveTo(...points[0]);ctx.lineTo(...points[1]);ctx.stroke();ctx.font='11px Consolas';ctx.textAlign='left';ctx.fillText(`${caliperText()}`,12,34)}ctx.restore()}
 function moveCursor(dx,dy){if(realEcho()||!active||active.id!==revision)return;const q=crosshair?toPlane(active.pose,crosshair):[0,active.pose.depth*.55,0];const [x,y]=boundedCursor(q[0]+dx/projection.scale,q[1]+dy/(projection.scale*projection.ySign),active.pose);crosshair=toWorld(active.pose,x,y);views.forEach(v=>updateView(v,active.pose));renderScan()}
-function explainConsole(mode){const texts={M:'Modo M registra la posición a lo largo de una línea frente al tiempo. Todavía no está implementado en el simulador; úsalo como concepto.',controls:'Arrastra las perillas hacia arriba o abajo; también aceptan rueda, flechas y un valor numérico. TGC modifica la intensidad por profundidad en el corte sintético y por bandas de imagen en el vídeo. Sobre un clip exportado los ajustes son digitales; no recuperan señal cruda, tejido fuera del encuadre ni información perdida. La orientación del vídeo se conserva. Zoom y contraste son ajustes de presentación. La esfera mueve un cursor sobre el plano 2D y su punto en 3D. Cáliper permite fijar dos puntos del corte: mide distancia geométrica del atlas, no una medida clínica calibrada. Congelar detiene la sonda y pausa el clip si está en Eco; se mantienen disponibles los ajustes de presentación. Restablecer imagen recupera valores docentes, no aplica optimización clínica.'};openInfo(mode==='controls'?'Consola: controles y perillas':`${mode} · concepto`, `<p>${texts[mode]}</p><p>Consola docente: no reproduce el software ni la calibración de un equipo comercial.</p>`)}
+function explainConsole(mode){const texts={M:'Modo M registra la posición a lo largo de una línea frente al tiempo. Actívalo con la tecla M de la consola: la tira se calcula con el mismo motor que la imagen.',controls:'Arrastra las perillas hacia arriba o abajo; también aceptan rueda, flechas y un valor numérico. TGC modifica la intensidad por profundidad en el corte sintético y por bandas de imagen en el vídeo. Sobre un clip exportado los ajustes son digitales; no recuperan señal cruda, tejido fuera del encuadre ni información perdida. La orientación del vídeo se conserva. Zoom y contraste son ajustes de presentación. La esfera mueve un cursor sobre el plano 2D y su punto en 3D. Cáliper permite fijar dos puntos del corte: mide distancia geométrica del atlas, no una medida clínica calibrada. Congelar detiene la sonda y pausa el clip si está en Eco; se mantienen disponibles los ajustes de presentación. Restablecer imagen recupera valores docentes, no aplica optimización clínica.'};openInfo(mode==='controls'?'Consola: controles y perillas':`${mode} · concepto`, `<p>${texts[mode]}</p><p>Consola docente: no reproduce el software ni la calibración de un equipo comercial.</p>`)}
 // cockpit layout and keyboard: probe nudges go through the same state as the sliders
 const LIMITS={x:[-.11,.11],z:[-.155,.2],tilt:[-60,60],rock:[-50,50],depth:[.03,.24],gain:[.3,2.5],freq:[2,12],focus:[.1,.95]};
 function nudgeProbe(key,delta){if(!ready||frozen)return;stopSweep();let v=state[key]+delta;if(key==='rotation')v=((v+540)%360)-180;else v=clamp(v,...LIMITS[key]);noteManeuver(key,state[key],v);state[key]=v;syncControls();requestSlice()}
