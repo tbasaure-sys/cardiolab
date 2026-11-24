@@ -40,7 +40,7 @@ test('the shunt model behaves as the cited relationships say',()=>{
  const asd=shuntState({lesion:'asd2',size:1,patient:child});assert.ok(asd.gains.RV>.1&&!asd.gains.LV&&asd.pressures.rvRatio<.45);
  // PDA: the LV output carries systemic flow + shunt (van Laere 2018); the proximal main PA carries the systemic flow
  const pda=shuntState({lesion:'pda',size:1,patient:child});assert.ok(Math.abs(pda.flowScale.AO-pda.flows.qpqs)<1e-9&&pda.flowScale.PA===1);
- const vsd=large;assert.equal(vsd.flowScale.AO,1);assert.ok(Math.abs(vsd.flowScale.PA-Math.sqrt(vsd.flows.qpqs))<1e-9);
+ const vsd=large;assert.equal(vsd.flowScale.AO,1);assert.ok(Math.abs(vsd.flowScale.PA-vsd.flows.qpqs)<1e-9&&Math.abs(vsd.flowScale.RVout-vsd.flows.qpqs)<1e-9,'the pulmonary valve carries Qp (flow, not velocity: flow.outflowScale divides by the annulus)');
  assert.deepEqual(variantSpec(shuntState({lesion:'asd2',size:0,patient:child})),{id:'normal'});
 });
 

@@ -16,7 +16,7 @@
 import {bsaHaycock,bodyScale,ageYears} from './patient.mjs';
 import {pvrIndexAt,ductOpenFraction} from './transition.mjs';
 
-export const MODEL_VERSION=3;
+export const MODEL_VERSION=4;
 export const LESIONS={
  asd2:{name:'CIA ostium secundum',level:'auricular',maxAtlasMM:26,overload:['RA','RV']},
  vsdpm:{name:'CIV perimembranosa',level:'ventricular',maxAtlasMM:22,overload:['LA','LV']},
@@ -73,14 +73,17 @@ export function shuntState({lesion,size=0,pvr='normal',patient,hours=null,closin
  const Qp=Qs+Qsh,qpqs=Qp/Qs,P=pa(Qp),rvSys=lesion==='asd2'||lesion==='pda'||area===0?Math.max(P.sys,15):Math.max(P.sys,15);
  // chamber enlargement from the extra volume each overloaded chamber handles (model assumption: EDV × (1+0.6·(Qp/Qs−1)))
  const extra=Math.max(0,qpqs-1),gains={};for(const c of L.overload){const kappa=c.startsWith('L')?(c==='LA'?.55:.6):(c==='RA'?.5:.6);gains[c]=Math.cbrt(Math.min(2.2,1+kappa*extra))-1}
- // velocity multipliers per flow compartment and direction (flow / area; areas grow with the chamber). LV/RV: inflow;
- // LVout/RVout: ejection. ASD: right heart and PA carry Qp; VSD: LA, LV filling, RV outflow and PA carry Qp, the aorta Qs;
+ // multipliers per flow compartment and direction. Filling (LA, LV, RA, RV) and veins: velocity = flow / area, the areas
+ // growing with the chamber. Ejection through the semilunar valves (LVout/AO, RVout/PA): the FLOW through that valve
+ // relative to normal; the flow field divides it by how much the remodelling enlarged the annulus (flow.outflowScale), so
+ // that velocity–time integral × annulus area measured on the image gives the model's flows.
+ // ASD: right heart and pulmonary valve carry Qp; VSD: LA, LV filling and the pulmonary valve carry Qp, the aorta Qs;
  // PDA: LA, LV and aorta carry Qp (LV output = systemic flow + shunt, van Laere 2018), the main PA proximal to the duct Qs
- const fs={LA:1,LV:1,LVout:1,RA:1,RV:1,RVout:1,AO:1,PA:1,PV:1},A=c=>(1+(gains[c]||0))**2,pos=Math.max(qpqs,.3),paV=Math.sqrt(pos); // the pulmonary trunk dilates with its flow (model): velocity ∝ √(Qp/Qs)
+ const fs={LA:1,LV:1,LVout:1,RA:1,RV:1,RVout:1,AO:1,PA:1,PV:1},A=c=>(1+(gains[c]||0))**2,pos=Math.max(qpqs,.3);
  if(area>0){
-  if(lesion==='asd2')Object.assign(fs,{RA:pos/A('RA'),RV:pos/A('RV'),RVout:pos/A('RV'),PA:paV,PV:pos});
-  else if(lesion==='pda')Object.assign(fs,{LA:pos/A('LA'),LV:pos/A('LV'),LVout:pos/A('LV'),AO:pos,PV:pos});
-  else Object.assign(fs,{LA:pos/A('LA'),LV:pos/A('LV'),RVout:paV,PA:paV,PV:pos});
+  if(lesion==='asd2')Object.assign(fs,{RA:pos/A('RA'),RV:pos/A('RV'),RVout:pos,PA:pos,PV:pos});
+  else if(lesion==='pda')Object.assign(fs,{LA:pos/A('LA'),LV:pos/A('LV'),LVout:pos,AO:pos,PV:pos});
+  else Object.assign(fs,{LA:pos/A('LA'),LV:pos/A('LV'),RVout:pos,PA:pos,PV:pos});
  }
  // RV pressure load → RV wall thickening (model): when the RV works at more than half the systemic pressure
  const rvRatio=rvSys/sbp,rvWallMM=rvRatio>.5?Math.min(4,(rvRatio-.5)*8)/k:0;

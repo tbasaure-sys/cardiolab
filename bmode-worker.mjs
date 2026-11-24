@@ -6,7 +6,7 @@ import {buildValves,sliceValves,setValveVariant} from './valves.mjs';
 import {placeAtlasPositions,setBodyFit} from './geometry.mjs';
 import {createFit} from './thorax-fit.mjs';
 import {applyVariant,valveVariant} from './chd-data.mjs';
-import {buildFlow,lesionJets} from './flow.mjs';
+import {buildFlow,lesionJets,outflowScale} from './flow.mjs';
 import {renderSpectrum,optimizeAim} from './spectral.mjs';
 import {setHeartRate} from './cycle.mjs';
 import {createPhantom,wireOverlay} from './phantom.mjs';
@@ -32,7 +32,7 @@ self.onmessage=async e=>{
   if(!tissue){if(!initDone)throw Error('Simulador sin inicializar');await initDone}
   // the patient's body by age (thorax-fit.bodyFor): thorax fit — the same in the tissue lookups and in the skin the views are built on — and thymus
   if(m.type==='fit'){const b=m.body||{};setBodyFit(b.fit??null);tissue.setFit(b.fit==null?null:createFit(b.fit));tissue.setThymus(b.thymus||0);normalP=null;self.postMessage({type:'fit',id:m.id});return}
-  if(m.type==='variant'){normalP=null;tissue.reset();variant=m.spec||{id:'normal'};const info=applyVariant(tissue,variant);setValveVariant(valves,tissue,valveVariant(variant));flow.jets=lesionJets(tissue,variant);flow.scale=variant.params?.hemo?.flowScale||null;info.jets=flow.jets.length;self.postMessage({type:'variant',id:m.id,info});return}
+  if(m.type==='variant'){normalP=null;tissue.reset();variant=m.spec||{id:'normal'};const info=applyVariant(tissue,variant);setValveVariant(valves,tissue,valveVariant(variant));flow.jets=lesionJets(tissue,variant);flow.scale=outflowScale(tissue,variant.params?.hemo?.flowScale||null);info.jets=flow.jets.length;self.postMessage({type:'variant',id:m.id,info});return}
   if(m.type==='render'){
    setHeartRate(m.params.hr||null); // beat timing at the patient's heart rate (cycle.mjs)
    const t0=performance.now(),p=m.params,phase=p.phase??0,s=p.beating?ventricularContraction(phase):0;

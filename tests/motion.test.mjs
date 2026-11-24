@@ -5,7 +5,8 @@ import {HeartMotion} from '../tissue.mjs';
 
 // a cylindrical LV along z (cavity radius 20 mm, wall 8 mm) between z = 0 and 80 mm
 const NL=24,NA=36,lvEndo={from:[0,0,0],to:[0,0,.08],e1:[1,0,0],levels:NL,angles:NA,centre:Array(NL*2).fill(0),ri:Array(NL*NA).fill(.02),re:Array(NL*NA).fill(.028)};
-const lm={lvApex:[0,0,-.005],mitralValve:[0,0,.08],tricuspidValve:[.0001,0,.08],lvEndo};
+// the right ventricle lies toward −x (tricuspid valve on that side): the LV free wall, measured along +x, has no RV motion
+const lm={lvApex:[0,0,-.005],mitralValve:[0,0,.08],tricuspidValve:[-.0001,0,.08],lvEndo};
 const radiusNow=(m,r0,s)=>{const p=m.forward([r0,0,.04],s);return Math.hypot(p[0],p[1])};
 
 test('systole: the cavity shortens 25–40% and the wall thickens 25–60%',()=>{

@@ -227,7 +227,32 @@ export class HeartMotion{
   const T=landmarks.lvEndo;this.radial=T?.04:.16;
   if(T){const from=T.from,to=T.to,d=[0,1,2].map(i=>to[i]-from[i]),l=Math.hypot(...d),a=d.map(v=>v/l),e1=T.e1,e2=[a[1]*e1[2]-a[2]*e1[1],a[2]*e1[0]-a[0]*e1[2],a[0]*e1[1]-a[1]*e1[0]];
    this.lv={from,a,e1,e2,L:l,NL:T.levels,NA:T.angles,cen:Float32Array.from(T.centre),ri:Float32Array.from(T.ri),re:Float32Array.from(T.re),endo:.37,fade:.008}}
+  // Right ventricle. Its systole is mostly longitudinal — the lateral tricuspid annulus descends about twice as far as the
+  // mitral one — plus the free wall closing on the septum (bellows). Two teaching parameters, set so that the adult atlas
+  // measures a normal tricuspid annular excursion and fractional area change in the RV-focused four-chamber view
+  // (TAPSE 22.5 ± 3.7 mm, RV FAC 42.9 ± 4.2 %: Sawada 2023): `tapse` adds descent toward the RV side of the atrioventricular
+  // plane, `rvIn` is the fraction by which the septum-to-free-wall distance shortens.
+  {const side=[0,1,2].map(i=>tv[i]-mv[i]),k=side[0]*this.a[0]+side[1]*this.a[1]+side[2]*this.a[2],p=side.map((v,i)=>v-k*this.a[i]),n=Math.hypot(...p)||1;
+   this.rvDir=p.map(v=>v/n);this.tapse=.8;this.rvIn=.22;this.rvR0=.035;
+   if(this.lv){const T=this.lv,c=landmarks.rvCentre||tv,d=[0,1,2].map(i=>c[i]-T.from[i]),u=d[0]*T.e1[0]+d[1]*T.e1[1]+d[2]*T.e1[2],v=d[0]*T.e2[0]+d[1]*T.e2[1]+d[2]*T.e2[2],m=Math.hypot(u,v)||1;T.rvU=u/m;T.rvV=v/m}}
  }
+ // RV free wall closing on the septum: current position → reference, in place on q. In the LV's cylindrical frame the RV
+ // lies beyond the septal surface (the LV epicardial radius) on the RV side; distances from that surface were longer in
+ // diastole by 1/(1 − κ), κ fading to nothing toward the septal insertions, the apex and above the base.
+ _rv(q,s){const T=this.lv,f=T.from,x=q[0]-f[0],y=q[1]-f[1],z=q[2]-f[2],l=x*T.a[0]+y*T.a[1]+z*T.a[2];
+  // full in the body of the ventricle, less toward the annulus (it narrows little), nothing at the apex tip or above the base
+  const t=l<0?0:l<.7*T.L?Math.min(1,l/(.06*T.L)):l<=T.L?1-.65*(l-.7*T.L)/(.3*T.L):Math.max(0,.35*(1-(l-T.L)/.02));if(t<=0)return;
+  const li=Math.max(0,Math.min(T.NL-1,Math.round(l/T.L*T.NL-.5))),cx=T.cen[li*2],cy=T.cen[li*2+1];
+  const u=x*T.e1[0]+y*T.e1[1]+z*T.e1[2]-cx,v=x*T.e2[0]+y*T.e2[1]+z*T.e2[2]-cy,r=Math.hypot(u,v);if(r<1e-6)return;
+  const cs=(u*T.rvU+v*T.rvV)/r;if(cs<=0)return;
+  let k=Math.atan2(v,u)/(2*Math.PI)*T.NA;if(k<0)k+=T.NA;const k0=Math.floor(k)%T.NA,k1=(k0+1)%T.NA,w=k-Math.floor(k),e0=T.re[li*T.NA+k0],e1=T.re[li*T.NA+k1];if(!e0||!e1)return;
+  const re=e0*(1-w)+e1*w;if(r<=re)return;
+  // not the anterior wall: it lies against the sternum and stays there (y is posterior in the atlas); the free wall that
+  // faces the lung closes in. Beyond the free wall (W from the septum) the displacement fades out over 40 mm.
+  const ant=-(u*T.e1[1]+v*T.e2[1])/r,ax=Math.max(0,Math.min(1,(ant-.55)/.35)),wa=1-ax*ax*(3-2*ax);
+  const kap=this.rvIn*s*t*Math.min(1,cs*3)*wa;if(kap<=0)return;
+  const W=.05,rho=r-re,rc=W*(1-kap),m=(re+(rho<=rc?rho/(1-kap):rho+W*kap*Math.max(0,1-(rho-rc)/.04)))/r;
+  q[0]=f[0]+l*T.a[0]+(cx+u*m)*T.e1[0]+(cy+v*m)*T.e2[0];q[1]=f[1]+l*T.a[1]+(cx+u*m)*T.e1[1]+(cy+v*m)*T.e2[1];q[2]=f[2]+l*T.a[2]+(cx+u*m)*T.e1[2]+(cy+v*m)*T.e2[2]}
  // LV wall thickening: current position (after the global motion is undone) → reference, in place on q
  _wall(q,s){const T=this.lv,f=T.from,x=q[0]-f[0],y=q[1]-f[1],z=q[2]-f[2],l=x*T.a[0]+y*T.a[1]+z*T.a[2];if(l<0||l>T.L)return;
   const lf=l/T.L*T.NL-.5,li=Math.max(0,Math.min(T.NL-1,Math.round(lf))),cx=T.cen[li*2],cy=T.cen[li*2+1];
@@ -244,13 +269,18 @@ export class HeartMotion{
  inverse(p,s,out,falloff=1){
   const q=[p[0]-this.A[0],p[1]-this.A[1],p[2]-this.A[2]],l=q[0]*this.a[0]+q[1]*this.a[1]+q[2]*this.a[2];
   const r=[q[0]-l*this.a[0],q[1]-l*this.a[1],q[2]-l*this.a[2]];
-  const shift=this.longitudinal*this.L*s*falloff;let l0,rs;
+  // the atrioventricular plane descends further on the RV side (tricuspid annulus)
+  const rr=r[0]*this.rvDir[0]+r[1]*this.rvDir[1]+r[2]*this.rvDir[2],gx=rr<=0?0:Math.min(1,rr/this.rvR0),g=gx*gx*(3-2*gx);
+  const shift=this.longitudinal*this.L*s*falloff*(1+this.tapse*g);let l0,rs;
   const baseCur=this.L-shift;
   if(l<=baseCur){l0=l*this.L/Math.max(1e-6,baseCur);const w=Math.sin(Math.PI*Math.max(0,Math.min(1,l0/this.L))*.5+.3);rs=1/(1-this.radial*s*falloff*w)}
   else{const above=l-baseCur,f=Math.max(0,1-above/this.atrial);l0=l+shift*f;rs=1+.05*s*falloff*f}
   out[0]=this.A[0]+l0*this.a[0]+r[0]*rs;out[1]=this.A[1]+l0*this.a[1]+r[1]*rs;out[2]=this.A[2]+l0*this.a[2]+r[2]*rs;
-  if(this.lv&&s>0)this._wall(out,s*falloff);return out;
+  if(this.lv&&s>0){if(this.rvIn>0)this._rv(out,s*falloff);this._wall(out,s*falloff)}return out;
  }
  // reference → current (for leaflet vertices); small iterations of the inverse
- forward(p0,s,out=[0,0,0]){let c=[...p0],t=[0,0,0];for(let i=0;i<6;i++){this.inverse(c,s,t);c=[c[0]+(p0[0]-t[0]),c[1]+(p0[1]-t[1]),c[2]+(p0[2]-t[2])]}out[0]=c[0];out[1]=c[1];out[2]=c[2];return out}
+ // (damped: where the RV free wall closes in, the inverse stretches distances up to twofold and the plain iteration would not settle)
+ forward(p0,s,out=[0,0,0]){let x=p0[0],y=p0[1],z=p0[2];const t=[0,0,0],c=[0,0,0];
+  for(let i=0;i<14;i++){c[0]=x;c[1]=y;c[2]=z;this.inverse(c,s,t);const dx=p0[0]-t[0],dy=p0[1]-t[1],dz=p0[2]-t[2];x+=.7*dx;y+=.7*dy;z+=.7*dz;if(Math.abs(dx)+Math.abs(dy)+Math.abs(dz)<3e-5)break}
+  out[0]=x;out[1]=y;out[2]=z;return out}
 }

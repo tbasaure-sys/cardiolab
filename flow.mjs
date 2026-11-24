@@ -65,6 +65,15 @@ export function buildFlow(tissue){
  // bend a unit gradient g (used with sign sg) toward direction t, strongly within ~L of the target
  function steer(g,sg,t,L,dist){const lt=Math.hypot(...t)||1,d=dist??lt,w=.85*Math.exp(-d/L);if(w<.02)return;
   const x=g[0]*sg*(1-w)+t[0]/lt*w,y=g[1]*sg*(1-w)+t[1]/lt*w,z=g[2]*sg*(1-w)+t[2]/lt*w,l=Math.hypot(x,y,z)||1;g[0]=x/l*sg;g[1]=y/l*sg;g[2]=z/l*sg}
+ // Continuity between the two outflows: the same stroke volume leaves through both semilunar valves, so the velocity at the
+ // pulmonary valve is the aortic one times (aortic orifice area / pulmonary orifice area), with the areas of the atlas'
+ // own annuli (landmarks.valveHinges). Then velocity–time integral × annulus area, measured on the image, gives equal
+ // flows in the normal heart (Qp/Qs = 1) and the model's ratio with a shunt (see outflowScale).
+ const KP=lm.valveHinges?.aortic&&lm.valveHinges?.pulmonary?orificeArea(lm.valveHinges.aortic)/orificeArea(lm.valveHinges.pulmonary):.81;flow.pulmonaryToAortic=KP;
+ // axis of each semilunar valve: from its centre to the middle of the artery it opens into (the blood of the vessel within
+ // 30 mm — as the leaflets' own axis, valves.mjs, which uses the vessel's mesh); radius: mean hinge radius
+ const throatOf=(c,down,radii,v,key)=>{const b=tissue.centroid(down,c,.03);if(!b)return null;return {c,n:unit(b.map((x,i)=>x-c[i])),R:radii?radii.reduce((p,q)=>p+q,0)/radii.length:.012,v,key}};
+ const throat={aortic:throatOf(lm.aorticValve,[LABEL.AO_BLOOD],lm.valveHinges?.aortic,1.05,'LVout'),pulmonary:throatOf(lm.pulmonaryValve,[LABEL.PA_BLOOD],lm.valveHinges?.pulmonary,1.05*KP,'RVout')};flow.throat=throat;
  // velocity (m/s, world axes) at reference point x,y,z for phase t; returns false when not in blood
  flow.velocity=(x,y,z,t,out)=>{
   out[0]=out[1]=out[2]=0;
@@ -77,11 +86,11 @@ export function buildFlow(tissue){
    const near=(d,L)=>Math.exp(-d*.1/L); // d in 0.1 voxel (1 mm voxels)
    switch(c.id){
     case 'LV':if(hasI)a=(1.05*E+.6*A)*(.15+.85*near(dIn[v],30))*axisFactor(axis.mitral,x,y,z,.011);if(hasO)b=1.05*S*(.25+.75*near(dOut[v],20));break;
-    case 'RV':if(hasI)a=(.65*E+.45*A)*(.15+.85*near(dIn[v],30))*axisFactor(axis.tricuspid,x,y,z,.013);if(hasO)b=.85*S*(.25+.75*near(dOut[v],22));break;
+    case 'RV':if(hasI)a=(.65*E+.45*A)*(.15+.85*near(dIn[v],30))*axisFactor(axis.tricuspid,x,y,z,.013);if(hasO)b=1.05*KP*S*(.25+.75*near(dOut[v],22));break;
     case 'LA':if(hasO)b=(.05+.55*E+.35*A)*(.3+.7*near(dOut[v],18));if(hasI)a=.28*S*(.4+.6*near(dIn[v],15));break; // diastole: toward the mitral valve; systole: venous filling
     case 'RA':if(hasO)b=(.05+.45*E+.3*A)*(.3+.7*near(dOut[v],20));if(hasI)a=.25*S*(.4+.6*near(dIn[v],15));break;
     case 'AO':if(hasI)a=1.1*S*(.55+.45*near(dIn[v],40))-.06*E;break;
-    case 'PA':if(hasI)a=.9*S*(.6+.4*near(dIn[v],35));break;
+    case 'PA':if(hasI)a=1.1*KP*S*(.6+.4*near(dIn[v],35));break;
     case 'CAVA':case 'PV':if(hasO)b=.3+.25*S+.2*E;break;
    }
    // shunt haemodynamics (shunt-model.mjs): more flow through some compartments, in or out
@@ -92,6 +101,13 @@ export function buildFlow(tissue){
    // inflow along +∇dIn, outflow along −∇dOut
    if(a){out[0]+=gi[0]*a;out[1]+=gi[1]*a;out[2]+=gi[2]*a}
    if(b){out[0]-=go[0]*b;out[1]-=go[1]*b;out[2]-=go[2]*b}
+   // semilunar valve throat: through the annulus the blood moves as a plug along the valve's axis at the valve velocity
+   // (aortic 1.05 m/s peak, pulmonary × KP), blended into the chamber field over 7–14 mm on both sides. It is the velocity
+   // a sample volume at the valve reads, so velocity–time integral × annulus area is the flow through the valve.
+   const T=c.id==='LV'||c.id==='AO'?throat.aortic:c.id==='RV'||c.id==='PA'?throat.pulmonary:null;
+   if(T){const q0=x-T.c[0],q1=y-T.c[1],q2=z-T.c[2],al=q0*T.n[0]+q1*T.n[1]+q2*T.n[2],aa=Math.abs(al);
+    if(aa<.014){const r=Math.hypot(q0-al*T.n[0],q1-al*T.n[1],q2-al*T.n[2]),wr=r<=.8*T.R?1:r>=1.15*T.R?0:1-(r-.8*T.R)/(.35*T.R),wa=aa<=.007?1:1-(aa-.007)/.007,w=wr*wa;
+     if(w>0){const m=T.v*S*(fs?.[T.key]??1);out[0]=out[0]*(1-w)+T.n[0]*m*w;out[1]=out[1]*(1-w)+T.n[1]*m*w;out[2]=out[2]*(1-w)+T.n[2]*m*w}}}
   }
   // lesion jets (shunts, stenoses) dominate where present: in a jet's core its velocity replaces the chamber flow
   let jx=0,jy=0,jz=0,core=0;
@@ -111,6 +127,19 @@ export function buildFlow(tissue){
 // ---------------------------------------------------------------- lesion jets
 function centroidNear(tissue,labels,p,r){return tissue.centroid(labels,p,r)}
 const BLOODISH=new Set([LABEL.LV_BLOOD,LABEL.RV_BLOOD,LABEL.LA_BLOOD,LABEL.RA_BLOOD,LABEL.AO_BLOOD,LABEL.PA_BLOOD]);
+// area of a valve orifice from its hinge radii (equally spaced around the centre)
+export function orificeArea(radii){const n=radii.length;let a=0;for(let i=0;i<n;i++)a+=.5*radii[i]*radii[(i+1)%n]*Math.sin(2*Math.PI/n);return a}
+// Velocity multipliers of a shunt study as the flow field applies them. The model gives the FLOW through each semilunar valve
+// relative to normal (hemo.flowScale: RVout/PA and LVout/AO); velocity is flow over orifice area, and the chamber remodelling
+// carries the annuli with it, so each is divided by how much the warp enlarged that annulus (measured on the warp itself).
+export function outflowScale(tissue,flowScale){
+ if(!flowScale)return null;const w=tissue._lesion,lm=tissue.landmarks,out={...flowScale};
+ const grow=(c,axis)=>{if(!w)return 1;const l=Math.hypot(...axis)||1,n=axis.map(v=>v/l),ref=Math.abs(n[0])<.9?[1,0,0]:[0,1,0],e1=unit([n[1]*ref[2]-n[2]*ref[1],n[2]*ref[0]-n[0]*ref[2],n[0]*ref[1]-n[1]*ref[0]]),e2=[n[1]*e1[2]-n[2]*e1[1],n[2]*e1[0]-n[0]*e1[2],n[0]*e1[1]-n[1]*e1[0]],r=.01;
+  const d=e=>{const a=w.forward(c.map((v,i)=>v+e[i]*r)),b=w.forward(c.map((v,i)=>v-e[i]*r));return a.map((v,i)=>(v-b[i])/(2*r))},a=d(e1),b=d(e2);
+  return Math.hypot(a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0])};
+ const gA=grow(lm.aorticValve,lm.aorticValve.map((v,i)=>v-lm.lvApexCavity[i])),gP=grow(lm.pulmonaryValve,(lm.ductPulmonary||lm.archTop).map((v,i)=>v-lm.pulmonaryValve[i]));
+ out.LVout=(flowScale.LVout??1)/gA;out.AO=(flowScale.AO??1)/gA;out.RVout=(flowScale.RVout??1)/gP;out.PA=(flowScale.PA??1)/gP;out.annulus={aortic:gA,pulmonary:gP};return out;
+}
 function jet(c,d,{peak,timing,len=.03,back=.004,w0=.003,spread=.12,decay=.02}){return {c,d:unit(d),peak,timing,len,back,w0,spread,decay,labels:BLOODISH}}
 // restrictive VSD: holosystolic, from isovolumic contraction to isovolumic relaxation, rounded plateau
 const holosystolic=t=>{t=modelPhase(t);if(t<.02||t>.4)return .05;const up=Math.min(1,(t-.02)/.06),down=Math.min(1,(.4-t)/.06);return .05+.95*Math.sin(Math.PI/2*up)*Math.sin(Math.PI/2*down)*(.88+.12*shapes.S(t))};

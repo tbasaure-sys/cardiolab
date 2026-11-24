@@ -29,3 +29,22 @@ export function lvVolumeCurve(tissue,motion,{phases=40,step=.002,margin=.006,k=1
   out.push({t,ml:n*cell})}
  return out;
 }
+
+// Right ventricle in a four-chamber plane, measured as the 2D measurements of the RV-focused view (Sawada 2023, WASE):
+// end-diastolic basal and mid diameters, length, areas at end-diastole and end-systole, fractional area change, and the
+// excursion of the lateral tricuspid annulus toward the apex (TAPSE). Measured on the moving model: every point of the
+// plane goes back through the heart's motion to the reference anatomy, as in the B-mode renderer. Atlas metres (× body
+// scale = physical). `plane`: {origin, n} of the view; lm: landmarks.
+export const RV_SOURCES=['sawada2023'];
+export function rvFocused(tissue,motion,plane,lm,{h=.0005}={}){
+ const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],mix=(a,b,k,c,j)=>[a[0]+b[0]*k+c[0]*j,a[1]+b[1]*k+c[1]*j,a[2]+b[2]*k+c[2]*j],unit=a=>{const l=Math.hypot(...a)||1;return [a[0]/l,a[1]/l,a[2]/l]};
+ const n=plane.n,on=p=>{const k=dot(sub(p,plane.origin),n);return [p[0]-n[0]*k,p[1]-n[1]*k,p[2]-n[2]*k]};
+ const tv=on(lm.tricuspidValve),ap=on(lm.rvApex),ax=unit(sub(ap,tv)),lat=unit([ax[1]*n[2]-ax[2]*n[1],ax[2]*n[0]-ax[0]*n[2],ax[0]*n[1]-ax[1]*n[0]]),q=[0,0,0];
+ const isRV=(p,s)=>{let x=p;if(s){tissue.lookup(p[0],p[1],p[2]);const dd=tissue.lastDistance,fall=dd<=.002?1:dd>=.014?0:1-(dd-.002)/.012;if(fall>0)x=motion.inverse(p,s,q,fall)}const l=tissue.tissueAt(x[0],x[1],x[2]);return l===LABEL.RV_BLOOD||l===LABEL.TRICUSPID};
+ const scan=s=>{let area=0,len=0;const rows=[];for(let a=-.03;a<.13;a+=h){let w=0;for(let b=-.07;b<.07;b+=h)if(isRV(mix(tv,ax,a,lat,b),s))w+=h;if(w>0){area+=w*h;if(a>len)len=a}rows.push([a,w])}
+  const band=(f0,f1)=>Math.max(0,...rows.filter(r=>r[0]>=f0*len&&r[0]<=f1*len).map(r=>r[1]));return {area,length:len,base:band(0,.33),mid:band(.4,.6)}};
+ const ed=scan(0),es=scan(1);
+ // lateral tricuspid annulus: 20 mm (atlas) from the centre of the orifice, away from the mitral valve
+ const side=dot(lat,sub(lm.mitralValve,lm.tricuspidValve))>0?-1:1,ann=mix(tv,lat,.02*side,ax,0),now=motion.forward(ann,1),tapse=dot(sub(now,ann),unit(sub(lm.rvApex,ann)));
+ return {base:ed.base,mid:ed.mid,length:ed.length,areaED:ed.area,areaES:es.area,fac:(ed.area-es.area)/ed.area,tapse};
+}
