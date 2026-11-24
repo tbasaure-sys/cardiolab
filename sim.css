@@ -199,8 +199,10 @@ body.image-only .view.anatomy .viewport::after{content:'Corazón oculto · guía
 .phone-bar[hidden]{display:none}
 @media(max-width:650px){.phone-grid{grid-template-columns:1fr}.phone-qr{max-width:220px}}
 
-/* «Eco grande»: the echo image takes the right side at full height; chest and heart stack on the left */
-@media(min-width:1101px){
+/* «Eco grande»: the echo image takes the right side at full height; chest and heart stack on the left. From 1000 px of
+   width: below 1101 px the page used to fall back to chest | heart with the echo image underneath, where the fixed deck
+   of the cabina covered it (laptops with display scaling or browser zoom land exactly there) */
+@media(min-width:1000px){
 body.echo-big .workspace:not(.with-reference){grid-template-columns:minmax(240px,.6fr) minmax(0,1.7fr);grid-template-rows:minmax(0,1fr) minmax(0,1fr)}
 body.echo-big .workspace:not(.with-reference)>.patient{grid-column:1;grid-row:1}
 body.echo-big .workspace:not(.with-reference)>.anatomy{grid-column:1;grid-row:2;border-left:0;border-top:1px solid var(--line)}
@@ -209,8 +211,36 @@ body.echo-big .workspace:not(.with-reference) .patient .view-foot,body.echo-big 
 body.echo-big .workspace:not(.with-reference) .patient .view-heading,body.echo-big .workspace:not(.with-reference) .anatomy .view-heading{height:auto;min-height:34px;padding:5px 10px;flex-wrap:wrap}
 body.echo-big .workspace:not(.with-reference) .anatomy .heading-checks{gap:6px}
 }
+/* 1000–1100 px: undo the stacked fallback of the base sheet for «Eco grande» (fixed heights, image across both columns) */
+@media(min-width:1000px) and (max-width:1100px){
+body.echo-big .workspace:not(.with-reference){height:var(--ws-h,min(66vh,620px))}
+body.echo-big .workspace:not(.with-reference)>.patient,body.echo-big .workspace:not(.with-reference)>.anatomy{height:auto;min-height:0}
+body.echo-big .workspace:not(.with-reference)>.scan{height:auto;min-height:0;border-top:0;border-left:1px solid var(--line)!important}
+}
+/* three views stacked (no «Eco grande») on a narrow window: the deck scrolls with the page instead of covering the image */
+@media(max-width:1100px){body.cabina:not(.echo-big) .deck{position:static}}
+/* short windows with the cabina: the bars above the views and the deck give their height to the image */
+@media(max-height:860px) and (min-width:1000px){
+body.cabina header{height:46px}
+body.cabina .brand{font-size:18px}
+body.cabina .header-right{gap:8px}
+body.cabina .header-right button{padding:4px 9px;font-size:12px;white-space:nowrap}
+body.cabina .header-right .status{font-size:11px;white-space:nowrap}
+body.cabina .windows{padding:5px 0}
+body.cabina .windows button{padding:5px 10px;font-size:13px}
+body.cabina .course-bar{padding:3px 0 5px;gap:8px}
+body.cabina .course-bar>div{gap:6px;flex-wrap:wrap}
+body.cabina .course-bar button{padding:4px 9px;font-size:12px}
+body.cabina .display-setting{padding:0 0 4px}
+body.cabina .deck{padding:5px 0}
+body.cabina .machine-console:not(.full) .console-feedback{display:none}
+body.cabina .probe-controls{padding:6px 10px 4px}
+/* under the image only the name of the view and its agreement: the lines «sonda / muestra» and the hint go, the image grows */
+body.cabina .view-card{margin:0 10px 2px;padding:3px 10px 3px 12px}
+body.cabina .view-card dl,body.cabina #scan-foot{display:none}
+}
 .echo-big-toggle{font-size:11px;padding:3px 8px;margin-right:8px;background:none;border-color:#35505a;color:#bfeee5}
-@media(max-width:1100px){.echo-big-toggle{display:none}}
+@media(max-width:999px){.echo-big-toggle{display:none}}
 
 /* wide screens, cabina + «Eco grande»: the deck (probe + console) becomes a column to the right of the views (not while
    a side panel — trainer, drills, lesions, course — takes the width: then it stays under the image) */
