@@ -229,6 +229,9 @@ export function createBMode(){
     let w=v/nyq+(hz-1)*.12;if(Math.abs(v)>1.45*nyq)w+=(HET[(j*97+k*13)&(GN-1)]-1)*1.6; // disturbed flow: variance → mosaic
     w=((w+1)%2+2)%2-1;colorOut[j*samples+k]=Math.max(-127,Math.min(127,Math.round(w*127)));
    }
+   // colour gain too high: noise of the ensemble is painted as colour where there is no flow (speckles of both colours,
+   // new in every frame), the cue to turn the gain down one step
+   const cg=color.gain||1;if(cg>1.25){const pn=Math.min(.5,(cg-1.25)*.28);for(let j=cj0;j<=cj1;j++)for(let k=ck0;k<=ck1;k++){const i=j*samples+k;if(colorOut[i]!==-128)continue;if(hash3(j,k,seed+11)<pn)colorOut[i]=Math.round((hash3(k,j,seed+5)*2-1)*110)}}
   }
   // linear envelope after the depth gain (opts.envelope): for measurements in dB (physics chapters, phantom)
   let envelope=null;if(opts.envelope){envelope=new Float32Array(N);for(let j=0;j<lines;j++)for(let k=0;k<samples;k++){const i=j*samples+k;envelope[i]=E[i]*COMP[k]}}
