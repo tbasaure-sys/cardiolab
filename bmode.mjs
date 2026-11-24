@@ -76,10 +76,10 @@ export function createBMode(){
   for(let j=0;j<lines;j++){
    const th=-sector/2+sector*(j+.5)/lines,s=Math.sin(th),c=Math.cos(th);
    const bx=c*d[0]+s*u[0],by=c*d[1]+s*u[1],bz=c*d[2]+s*u[2];
-   let I=1,prevZ=1.63,prevLab=-1,inLung=false,lungAt=0,base=j*samples,entered=false;
+   let I=1,prevZ=1.63,prevLab=-1,inLung=false,lungAt=0,lungCos=1,base=j*samples,entered=false;
    const directivity=Math.cos(th)**1.6*(.8+.2*Math.cos(th*2));
    const trl=TR&&j===TR.j;
-   for(const [eo,ew] of ELEV){I=1;prevZ=1.63;prevLab=-1;inLung=false;lungAt=0;entered=false;const trc=trl&&!eo;if(trc)TR.cum.att=TR.cum.iface=TR.cum.shadow=0;
+   for(const [eo,ew] of ELEV){I=1;prevZ=1.63;prevLab=-1;inLung=false;lungAt=0;lungCos=1;entered=false;const trc=trl&&!eo;if(trc)TR.cum.att=TR.cum.iface=TR.cum.shadow=0;
    for(let k=0;k<samples;k++){
     const r=(k+.5)*dr,e=eo?eo*elevAt(r):0;p[0]=o[0]+bx*r+nv[0]*e;p[1]=o[1]+by*r+nv[1]*e;p[2]=o[2]+bz*r+nv[2]*e;
     // chamber remodelling (volume overload): back to the reference anatomy before the heart's own motion is undone
@@ -98,6 +98,7 @@ export function createBMode(){
     // coupling gel: until the beam enters the body, air is ignored
     if(lab===LABEL.AIR&&!entered){trans[base+k]+=ew/EW;continue}entered=true;
     // skin and chest-wall layers along the ray (the probe sits on the skin)
+    if(lab===LABEL.THYMUS&&r<.014)lab=LABEL.SOFT; // the chest wall comes first
     if(lab===LABEL.SOFT||lab===LABEL.LIVER){if(r<.0018)lab=LABEL.SKIN;else if(r<.0055)lab=LABEL.SUBCUT;else if(r<.014&&lab===LABEL.SOFT)lab=LABEL.MUSCLE;else if(lab===LABEL.SOFT&&r>.02&&tissue.lastDistance>.003&&tissue.lastDistance<.05)lab=LABEL.MEDIASTINUM}
     const pi=lab*3,scat=PROPS[pi],Z=PROPS[pi+1];
     let a=0,b=0;
@@ -112,7 +113,7 @@ export function createBMode(){
       if(trl)TR.pSpec[k]+=(specular*.8*directivity*ew)**2;
       if(trc){TR.cum.iface-=20*Math.log10(Math.max(1e-9,1-rc*rc));TR.events.push({k,kind:'iface',from:prevLab,to:lab,rc,cosi,specular,r})}
       I*=Math.max(0,1-rc*rc);
-      if(lab===LABEL.LUNG&&!inLung){inLung=true;lungAt=r;if(!eo){meanLungDepth+=r;lungHits++}I*=.02;if(trc){TR.cum.shadow+=33.98;TR.events.push({k,kind:'lung',r})}}
+      if(lab===LABEL.LUNG&&!inLung){inLung=true;lungAt=r;lungCos=cosi;if(!eo){meanLungDepth+=r;lungHits++}I*=.02;if(trc){TR.cum.shadow+=33.98;TR.events.push({k,kind:'lung',r})}}
       if(lab===LABEL.BONE){I*=.35;if(trc){TR.cum.shadow+=9.12;TR.events.push({k,kind:'bone',r})}}
      }
     }
@@ -122,7 +123,9 @@ export function createBMode(){
      const gx=Math.floor(x*icell),gy=Math.floor(y*icell),gz=Math.floor(z*icell),g=hidx(gx,gy,gz);
      // gentle tissue heterogeneity (fibres, trabeculae) at ~1.5 mm
      const fx=x*icell,fy=y*icell,fz=z*icell,mod=smoothField(HETT,fx/8,fy/8,fz/8)*smoothField(CLU,fx/4,fy/4,fz/4)*smoothField(PATCH,fx/32,fy/32,fz/32);
-     const w=I*scat*mod*directivity;
+     // thymus: echogenic septa and foci on a hypoechoic parenchyma (Han 2001), ~0.7 mm, a branching pattern from two noise fields
+     const sept=lab===LABEL.THYMUS?(Math.abs(smoothField(HET,fx/5+7.3,fy/5,fz/5)-smoothField(HET,fx/5,fy/5+3.1,fz/5))<.035?3.2:.85):1;
+     const w=I*scat*mod*sept*directivity;
      if(trl)TR.pDiff[k]+=(w*ew)**2*2;
      a+=w*GRE[g];b+=w*GIM[g];
     }
@@ -136,8 +139,9 @@ export function createBMode(){
     I*=stepAtt[lab];
     if(trc)TR.cum.att+=TR.stepDB[lab];
    }
-   // lung: pleural reverberations (A-lines) at multiples of the pleural depth
-   if(inLung){for(let m=2;m<=4;m++){const kk=Math.round(lungAt*m/dr);if(kk<samples){const amp=.03*ew*.5**(m-1)*Math.exp(-2*alphaNp(.5)*lungAt*K*m);for(let t=-1;t<=1;t++){const idx=base+Math.min(samples-1,Math.max(0,kk+t));re[idx]+=amp*(1-Math.abs(t)*.5);if(trl)TR.pLung[Math.min(samples-1,Math.max(0,kk+t))]+=(amp*(1-Math.abs(t)*.5))**2}}}
+   // lung: pleural reverberations (A-lines) at multiples of the pleural depth. They need the pleura to face the probe and
+   // to be close to it (the echo bounces between pleura and probe face): an oblique or distant pleura gives none, only shadow
+   if(inLung){const aw=lungCos**4/(1+(lungAt*K/.01)**2);for(let m=2;m<=4;m++){const kk=Math.round(lungAt*m/dr);if(kk<samples){const amp=.03*ew*aw*.5**(m-1)*Math.exp(-2*alphaNp(.5)*lungAt*K*m);for(let t=-1;t<=1;t++){const idx=base+Math.min(samples-1,Math.max(0,kk+t));re[idx]+=amp*(1-Math.abs(t)*.5);if(trl)TR.pLung[Math.min(samples-1,Math.max(0,kk+t))]+=(amp*(1-Math.abs(t)*.5))**2}}}
     for(let k=Math.round(lungAt/dr)+2;k<samples;k++){const g=hash3(j,k,3);{const v=.0012*ew*(g-.5)*Math.exp(-(k*dr-lungAt)*K/.03)*Math.exp(-2*alphaNp(.5)*k*drp);re[base+k]+=v;if(trl)TR.pLung[k]+=v*v}}}
    }
    // near field: ring-down of the probe face and lens, horizontal bands in the first few millimetres (weaker in THI)

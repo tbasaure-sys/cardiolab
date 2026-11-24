@@ -2,7 +2,7 @@
 // Four kinds: which view is it, which structure is under the cross, which maneuver fixes the image, which
 // setting improves it. Mistakes come back sooner (Leitner boxes kept in this browser).
 import {VIEW_INFO,solveState,describeManeuver} from './views.mjs';
-import {poseFromState,toWorld,physical} from './geometry.mjs';
+import {poseFromState,toWorld,physical,BODY} from './geometry.mjs';
 import {scanConvert} from './bmode.mjs';
 import {LABEL,LABEL_NAMES} from './tissue.mjs';
 import {gridPoints,imageMetrics,scoreImage} from './image-quality.mjs';
@@ -72,7 +72,8 @@ export function mountDrills(api){
   $('drill-weak').innerHTML=weak.length?weak.map(([k])=>`<li>${esc(itemName(k))}</li>`).join(''):'<li class="empty">Nada pendiente.</li>';
  }
  // ideal control state per view (cached without depth: depth is physical and follows the current patient)
- function idealState(id){const t=api.views[id];if(!ideal.has(id)){const sol=solveState(t,PRESET_OF[VIEW_INFO[id].window]);ideal.set(id,{...sol.state,sector:80,mode:'echo'})}return {...ideal.get(id),depth:physical(t.depth)}}
+ function idealState(id){const t=api.views[id],key=id+'|'+(BODY.fit?.age??'')+'|'+BODY.k.toFixed(3); // solved on this patient's chest (thorax-fit.mjs)
+  if(!ideal.has(key)){const sol=solveState(t,PRESET_OF[VIEW_INFO[id].window]);ideal.set(key,{...sol.state,sector:80,mode:'echo'})}return {...ideal.get(key),depth:physical(t.depth)}}
  const jitter=(s,k=1)=>({...s,rotation:s.rotation+sign()*Math.random()*6*k,tilt:s.tilt+sign()*Math.random()*4*k,rock:s.rock+sign()*Math.random()*4*k});
  const standard={gain:1,tgc:Array(8).fill(50),freq:4,beating:false,lines:176};
  function render(frame,canvas,pose,ySign,cross){

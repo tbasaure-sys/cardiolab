@@ -1,4 +1,5 @@
 // Shared by the display, cutting worker and tests. Distances are in metres.
+import {createFit} from './thorax-fit.mjs';
 export const add=(a,b)=>a.map((v,i)=>v+b[i]);
 export const sub=(a,b)=>a.map((v,i)=>v-b[i]);
 export const mul=(a,k)=>a.map(v=>v*k);
@@ -10,8 +11,11 @@ export const rad=d=>d*Math.PI/180;
 // Patient size. The atlas is an adult; a smaller patient is the same anatomy scaled by k (linear factor).
 // Anatomy, poses and the 3D views stay in atlas units; the probe controls (depth) and the acoustics are physical:
 // physical length = k × atlas length.
-export const BODY={k:1};
+// BODY.fit: the thorax fitted to the heart for this patient (thorax-fit.mjs), or null for the bare atlas.
+export const BODY={k:1,fit:null};
 export function setBodyScale(k){BODY.k=Math.max(.2,Math.min(1.2,k))}
+// age: thorax factor of the patient (thorax-fit.fitAgeFor); null = the bare atlas, without fit
+export function setBodyFit(age){BODY.fit=age==null?null:createFit(age)}
 export const physical=atlasLength=>atlasLength*BODY.k;
 export const rotate=(v,axis,angle)=>add(add(mul(v,Math.cos(angle)),mul(cross(axis,v),Math.sin(angle))),mul(axis,dot(axis,v)*(1-Math.cos(angle))));
 function profile(z,points){for(let i=1;i<points.length;i++)if(z<=points[i][0]){const [a,va]=points[i-1],[b,vb]=points[i],t=Math.max(0,(z-a)/(b-a)),smooth=t*t*(3-2*t);return va+(vb-va)*smooth}return points.at(-1)[1]}
@@ -30,7 +34,16 @@ export function skinShift(x,z){const fx=Math.max(0,Math.min(SK.nx-1.001,(x-SK.x0
  return ((g(i,j)*(1-tx)+g(i+1,j)*tx)*(1-tz)+(g(i,j+1)*(1-tx)+g(i+1,j+1)*tx)*tz)/1000}
 // move a point of the original chest shell toward the heart centre by the skin shift at its (x, z)
 export function tightenSkin(p){const s=skinShift(p[0],p[2]);if(!s)return p;const d=[SK.hc[0]-p[0],SK.hc[1]-p[1],SK.hc[2]-p[2]],l=Math.hypot(...d)||1;return [p[0]+d[0]/l*s,p[1]+d[1]/l*s,p[2]+d[2]/l*s]}
-export function surface(x,z){const rx=chestRadius(z),a=(x-CHEST_X)/rx;return tightenSkin([x,CHEST_Y-chestDepth(z)*Math.sqrt(Math.max(.06,1-a*a)),z])}
+// The skin the probe slides on. (x, z) are the coordinates of the skin point ON THE ATLAS CHEST (the probe state keeps
+// them): atlasSurface gives that point, surface gives where it is in this patient's fitted thorax (the same spot of skin).
+export function atlasSurface(x,z){const rx=chestRadius(z),a=(x-CHEST_X)/rx;return tightenSkin([x,CHEST_Y-chestDepth(z)*Math.sqrt(Math.max(.06,1-a*a)),z])}
+export function surface(x,z){const s=atlasSurface(x,z);return BODY.fit?BODY.fit.forward(s,s):s}
+// is a world point under the skin of the anterior chest?
+export function insideBody(p){const q=BODY.fit?BODY.fit.inverse(p):p;return q[1]>atlasSurface(q[0],q[2])[1]}
+// skin coordinates (x, z) of the skin point nearest to a world point on (or near) the surface
+export function skinParams(p){const q=BODY.fit?BODY.fit.inverse(p):p;let x=q[0],z=q[2];for(let i=0;i<5;i++){const s=atlasSurface(x,z);x+=q[0]-s[0];z+=q[2]-s[2]}return [x,z]}
+// where a point of the atlas thorax (bone, skin) is in this patient
+export function placeThorax(p,out=[0,0,0]){if(BODY.fit)return BODY.fit.forward(p,out);out[0]=p[0];out[1]=p[1];out[2]=p[2];return out}
 // The atlas heart points its apex ~20° more anteriorly than a typical heart; a rigid rotation about the vertical
 // axis restores the usual orientation so that parasternal short-axis planes are reachable. Applied at load time,
 // the source meshes are unchanged.
@@ -52,7 +65,7 @@ const RAW_PRESETS={
 export const PRESETS=Object.fromEntries(Object.entries(RAW_PRESETS).map(([k,p])=>[k,{...p,target:heartPoint(p.target),up:heartDir(p.up)}]));
 // Suprasternal notch (defined directly in placed coordinates): beam down and back toward the aortic arch.
 PRESETS.ssn={name:'Supraesternal · arco aórtico',x:CHEST_X,z:.13,target:[-.012,.024,.094],up:[.35,0,.94],goal:'Buscar el arco aórtico, los vasos del cuello y la aorta descendente.'};
-export function defaultState(preset='plax') {const p=PRESETS[preset];return {preset,x:p.x,z:p.z,tilt:0,rock:0,rotation:0,depth:physical({apical:.17,subcostal:.19,ssn:.16,plax:.15,psax:.14}[preset]??.16),sector:90,gain:1,mode:'anatomy'}}
+export function defaultState(preset='plax') {const p=PRESETS[preset];return {preset,x:p.x,z:p.z,tilt:0,rock:0,rotation:0,depth:physical(p.depth??{apical:.17,subcostal:.19,ssn:.16,plax:.15,psax:.14}[preset]??.16),sector:90,gain:1,mode:'anatomy'}}
 export function poseFromState(s){
   const p=PRESETS[s.preset],base=surface(p.x,p.z),origin=surface(s.x,s.z);
   let d=unit(sub(p.target,base)),u=unit(sub(p.up,mul(d,dot(p.up,d))));
