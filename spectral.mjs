@@ -9,7 +9,7 @@ export function pwNyquist(depth,freqMHz){const f0=Math.max(1.5,freqMHz*.6)*1e6;r
 
 // Geometry (pose, gateDepth) is in atlas units; bodyScale (K) converts to physical metres for the acoustics
 // (PRF/Nyquist, gate length, beam and aperture sizes).
-export function renderSpectrum(tissue,flow,motion,{pose,theta=0,gateDepth=.08,gateLen=.003,mode='pw',freq=4,cols=240,bins=180,scale=null,baseline=.5,gain=1,fast=false,bodyScale=1}){
+export function renderSpectrum(tissue,flow,motion,{pose,theta=0,gateDepth=.08,gateLen=.003,mode='pw',freq=4,cols=240,bins=180,scale=null,baseline=.5,gain=1,fast=false,bodyScale=1,wallFilter=.06}){
  const K=bodyScale;
  const th=theta*Math.PI/180,d=pose.d,u=pose.u,n=pose.n,o=pose.origin;
  const b=[Math.cos(th)*d[0]+Math.sin(th)*u[0],Math.cos(th)*d[1]+Math.sin(th)*u[1],Math.cos(th)*d[2]+Math.sin(th)*u[2]];
@@ -43,7 +43,7 @@ export function renderSpectrum(tissue,flow,motion,{pose,theta=0,gateDepth=.08,ga
    if(motion&&s){tissue.lookup(p[0],p[1],p[2]);const dd=tissue.lastDistance;const fall=dd<=.002?1:dd>=.014?0:1-(dd-.002)/.012;if(fall>0){motion.inverse(p,s,q,fall);p=q}}
    if(!flow.velocity(p[0],p[1],p[2],t,v))continue;
    const vr=-(v[0]*b[0]+v[1]*b[1]+v[2]*b[2]),mag=Math.hypot(v[0],v[1],v[2]);
-   if(Math.abs(vr)<.06)continue; // wall filter
+   if(Math.abs(vr)<wallFilter)continue; // wall filter
    if(Math.abs(vr)>peakAbs){peakAbs=Math.abs(vr);vPeak=vr;if(mode==='pw'&&mag>.05)angle=Math.acos(Math.min(1,Math.abs(vr)/mag))*180/Math.PI}
    // spectral broadening: finite gate/transit time, and much more for disturbed (high-velocity) flow
    const sig=.03+.045*Math.abs(vr)+(Math.abs(vr)>2?.18:0);
@@ -59,8 +59,10 @@ export function renderSpectrum(tissue,flow,motion,{pose,theta=0,gateDepth=.08,ga
  // gain reference: a high percentile of the occupied bins (not the maximum), so that a jet envelope is not
  // crushed by the bright low-velocity flow near the baseline
  const occ=[];for(const x of hist)if(x>0)occ.push(x);occ.sort((a,b)=>a-b);const ref=occ.length?occ[Math.floor(occ.length*.93)]:1;
- const data=new Uint8Array(cols*bins),G=40/(ref||1)*(1-pwLoss*.8);
- for(let k=0;k<bins;k++)for(let c=0;c<cols;c++){const i=k*cols+c,h=hist[i],tex=.55+.9*hash(c,k);let val=Math.log1p(G*h*tex*gain)/Math.log1p(40);val+=.05*hash(k*3+1,c*7+2)*gain;data[i]=Math.max(0,Math.min(255,Math.round(255*Math.pow(Math.min(1,val),.8))))}
+ // spectral gain: signal and receiver noise are amplified together (≈ ±24 dB over the knob's range). Low, the weak edge
+ // of the envelope goes first; high, the noise floor lights the whole background
+ const data=new Uint8Array(cols*bins),G=40/(ref||1)*(1-pwLoss*.8),GA=gain**3;
+ for(let k=0;k<bins;k++)for(let c=0;c<cols;c++){const i=k*cols+c,h=hist[i],tex=.55+.9*hash(c,k);let val=Math.log1p((G*h*tex+.2*hash(k*3+1,c*7+2))*GA)/Math.log1p(40);data[i]=Math.max(0,Math.min(255,Math.round(255*Math.pow(Math.min(1,val),.8))))}
  return {cols,bins,data,top,bottom,nyquist:nyq,mode,vPeak,angle,theta,gateDepth,blocked:mode==='pw'?!alive[0]:false};
 }
 
@@ -70,4 +72,40 @@ export function optimizeAim(tissue,flow,motion,spec,{range=8,step=1}={}){
  const t0=spec.theta||0;let best=t0,bv=-1;
  for(let th=t0-range;th<=t0+range+1e-9;th+=step){const sp=renderSpectrum(tissue,flow,motion,{...spec,theta:th,cols:40,bins:16,fast:true});const v=Math.abs(sp.vPeak)-.004*Math.abs(th-t0);if(v>bv){bv=v;best=th}}
  return best;
+}
+
+// ---------------------------------------------------------------- envelope and velocity-time integral
+// Envelope of a spectrum on one side of the baseline: in each spectral line, the fastest velocity whose brightness
+// reaches `threshold` (0–255) for two bins in a row, as a reader traces the outer edge of the signal. side: +1 toward
+// the probe, −1 away; by default the side of the fastest flow.
+export function spectralEnvelope(sp,{threshold=64,side=null}={}){
+ const {cols,bins,data,top,bottom}=sp,span=top-bottom,s=side||(sp.vPeak<0?-1:1),v=new Float32Array(cols),vOf=k=>top-(k+.5)/bins*span;
+ for(let c=0;c<cols;c++){
+  if(s>0){for(let k=0;k<bins-1&&vOf(k)>0;k++)if(data[k*cols+c]>=threshold&&data[(k+1)*cols+c]>=threshold*.8){v[c]=vOf(k);break}}
+  else{for(let k=bins-1;k>0&&vOf(k)<0;k--)if(data[k*cols+c]>=threshold&&data[(k-1)*cols+c]>=threshold*.8){v[c]=-vOf(k);break}}
+ }
+ // a median of three lines removes single-line spikes of noise
+ const m=new Float32Array(cols);for(let c=0;c<cols;c++){const a=v[(c-1+cols)%cols],b=v[c],d=v[(c+1)%cols];m[c]=Math.max(Math.min(a,b),Math.min(Math.max(a,b),d))}
+ return {side:s,v:m};
+}
+// Trace of the main lobe of the envelope (the ejection, or the whole beat when the flow is continuous) and its integral.
+// hr: beats per minute (one beat = cols spectral lines). Returns the velocity-time integral in metres, the peak and mean
+// velocities and the gradients ΔP = 4v² (peak, and mean of the instantaneous gradients).
+// The lobe is a run of spectral lines whose envelope is continuous in time. A run that sits on the edge of the display is
+// not a flow to trace: it is signal cut by the scale or wrapped from the other side of the baseline (aliasing).
+export function traceVTI(sp,hr,opts={}){
+ const env=spectralEnvelope(sp,opts),{v}=env,cols=sp.cols,dt=60/hr/cols,edge=(env.side>0?sp.top:-sp.bottom)-2*(sp.top-sp.bottom)/sp.bins;
+ let vAll=0;for(let c=0;c<cols;c++)if(v[c]>vAll)vAll=v[c];if(!(vAll>0))return null;
+ const floor=Math.max(.05,.12*vAll),start=(()=>{for(let c=0;c<cols;c++)if(v[c]<floor)return c;return 0})(),runs=[];let cur=null;
+ for(let i=0;i<cols;i++){const c=(start+i)%cols,x=v[c],prev=i?v[(start+i-1)%cols]:0;
+  if(x<floor){cur=null;continue}
+  if(!cur||Math.abs(x-prev)>Math.max(.3,.35*Math.max(x,prev))){cur={from:start+i,n:0,sum:0,grad:0,max:0,touch:0};runs.push(cur)}
+  cur.n++;cur.sum+=x;cur.grad+=4*x*x;if(x>cur.max)cur.max=x;if(x>=edge)cur.touch++}
+ if(!runs.length)return null;
+ const clean=runs.filter(r=>r.touch<.5*r.n),best=(clean.length?clean:runs).reduce((a,b)=>b.sum>a.sum?b:a);
+ return {side:env.side,vti:best.sum*dt,vMax:best.max,vMean:best.sum/best.n,peakGradient:4*best.max*best.max,meanGradient:best.grad/best.n,duration:best.n*dt,from:best.from,to:best.from+best.n-1,cols,env:v,
+  // signal at the edge of the display beside the traced lobe (wrapped or cut), or the lobe itself cut by the scale
+  wrapped:runs.some(r=>r!==best&&r.touch>=.5*r.n),clipped:best.touch>0,
+  // the 'envelope' is the noise floor filling the display: the spectral gain is too high to trace anything
+  noise:best.n>.9*cols&&best.touch>.5*best.n};
 }

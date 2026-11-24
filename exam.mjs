@@ -31,7 +31,7 @@ export function mountExam(api){
    <label class="field"><span>Diagnóstico</span><select id="ex-lesion"><option value="">Elige…</option>${LESION_OPTIONS.map(o=>`<option value="${o.id}">${esc(o.name)}</option>`).join('')}</select></label>
    <div class="ex-two"><label class="field"><span>Diámetro del defecto (mm)</span><input id="ex-size" type="text" inputmode="decimal" placeholder="—"></label><label class="field"><span>Velocidad máxima del chorro (m/s)</span><input id="ex-vel" type="text" inputmode="decimal" placeholder="—"></label></div>
    <div class="ex-two"><label class="field"><span>Dirección del cortocircuito</span><select id="ex-dir"><option value="">Elige…</option>${DIRECTIONS.map(d=>`<option>${esc(d)}</option>`).join('')}</select></label><label class="field"><span>Repercusión (bandas del modelo)</span><select id="ex-sev"><option value="">Elige…</option>${SEVERITIES.map(s=>`<option value="${s.key}">${esc(s.label)}</option>`).join('')}</select></label></div>
-   <label class="field"><span>Qp/Qs estimado (opcional)</span><input id="ex-qpqs" type="text" inputmode="decimal" placeholder="—"></label>
+   <div class="ex-two"><label class="field"><span>Presión sistólica del VD (mmHg, opcional)</span><input id="ex-rvsp" type="text" inputmode="decimal" placeholder="—"></label><label class="field"><span>Qp/Qs estimado (opcional)</span><input id="ex-qpqs" type="text" inputmode="decimal" placeholder="—"></label></div>
    <button id="ex-submit" class="primary">Entregar informe</button></div>
   <div id="ex-result" aria-live="polite"></div><p class="micro" id="ex-hist"></p>`;
  const $=id=>host.querySelector('#'+id);
@@ -49,7 +49,7 @@ export function mountExam(api){
  async function start(seed){
   const my=++busy;seed=Math.max(1,Math.floor(Number(seed)||1+Math.floor(Math.random()*99999)));
   c=makeCase(seed);acqs=[];revealed=false;sites=null;$('ex-seed').value=String(seed);$('ex-result').innerHTML='';$('ex-submit').disabled=false;hide(true);
-  for(const id of ['ex-lesion','ex-size','ex-vel','ex-dir','ex-sev','ex-qpqs'])$(id).value='';
+  for(const id of ['ex-lesion','ex-size','ex-vel','ex-dir','ex-sev','ex-qpqs','ex-rvsp'])$(id).value='';
   if(!await apply(my))return;
   api.onRoute?.({route:'estudio',id:'examen',params:{semilla:seed}});renderPatient();renderList();api.status(`Caso ${seed} · explora y guarda tus imágenes y medidas`);
  }
@@ -70,7 +70,7 @@ export function mountExam(api){
   renderList()}
  $('ex-save-image').onclick=()=>save('image');$('ex-save-caliper').onclick=()=>save('caliper');$('ex-save-doppler').onclick=()=>save('doppler');
  // ---------------------------------------------------------------- report and correction
- const readReport=()=>({lesion:$('ex-lesion').value||null,diameterMM:num($('ex-size').value),velocity:num($('ex-vel').value),direction:$('ex-dir').value||null,severity:$('ex-sev').value||null,qpqs:num($('ex-qpqs').value)});
+ const readReport=()=>({lesion:$('ex-lesion').value||null,diameterMM:num($('ex-size').value),velocity:num($('ex-vel').value),direction:$('ex-dir').value||null,severity:$('ex-sev').value||null,qpqs:num($('ex-qpqs').value),rvsp:num($('ex-rvsp').value)});
  const last=kind=>[...acqs].reverse().find(a=>a.kind===kind);
  async function velocityCause(report){
   const a=last('doppler');if(!a||report.velocity==null)return null;const T=c.truth,jp=sites[T.lesion]?.jetPoint;if(!jp)return null;
@@ -100,7 +100,7 @@ export function mountExam(api){
   return `<div class="ex-cause"><h4>${title}</h4><p class="micro">Verdad ${truthTxt} · tu informe ${saidTxt} · error ${a.error>0?'+':a.error<0?'−':''}${Math.abs(a.error).toFixed(a.digits).replace('.',',')} ${a.unit}. Las barras suman el error exactamente.</p>${bars(a)}${main?`<p class="ex-hint"><b>Lo que más pesó: ${esc(main.label.toLowerCase())}.</b> ${esc(main.hint)}</p>`:'<p class="ex-hint">Ninguna causa destaca: la medida es tan buena como permite el modelo.</p>'}</div>`}
  function renderResult(report,g,vel,size){
   const T=c.truth,row=i=>{const mark=i.frac>=1?'✓':i.frac>0?'½':'✗',cls=i.frac>=1?'ok':i.frac>0?'mid':'bad';
-   const fmt=v=>v==null?'—':typeof v==='number'?(i.id==='velocity'||i.id==='qpqs'?f2(v):f1(v)):i.id==='lesion'?esc(lessonName(v)):i.id==='severity'?esc(sevLabel(v)):esc(v);
+   const fmt=v=>v==null?'—':typeof v==='number'?(i.id==='velocity'||i.id==='qpqs'?f2(v):i.id==='rvsp'?String(Math.round(v)):f1(v)):i.id==='lesion'?esc(lessonName(v)):i.id==='severity'?esc(sevLabel(v)):esc(v);
    return `<tr class="${cls}"><td>${esc(i.label)}${i.note?`<div class="micro">${esc(i.note)}</div>`:''}</td><td>${i.id==='windows'||i.id==='sites'||i.id==='documentation'?(i.id==='documentation'?(i.truth?'sí':''):i.truth):fmt(i.truth)}</td><td>${i.id==='windows'||i.id==='sites'?i.answer:i.id==='documentation'?(i.answer?'sí':'no'):fmt(i.answer)}${i.tol&&i.error!=null?`<div class="micro">error ${i.error>0?'+':'−'}${Math.abs(i.error).toFixed(i.id==='size'?1:2).replace('.',',')} (tolerancia ±${(i.id==='size'?f1:f2)(i.tol)})</div>`:''}</td><td><b>${mark}</b> ${i.pts}${i.max?` / ${i.max}`:''}</td></tr>`};
   const cov=g.coverage.map(s=>`<span class="ex-chip ${s.ok?'ok':s.inPlane?'mid':'bad'}" title="${esc(s.name)}${s.offMM!=null?` · plano a ${s.offMM} mm del centro`:''}">${esc(SITES[s.id].name)}</span>`).join('');
   $('ex-result').innerHTML=`<h3>3 · Corrección</h3><div class="ex-score ${g.percent>=75?'ok':g.percent>=50?'mid':'bad'}"><b>${g.percent} %</b><span>${g.total} de ${g.max} puntos</span></div>

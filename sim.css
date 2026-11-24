@@ -4,7 +4,7 @@
 .panel-tabs button.active,#course-toggle[aria-expanded=true]{background:#1c3c39;color:#bafcef;border-color:#458e83}
 .scan-meta{display:flex;gap:12px;align-items:center}
 #marker-clock{font:10px Consolas,monospace;color:#ffcf8a}
-#echo-tools,#sim-tools,#color-tools,#dop-tools{display:inline-flex;gap:6px;align-items:center}
+#echo-tools,#sim-tools,#color-tools,#dop-tools{display:inline-flex;flex-wrap:wrap;gap:4px 6px;align-items:center;min-width:0}.scan-modes button{white-space:nowrap}.scan-modes{gap:4px 6px}
 #echo-tools[hidden],#sim-tools[hidden],#color-tools[hidden],#dop-tools[hidden]{display:none}
 .scan-modes{flex-wrap:wrap;height:auto;min-height:34px;row-gap:4px}
 .scan-modes select{font-size:11px;padding:3px 4px;background:#0f1a21;color:var(--ink);border:1px solid #2f414b;border-radius:4px}
@@ -363,3 +363,14 @@ body.study-open .workspace{display:none}.bedside-figure[hidden]{display:none}bod
 .ex-bar .track{position:relative;height:9px;background:#0b1319;border-radius:4px;overflow:hidden}.ex-bar .track:after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:#4a5d69}.ex-bar .track i{position:absolute;top:1px;bottom:1px;border-radius:3px}.ex-bar .track i.pos{background:#ff9b8a}.ex-bar .track i.neg{background:#7fb6ff}
 .ex-two>*{min-width:0}#chd-exam select{width:100%;min-width:0;box-sizing:border-box}.ex-two{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
 .ex-table{table-layout:fixed}.ex-table td,.ex-table th{overflow-wrap:anywhere}
+/* calculation sheet (calc.mjs) */
+.calc{border-top:1px solid var(--line);padding:8px 0}.calc h3{font-size:13px;margin:0 0 2px}.calc-formula{font:12px Consolas,monospace;color:var(--muted);margin:2px 0 6px}
+.calc-in{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px}.calc-in input{width:70px}.calc output{display:block;margin:6px 0 2px;font-weight:600;color:#63ddc8;font-size:14px}
+#dop-trace.active{background:#1d4a44;color:#d8fff7;border-color:#4fa89a}
+.knob-unit[hidden]{display:none}
+.drill-check ul{list-style:none;padding:0;margin:6px 0}.drill-check li{font-size:12px;line-height:1.45;padding:4px 0;border-top:1px solid var(--line)}.drill-check li div{color:#ffcf99;font-size:11.5px}
+.drill-check .ok b{color:#7ff0b4}.drill-check .bad b{color:#ff9c8a}.drill-check p{font-size:12px;margin:6px 0}
+/* first-visit tour (tour.mjs): a corner card and an outline, never a modal */
+.tour-card{position:fixed;right:18px;bottom:18px;z-index:70;width:min(360px,92vw);background:#15212a;border:1px solid #4fa89a;border-radius:10px;padding:12px 14px;box-shadow:0 14px 34px #000c;font-size:13px;line-height:1.45}
+.tour-card strong{font-size:14px}.tour-card p{margin:6px 0 10px}.tour-nav{display:flex;gap:6px;align-items:center}.tour-nav span{margin:0 auto 0 6px;font-size:11px;color:var(--muted)}.tour-nav button{font-size:12px;padding:3px 10px}
+.tour-ring{outline:2px solid #63ddc8!important;outline-offset:3px;border-radius:8px}

@@ -16,7 +16,7 @@
 import {bsaHaycock,bodyScale} from './patient.mjs';
 import {pvrIndexAt,ductOpenFraction} from './transition.mjs';
 
-export const MODEL_VERSION=2;
+export const MODEL_VERSION=3;
 export const LESIONS={
  asd2:{name:'CIA ostium secundum',level:'auricular',maxAtlasMM:26,overload:['RA','RV']},
  vsdpm:{name:'CIV perimembranosa',level:'ventricular',maxAtlasMM:22,overload:['LA','LV']},
@@ -85,12 +85,15 @@ export function shuntState({lesion,size=0,pvr='normal',patient,hours=null,closin
  }
  // RV pressure load → RV wall thickening (model): when the RV works at more than half the systemic pressure
  const rvRatio=rvSys/sbp,rvWallMM=rvRatio>.5?Math.min(4,(rvRatio-.5)*8)/k:0;
+ // trivial tricuspid regurgitation (model assumption: present, as in most children, so that the RV pressure can be estimated
+ // the way it is in practice): peak velocity from the RV–RA systolic gradient, ΔP = 4v²
+ const trV=Math.sqrt(Math.max(0,rvSys-ASSUME.raMean)/4);
  const restr=lesion==='asd2'?null:area===0?null:drive/(lesion==='pda'?map:sbp);
  const rootMM=AORTIC_ROOT_ATLAS_MM*k;
  return {model:MODEL_VERSION,lesion,size,pvr:timed?null:pvr,pvrIndex,transition:timed?{hours,closing:!!closing&&lesion==='pda',ductOpen:closing&&lesion==='pda'?ductOpenFraction(hours,ductQuantile):1}:null,patient:{bsa,k,ageYears:age,sbp,dbp},
   defect:{diameterMM:dMM,atlasRadiusM:atlasMM/2000,areaMM2:area*1e6,rootMM,rootRatio:lesion.startsWith('vsd')?dMM/rootMM:null},
   flows:{Qs,Qp,Qsh,qpqs,direction:Math.abs(Qsh)<.02*Qs&&!(jet.sys*jet.dia<0)?'sin cortocircuito':jet.sys*jet.dia<0?'bidireccional':Qsh>0?'izquierda → derecha':'derecha → izquierda'},
-  pressures:{paMean:P.mean,paSys:P.sys,paDia:P.dia,rvSys,rvRatio,drive},jet,restrictiveness:restr,gains,flowScale:fs,rvWallMM,
+  pressures:{paMean:P.mean,paSys:P.sys,paDia:P.dia,rvSys,rvRatio,drive,raMean:ASSUME.raMean},jet,tr:{v:trV,gradient:4*trV*trV},restrictiveness:restr,gains,flowScale:fs,rvWallMM,
   grade:gradeOf(lesion,{gains,qpqs,restr,rvRatio,area,Qsh,jet,transition:timed})};
 }
 // bands of this model (qualitative), not clinical thresholds
@@ -107,6 +110,6 @@ export function gradeOf(lesion,{gains,qpqs,restr,rvRatio,area,Qsh,jet,transition
 // the variant spec the simulator applies (chd-data.applyVariant, flow.lesionJets, worker remodel)
 export function variantSpec(state){
  const id=state.lesion;if(!state.size)return {id:'normal'};
- return {id,params:{radius:state.defect.atlasRadiusM,hemo:{gains:state.gains,flowScale:state.flowScale,jet:state.jet,rvWallMM:state.rvWallMM,qpqs:state.flows.qpqs}}};
+ return {id,params:{radius:state.defect.atlasRadiusM,hemo:{gains:state.gains,flowScale:state.flowScale,jet:state.jet,rvWallMM:state.rvWallMM,qpqs:state.flows.qpqs,tr:state.tr.v}}};
 }
 export const SHUNT_SOURCES=['spicer2014','vanlaere2018','quinones2002','silvestry2015','docencia'];

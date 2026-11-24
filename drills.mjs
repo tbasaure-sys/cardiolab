@@ -5,6 +5,7 @@ import {VIEW_INFO,solveState,describeManeuver} from './views.mjs';
 import {poseFromState,toWorld,physical} from './geometry.mjs';
 import {scanConvert} from './bmode.mjs';
 import {LABEL,LABEL_NAMES} from './tissue.mjs';
+import {gridPoints,imageMetrics,scoreImage} from './image-quality.mjs';
 
 const KEY='cardiolab.echo.drills.v1';
 export const KINDS={view:'¿Qué vista es?',structure:'¿Qué estructura marca la cruz?',maneuver:'¿Qué maniobra la corrige?',knob:'¿Qué ajuste la mejora?'};
@@ -55,7 +56,7 @@ export function mountDrills(api){
   <figure class="drill-figure drill-target" id="drill-target-fig" hidden><canvas id="drill-target" aria-label="Imagen de la vista objetivo"></canvas><figcaption id="drill-target-cap"></figcaption></figure>
   <div id="drill-options" class="drill-options"></div>
   <div id="drill-feedback" class="drill-feedback" aria-live="polite"></div>
-  <div id="drill-after" class="drill-after" hidden><button id="drill-open">Abrir en el simulador</button><button id="drill-next" class="primary">Siguiente →</button></div>
+  <div id="drill-after" class="drill-after" hidden><button id="drill-open">Abrir en el simulador</button><button id="drill-check" hidden title="Mide sobre tu imagen si quedó bien ajustada, frente al mismo plano con los ajustes de referencia">Evaluar mi ajuste</button><button id="drill-next" class="primary">Siguiente →</button></div><div id="drill-check-out" class="drill-check" aria-live="polite"></div>
   <p class="micro">Teclas: 1–4 para responder · Intro para seguir.</p>
  </section>
  <section class="drill-stats"><h2>Tu progreso</h2><p id="drill-score" class="micro"></p><ul id="drill-by-kind" class="drill-by-kind"></ul><h3>Para repasar</h3><ul id="drill-weak" class="drill-weak"></ul><button id="drill-reset">Borrar progreso</button><p class="micro">Se guarda solo en este navegador · no acredita competencia clínica.</p></section>`;
@@ -112,12 +113,12 @@ export function mountDrills(api){
   if(k.depth)state.depth=k.depth(state.depth);if(k.params?.gain)state.gain=k.params.gain;
   const opposite={gainLow:'gainHigh',gainHigh:'gainLow',deep:'shallow',shallow:'deep',farDark:'nearBright',nearBright:'farDark'}[k.id];
   const others=shuffle(KNOBS.filter(x=>x.id!==k.id&&x.id!==opposite)).slice(0,2).map(x=>x.fix).concat(['Sube la frecuencia']);
-  return {kind:'knob',key:'knob:'+k.id,knob:k,state,window:VIEW_INFO[id].window,params:k.params,question:KINDS.knob,options:shuffle([k.fix,KNOBS.find(x=>x.id===opposite).fix,...shuffle(others).slice(0,2)]),answer:k.fix,why:k.why}
+  return {kind:'knob',key:'knob:'+k.id,knob:k,viewId:id,state,window:VIEW_INFO[id].window,params:k.params,question:KINDS.knob,options:shuffle([k.fix,KNOBS.find(x=>x.id===opposite).fix,...shuffle(others).slice(0,2)]),answer:k.fix,why:k.why}
  }
  const BUILD={view:buildView,structure:buildStructure,maneuver:buildManeuver,knob:buildKnob};
  async function next(){
   const enabled=kinds();if(!enabled.length){api.status('Elige al menos un tipo de pregunta');return}
-  const my=++token;answered=false;$('drill-card').hidden=false;$('drill-after').hidden=true;$('drill-feedback').textContent='';$('drill-options').replaceChildren();$('drill-kind').textContent='';$('drill-question').textContent='Preparando la imagen…';
+  const my=++token;answered=false;$('drill-card').hidden=false;$('drill-after').hidden=true;$('drill-check').hidden=true;$('drill-check-out').innerHTML='';$('drill-feedback').textContent='';$('drill-options').replaceChildren();$('drill-kind').textContent='';$('drill-question').textContent='Preparando la imagen…';
   $('drill-target-fig').hidden=true;blank($('drill-canvas'),'Simulando…');$('drill-card').scrollIntoView({block:'nearest',behavior:'smooth'});
   try{
    const built=await BUILD[pick(enabled)]();if(my!==token)return;q=built;
@@ -136,8 +137,20 @@ export function mountDrills(api){
  }
  // the same plane in the main simulator, heart visible (for a settings question, with the setting still wrong)
  function open(){if(!q)return;api.apply({...q.state,mode:'echo'},{animate:false});
-  if(q.kind==='knob'){api.setTgc?.(q.params?.tgc||Array(8).fill(50));api.status(`Imagen mal ajustada: ${q.answer.toLowerCase()} con la consola`)}else api.status('Plano de la pregunta abierto en el simulador')}
- $('drill-start').onclick=()=>{$('drill-start').textContent='Otra pregunta';next()};$('drill-next').onclick=next;$('drill-open').onclick=open;
+  if(q.kind==='knob'){api.setTgc?.(q.params?.tgc||Array(8).fill(50));$('drill-check').hidden=false;$('drill-check-out').innerHTML='';api.status(`Imagen mal ajustada: ${q.answer.toLowerCase()} con la consola y pulsa «Evaluar mi ajuste»`)}else api.status('Plano de la pregunta abierto en el simulador')}
+ // hands-on: the image the learner left, measured against the same plane with the reference settings (image-quality.mjs)
+ async function check(){
+  if(!q||q.kind!=='knob')return;const my=token,out=$('drill-check-out');out.innerHTML='<p class="micro">Midiendo tu imagen…</p>';
+  const st=api.state(),pose=poseFromState(st),base=idealState(q.viewId),refPose=poseFromState(base),g=gridPoints(pose),gr=gridPoints(refPose),P=api.engine.params;
+  try{
+   const [labels,labelsR,frame,frameR]=await Promise.all([api.engine.probe(g.points),api.engine.probe(gr.points),api.engine.renderOnce(pose,{beating:false,phase:0,lines:96}),
+    api.engine.renderOnce(refPose,{beating:false,phase:0,lines:96,gain:1,tgc:Array(8).fill(50),focus:.55,dynamicRange:52,harmonic:true})]);if(my!==token)return;
+   const s=scoreImage({metrics:imageMetrics(frame,labels,g),depth:st.depth,focus:P.focus},{metrics:imageMetrics(frameR,labelsR,gr),depth:base.depth,focus:.55});
+   out.innerHTML=`<p class="${s.ok?'ok':'bad'}"><b>${s.ok?'Imagen bien ajustada':'Aún no'}</b> · ${s.passed} de ${s.total} criterios, medidos sobre tu imagen</p><ul>${s.criteria.map(c=>`<li class="${c.ok?'ok':'bad'}"><b>${c.ok?'✓':'✗'} ${esc(c.label)}</b> <span class="micro">${esc(c.value)} · objetivo ${esc(c.target)}</span>${c.advice?`<div>${esc(c.advice)}</div>`:''}</li>`).join('')}</ul><p class="micro">Referencia: el mismo plano con los ajustes de partida del equipo. Tolerancias docentes del simulador, no un estándar clínico.</p>`;
+   api.status(s.ok?'Imagen bien ajustada':`Faltan ${s.total-s.passed} criterios: mira el detalle en el panel`);
+  }catch(e){out.innerHTML=`<p class="bad">No se pudo medir la imagen: ${esc(e.message)}</p>`}
+ }
+ $('drill-start').onclick=()=>{$('drill-start').textContent='Otra pregunta';next()};$('drill-next').onclick=next;$('drill-open').onclick=open;$('drill-check').onclick=check;
  $('drill-reset').onclick=()=>{if(!confirm('¿Borrar tu progreso en las preguntas?'))return;stats={answered:0,correct:0,items:{}};save()};
  addEventListener('keydown',e=>{if(!api.visible()||e.ctrlKey||e.metaKey||e.altKey||e.target.closest?.('input,select,textarea'))return;
   if(q&&!answered&&/^[1-4]$/.test(e.key)){const b=$('drill-options').children[Number(e.key)-1];if(b){e.preventDefault();b.click()}}else if(answered&&e.key==='Enter'&&e.target.tagName!=='BUTTON'){e.preventDefault();next()}});
