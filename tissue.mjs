@@ -6,7 +6,7 @@ export const LABEL={AIR:0,SOFT:1,LUNG:2,BONE:3,LIVER:4,FAT:5,CARTILAGE:6,LV_MYO:
  LV_BLOOD:20,RV_BLOOD:21,LA_BLOOD:22,RA_BLOOD:23,AO_BLOOD:24,PA_BLOOD:25,CAVA_BLOOD:26,PV_BLOOD:27,CORONARY:28,CS_BLOOD:29,
  VESSEL_WALL:30,MITRAL:40,TRICUSPID:41,AORTIC_VALVE:42,PULMONARY_VALVE:43,
  // runtime-only labels (never in the source volume)
- PERICARDIUM:60,EFFUSION:61,SKIN:62,SUBCUT:63,MUSCLE:64,THROMBUS:65,MEDIASTINUM:66,FOSSA:67};
+ PERICARDIUM:60,EFFUSION:61,SKIN:62,SUBCUT:63,MUSCLE:64,THROMBUS:65,MEDIASTINUM:66,FOSSA:67,THYMUS:68};
 
 // [backscatter amplitude, impedance (MRayl), attenuation (dB/cm/MHz)]
 const P=[];const set=(ids,v)=>{for(const id of [].concat(ids))P[id]=v};
@@ -15,7 +15,7 @@ set(LABEL.SOFT,[.0032,1.63,.55]);
 set(LABEL.LUNG,[.0008,.0004,40]);
 set(LABEL.BONE,[.02,7.8,22]);
 set(LABEL.CARTILAGE,[.0045,1.8,.7]); // paediatric sternum: cartilage with small ossification centres
-set(LABEL.LIVER,[.0047,1.65,.5]); // a little brighter than myocardium, as in harmonic imaging
+set(LABEL.LIVER,[.0064,1.65,.5]); // brighter than myocardium: it has to read as mid-grey parenchyma in the near field of the subcostal views, under the abdominal wall
 set(LABEL.FAT,[.012,1.38,.6]);
 set([LABEL.LV_MYO,LABEL.RV_MYO],[.0042,1.70,.55]);
 set([LABEL.LA_WALL,LABEL.RA_WALL],[.0045,1.70,.55]);
@@ -36,11 +36,14 @@ set(LABEL.SKIN,[.014,1.75,.7]);
 set(LABEL.SUBCUT,[.0022,1.42,.6]);
 set(LABEL.MUSCLE,[.0038,1.65,.9]);
 set(LABEL.THROMBUS,[.006,1.66,.3]);
+// thymus of the infant: a hypoechoic parenchyma (cortex) crossed by echogenic septa and foci (Han 2001); the foci are drawn
+// by the renderer. Same impedance as soft tissue: no bright edge against the mediastinum.
+set(LABEL.THYMUS,[.0030,1.63,.5]);
 export const PROPS=new Float32Array(256*3);for(let i=0;i<256;i++){const v=P[i]||P[LABEL.SOFT];PROPS.set(v,i*3)}
 
 export const BLOOD=new Set([LABEL.LV_BLOOD,LABEL.RV_BLOOD,LABEL.LA_BLOOD,LABEL.RA_BLOOD,LABEL.AO_BLOOD,LABEL.PA_BLOOD,LABEL.CAVA_BLOOD,LABEL.PV_BLOOD,LABEL.CS_BLOOD,LABEL.CORONARY,LABEL.MITRAL,LABEL.TRICUSPID,LABEL.AORTIC_VALVE,LABEL.PULMONARY_VALVE]);
 export const MYOCARDIUM=new Set([LABEL.LV_MYO,LABEL.RV_MYO,LABEL.LA_WALL,LABEL.RA_WALL,LABEL.PAPILLARY,LABEL.FOSSA]);
-export const LABEL_NAMES={[LABEL.LV_BLOOD]:'Cavidad VI',[LABEL.RV_BLOOD]:'Cavidad VD',[LABEL.LA_BLOOD]:'Cavidad AI',[LABEL.RA_BLOOD]:'Cavidad AD',[LABEL.AO_BLOOD]:'Aorta',[LABEL.PA_BLOOD]:'Arteria pulmonar',[LABEL.CAVA_BLOOD]:'Vena cava',[LABEL.PV_BLOOD]:'Vena pulmonar',[LABEL.CS_BLOOD]:'Seno coronario',[LABEL.LV_MYO]:'Miocardio VI',[LABEL.RV_MYO]:'Pared VD',[LABEL.LA_WALL]:'Pared AI',[LABEL.RA_WALL]:'Pared AD',[LABEL.PAPILLARY]:'Músculo papilar',[LABEL.LUNG]:'Pulmón',[LABEL.BONE]:'Costilla / esternón',[LABEL.LIVER]:'Hígado',[LABEL.SOFT]:'Pared torácica / mediastino',[LABEL.FAT]:'Grasa epicárdica',[LABEL.VESSEL_WALL]:'Pared vascular',[LABEL.PERICARDIUM]:'Pericardio',[LABEL.FOSSA]:'Fosa oval (membrana)',[LABEL.EFFUSION]:'Derrame pericárdico'};
+export const LABEL_NAMES={[LABEL.LV_BLOOD]:'Cavidad VI',[LABEL.RV_BLOOD]:'Cavidad VD',[LABEL.LA_BLOOD]:'Cavidad AI',[LABEL.RA_BLOOD]:'Cavidad AD',[LABEL.AO_BLOOD]:'Aorta',[LABEL.PA_BLOOD]:'Arteria pulmonar',[LABEL.CAVA_BLOOD]:'Vena cava',[LABEL.PV_BLOOD]:'Vena pulmonar',[LABEL.CS_BLOOD]:'Seno coronario',[LABEL.LV_MYO]:'Miocardio VI',[LABEL.RV_MYO]:'Pared VD',[LABEL.LA_WALL]:'Pared AI',[LABEL.RA_WALL]:'Pared AD',[LABEL.PAPILLARY]:'Músculo papilar',[LABEL.LUNG]:'Pulmón',[LABEL.BONE]:'Costilla / esternón',[LABEL.LIVER]:'Hígado',[LABEL.SOFT]:'Pared torácica / mediastino',[LABEL.FAT]:'Grasa epicárdica',[LABEL.VESSEL_WALL]:'Pared vascular',[LABEL.PERICARDIUM]:'Pericardio',[LABEL.FOSSA]:'Fosa oval (membrana)',[LABEL.EFFUSION]:'Derrame pericárdico',[LABEL.THYMUS]:'Timo'};
 
 export function parseTissue(meta,fineBytes,coarseBytes){
  const fine={...meta.fine,data:new Uint8Array(fineBytes)},coarse={...meta.coarse,data:new Uint8Array(coarseBytes)};
@@ -92,6 +95,27 @@ function fillLiverDome(t){
  for(let k=0;k<cz;k++){const z=co[2]+k*ch;if(z>=zTop)break;for(let j=0;j<cy;j++){const y=co[1]+j*ch;for(let i=0;i<cx;i++){const idx=(k*cy+j)*cx+i;if(cd[idx]===L.SOFT&&inWedge(co[0]+i*ch,y,z)){cd[idx]=L.LIVER;coarse++}}}}
  return {heartBottomZ:+zBottom.toFixed(4),topZ:+zTop.toFixed(4),fineVoxels:fine,coarseVoxels:coarse,rule:DOME};
 }
+// Thymus of the infant (runtime, by age): the gland fills the anterior-superior mediastinum in front of the great vessels
+// and drapes over the top of the heart, where the atlas (an adult) has lung and loose tissue; it is why the high
+// parasternal and suprasternal windows are open in infants. Its bed — a teaching shape, not a segmentation: in front of
+// the axis of the great arteries, from just below the pulmonary valve to above the arch, within `reach` of the vessels
+// and the heart, behind the chest wall (17 mm under the anterior skin), no wider than `half` on each side. `s` (0…1)
+// scales reach and width with age.
+function thymusBed(lm){
+ if(!lm?.pulmonaryValve||!lm?.aorticValve||!lm?.archTop)return null;
+ const asc=lm.ascendingAorta||[lm.aorticValve[0],lm.aorticValve[1],lm.aorticValve[2]+.03],pv=lm.pulmonaryValve;
+ // the midline and the posterior limit follow the vessels: the axis of the ascending aorta low, the top of the arch high
+ return {z0:pv[2]-.012,z1:lm.archTop[2]+.022,xa:(asc[0]+pv[0])/2,xb:lm.archTop[0],ya:Math.max(asc[1],pv[1]),za:asc[2],yb:lm.archTop[1]+.008,zb:lm.archTop[2],half:.036,reach:.03,wall:.017};
+}
+function inThymus(T,s,x,y,z,d){
+ if(!T||z<T.z0||z>T.z1||d>T.reach*s)return false;
+ const f=z<=T.za?0:z>=T.zb?1:(z-T.za)/(T.zb-T.za);if(y>T.ya+(T.yb-T.ya)*f)return false;
+ const up=(z-T.z0)/(T.z1-T.z0),half=T.half*s*(1-.45*up),dx=(x-(T.xa+(T.xb-T.xa)*f))/half; // narrower toward the neck
+ // a lens draped over the vessels: thickest on its midline, thinning to nothing at its lateral and upper and lower
+ // edges (no flat faces: a flat face against lung would mirror the beam as a bright bar)
+ const e=Math.min(1,Math.min(up,1-up)/.12),lim=T.reach*s*e*(1-dx*dx);
+ return dx*dx<1&&d<=lim&&y-atlasSurface(x,z)[1]>T.wall;
+}
 // Landmarks derived from the label volume at load (the atlas file lists only the hand-placed ones): chamber centres,
 // superior vena cava, pulmonary veins, coronary sinus, branch pulmonary arteries and their bifurcation, ascending and
 // descending aorta at the level of the heart. Used to build the extra standard views (views.mjs). One pass over the volume.
@@ -117,6 +141,10 @@ export class Tissue{
   if(this.landmarks?.asdSecundum&&!meta.fossaThinned)this.fossa=thinFossa(this);
   if(!meta.liverDomeFilled)this.liverDome=fillLiverDome(this);
   if(this.landmarks?.pulmonaryValve&&!this.landmarks.svc)Object.assign(this.landmarks,deriveLandmarks(this));
+  // The pericardium ends on the great arteries (its reflection); above it the vessels have their own wall only. Taken at
+  // the level of the pulmonary bifurcation (a teaching approximation by height).
+  this.reflectionZ=(this.landmarks?.paBifurcation?.[2]??this.landmarks?.pulmonaryValve?.[2]+.03)??Infinity;
+  this.thymus=0;this._thy=thymusBed(this.landmarks);
  }
  // nearest-voxel lookup → label (and distance outside the heart envelope, metres; Infinity when unknown)
  lookup(x,y,z){
@@ -134,6 +162,8 @@ export class Tissue{
  // world → inverse → reference; reference → forward → world. Setting it sets the lesion's part only.
  get remodel(){return this._warp}
  set remodel(r){this._lesion=r||null;this._compose()}
+ // thymus of the infant, 0…1 (thorax-fit.thymusFor): how much of its bed in the anterior-superior mediastinum it fills
+ setThymus(s){this.thymus=Math.max(0,Math.min(1,s||0))}
  get fit(){return this._fit}
  setFit(f){this._fit=f||null;this._compose()}
  _compose(){const a=this._lesion,b=this._fit;
@@ -143,7 +173,10 @@ export class Tissue{
  // Label at a world point after runtime layers (pericardium, effusion). Skin layers depend on the ray and are added by the renderer.
  tissueAt(x,y,z){
   const lab=this.lookup(x,y,z),d=this._dist;
-  if(d<.02&&(lab===LABEL.SOFT||lab===LABEL.FAT||lab===LABEL.LUNG||lab===LABEL.LIVER)&&d>0){
+  if(this.thymus>0&&d>0&&(lab===LABEL.SOFT||lab===LABEL.LUNG||lab===LABEL.FAT)&&inThymus(this._thy,this.thymus,x,y,z,d)){
+   // the gland lies on the pericardium below the reflection, directly on the great vessels above it
+   return z<this.reflectionZ&&d>.0004&&d<=.003?LABEL.PERICARDIUM:LABEL.THYMUS}
+  if(d<.02&&z<this.reflectionZ&&(lab===LABEL.SOFT||lab===LABEL.FAT||lab===LABEL.LUNG||lab===LABEL.LIVER)&&d>0){
    const e=this.effusionMM*.001,peri=.0006+e;
    if(e>0&&d<=e)return LABEL.EFFUSION;
    if(d>peri-.0002&&d<=peri+.0024)return LABEL.PERICARDIUM;

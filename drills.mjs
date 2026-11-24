@@ -72,7 +72,7 @@ export function mountDrills(api){
   $('drill-weak').innerHTML=weak.length?weak.map(([k])=>`<li>${esc(itemName(k))}</li>`).join(''):'<li class="empty">Nada pendiente.</li>';
  }
  // ideal control state per view (cached without depth: depth is physical and follows the current patient)
- function idealState(id){const t=api.views[id],key=id+'|'+(BODY.fit?.age??''); // solved on this patient's thorax (thorax-fit.mjs)
+ function idealState(id){const t=api.views[id],key=id+'|'+(BODY.fit?.age??'')+'|'+BODY.k.toFixed(3); // solved on this patient's chest (thorax-fit.mjs)
   if(!ideal.has(key)){const sol=solveState(t,PRESET_OF[VIEW_INFO[id].window]);ideal.set(key,{...sol.state,sector:80,mode:'echo'})}return {...ideal.get(key),depth:physical(t.depth)}}
  const jitter=(s,k=1)=>({...s,rotation:s.rotation+sign()*Math.random()*6*k,tilt:s.tilt+sign()*Math.random()*4*k,rock:s.rock+sign()*Math.random()*4*k});
  const standard={gain:1,tgc:Array(8).fill(50),freq:4,beating:false,lines:176};

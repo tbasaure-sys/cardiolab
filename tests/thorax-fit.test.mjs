@@ -2,7 +2,7 @@
 // anterior wall onto the heart and gives the newborn the published cardiothoracic ratio. Skin, tissue and views agree.
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import zlib from 'node:zlib';
 import {parseTissue,LABEL} from '../tissue.mjs';import {buildViews,fanObstruction} from '../views.mjs';
-import {createFit,fitAgeFor,ctrTarget,ageFactor,envelopeRadius,capFactor,NEWBORN_CTR,ATLAS_CTR,CAP_GAP,FIT_SOURCES} from '../thorax-fit.mjs';import {FIT_DATA} from '../thorax-fit-data.mjs';
+import {createFit,fitAgeFor,ctrTarget,ageFactor,envelopeRadius,capFactor,NEWBORN_CTR,ATLAS_CTR,CAP_GAP,FIT_SOURCES,THYMUS_SOURCES,thymusFor,bodyFor} from '../thorax-fit.mjs';import {FIT_DATA} from '../thorax-fit-data.mjs';
 import {surface,atlasSurface,insideBody,skinParams,setBodyFit,BODY} from '../geometry.mjs';
 import {projectChest,cardiothoracic} from '../cxr.mjs';import {createRemodel,referenceShapes} from '../remodel.mjs';
 import {PATIENTS,PATIENT_BY_ID,ageYears} from '../patient.mjs';
@@ -16,7 +16,7 @@ const sources=JSON.parse(fs.readFileSync(new URL('../lessons/sources.json',impor
 test('the tables belong to this tissue volume and the sources are in the catalogue',()=>{
  assert.equal(FIT_DATA.geometrySHA256,meta.geometrySHA256,'regenerate with: node tools/build-thorax-fit.mjs');
  assert.deepEqual(FIT_DATA.centre,C);assert.equal(FIT_DATA.envelopeMM.length,FIT_DATA.rows*FIT_DATA.cols);
- for(const id of FIT_SOURCES)assert.ok(sources[id],id);
+ for(const id of [...FIT_SOURCES,...THYMUS_SOURCES])assert.ok(sources[id],id);
  assert.ok(Math.abs(ATLAS_CTR-cardiothoracic(projectChest(tissue,{})).ctr)<1e-3,'the atlas ratio stored with the tables is the measured one');
 });
 test('the map is exactly invertible and keeps every ray: points only slide toward the heart',()=>{
@@ -72,4 +72,34 @@ test('with a lesion the chamber remodelling and the thorax fit compose and stay 
  tissue.setFit(createFit(.826));tissue.remodel=createRemodel(referenceShapes(tissue),{RV:.25,RA:.2});const w=tissue.remodel;
  for(let i=0;i<200;i++){const p=[C[0]+(rnd()-.5)*.3,C[1]+(rnd()-.5)*.24,C[2]+(rnd()-.5)*.3],b=w.inverse(w.forward(p));assert.ok(dist(b,p)<2e-5,`${dist(b,p)}`)}
  tissue.remodel=null;assert.equal(tissue.remodel,tissue.fit,'without a lesion only the fit remains');tissue.setFit(null);assert.equal(tissue.remodel,null);
+});
+test('the body by age: thorax fit and thymus, one key per distinct body',()=>{
+ assert.equal(thymusFor(3/365),1);assert.equal(thymusFor(.5),1);assert.equal(thymusFor(6),0);assert.equal(thymusFor(15),0);assert.ok(thymusFor(2)>0&&thymusFor(2)<1);
+ const keys=PATIENTS.map(p=>bodyFor(ageYears(p)).key);assert.equal(new Set(keys).size,4,keys.join(' '));
+ assert.deepEqual(bodyFor(6),{fit:1,thymus:0,key:'1|0'});
+});
+test('thymus of the infant: in front of the great vessels, behind the chest wall, where the adult atlas has lung and loose tissue',()=>{
+ const count=()=>{let n=0,lung=0;const pv=lm.pulmonaryValve;for(let z=pv[2]-.02;z<lm.archTop[2]+.03;z+=.003)for(let y=-.09;y<.05;y+=.003)for(let x=-.07;x<.08;x+=.003){const l=tissue.tissueAt(x,y,z);if(l===LABEL.THYMUS)n++;else if(l===LABEL.LUNG)lung++}return {n,lung}};
+ tissue.setThymus(0);const none=count();assert.equal(none.n,0,'no thymus in the older child and the adult');
+ tissue.setThymus(1);const full=count();assert.ok(full.n>1500,`${full.n} samples of thymus`);assert.ok(full.lung<none.lung,'it takes the place of lung in front of the vessels');
+ tissue.setThymus(.5);const half=count();assert.ok(half.n>0&&half.n<full.n*.6,'smaller with age');
+ tissue.setThymus(1);
+ // never inside the heart, the vessels, bone or cartilage; never in the chest wall (17 mm under the anterior skin)
+ const asc=lm.ascendingAorta;assert.equal(tissue.tissueAt(...asc),LABEL.AO_BLOOD);
+ const front=[asc[0],asc[1]-.022,asc[2]+.01];assert.equal(tissue.tissueAt(...front),LABEL.THYMUS,'in front of the ascending aorta');
+ for(let y=-.09;y<asc[1];y+=.001){const l=tissue.tissueAt(asc[0],y,asc[2]+.01);if(l===LABEL.THYMUS){assert.ok(y-atlasSurface(asc[0],asc[2]+.01)[1]>.017-1e-9,'behind the chest wall');break}}
+ // behind the vessels there is none
+ assert.notEqual(tissue.tissueAt(asc[0],asc[1]+.03,asc[2]),LABEL.THYMUS);
+ tissue.setThymus(0);
+});
+test('the pericardium stops at its reflection on the great arteries; the liver reaches the diaphragm under the heart',()=>{
+ const zr=tissue.reflectionZ;assert.ok(zr>lm.pulmonaryValve[2]&&zr<lm.archTop[2],`reflection at z = ${zr.toFixed(3)}`);
+ let above=0,below=0;for(let z=lm.aorticValve[2]-.04;z<lm.archTop[2]+.02;z+=.002)for(let y=-.07;y<.07;y+=.002)for(let x=-.06;x<.08;x+=.002){if(tissue.tissueAt(x,y,z)===LABEL.PERICARDIUM){if(z>=zr)above++;else below++}}
+ assert.equal(above,0,'no pericardium around the arch');assert.ok(below>2000,'pericardium around the heart');
+ // liver dome: filled at load; along the subcostal beam the abdominal wall is followed by liver up to the diaphragm
+ assert.ok(tissue.liverDome&&tissue.liverDome.fineVoxels>20000,JSON.stringify(tissue.liverDome));
+ setBodyFit(1);tissue.setFit(createFit(1));const v=buildViews(lm,fanObstruction(tissue,LABEL.LUNG,LABEL.BONE)).sc4c;let liver=0,soft=0,r=0;
+ for(;r<.12;r+=.0005){const l=tissue.bodyAt(v.origin[0]+v.d[0]*r,v.origin[1]+v.d[1]*r,v.origin[2]+v.d[2]*r);if(l>=10&&l<30)break;if(l===LABEL.LIVER)liver+=.0005;else if(l===LABEL.SOFT&&r>.02)soft+=.0005}
+ assert.ok(liver>.02,`liver in the subcostal near field: ${(liver*1000).toFixed(0)} mm`);assert.ok(soft<.012,`unlabelled tissue between liver and heart: ${(soft*1000).toFixed(0)} mm`);
+ setBodyFit(null);tissue.setFit(null);
 });

@@ -28,6 +28,13 @@ export function ctrTarget(ageYears){
 // thorax factor that gives a cardiothoracic ratio: the heart keeps its width, the chest outside it shrinks by `age`
 export function ageFactor(ctr){const {heartWidth:h,thoraxWidth:t}=FIT_DATA.atlas;return Math.max(.5,Math.min(1,(h/ctr-h)/(t-h)))}
 export const fitAgeFor=ageYears=>+ageFactor(ctrTarget(ageYears)).toFixed(3);
+// Thymus of the infant (tissue.mjs draws it): how much of its bed it fills. Full in the first year; from then to six
+// years it shrinks to nothing IN THIS MODEL — a teaching choice (the gland persists through childhood, relatively smaller).
+// Its echo pattern follows Han 2001; in small children it can lie against the anterior chest wall (Terboven 2019).
+export const THYMUS_SOURCES=['han2001','terboven2019'];
+export const thymusFor=ageYears=>ageYears<=1?1:ageYears>=6?0:+((6-ageYears)/5).toFixed(2);
+// everything about the body that depends on the patient's age: {fit: thorax factor, thymus: 0…1, key}
+export function bodyFor(ageYears){const fit=fitAgeFor(ageYears),thymus=thymusFor(ageYears);return {fit,thymus,key:`${fit}|${thymus}`}}
 
 const NR=FIT_DATA.rows,NC=FIT_DATA.cols,C=FIT_DATA.centre,ENV=Float32Array.from(FIT_DATA.envelopeMM,v=>v/1000),CAP=Float32Array.from(FIT_DATA.capPermil,v=>v/1000);
 // direction → table coordinates: polar angle from +x (patient's left), azimuth around x; bilinear, wrapped in azimuth

@@ -3,7 +3,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import zlib from 'node:zlib';
 import {parseTissue,LABEL} from '../tissue.mjs';import {buildViews,fanObstruction,VIEW_INFO,VIEW_CARD,SWEEPS,nearestView,planeAgreement,markerClock} from '../views.mjs';
 import {lessonContext,lessonForSweep,lessonForView,validateLesson,resolveState,maneuverAgrees,planeThrough} from '../lesson-engine.mjs';
-import {poseFromState,setBodyFit} from '../geometry.mjs';import {createFit,fitAgeFor} from '../thorax-fit.mjs';import {PATIENTS,ageYears} from '../patient.mjs';
+import {poseFromState,setBodyFit} from '../geometry.mjs';import {createFit,bodyFor} from '../thorax-fit.mjs';import {PATIENTS,ageYears} from '../patient.mjs';
 
 const meta=JSON.parse(fs.readFileSync(new URL('../assets/tissue.json',import.meta.url)));
 const tissue=parseTissue(meta,zlib.gunzipSync(fs.readFileSync(new URL(`../assets/${meta.fine.file}`,import.meta.url))),zlib.gunzipSync(fs.readFileSync(new URL(`../assets/${meta.coarse.file}`,import.meta.url))));
@@ -50,10 +50,12 @@ test('guided sweeps: valid lessons whose maneuvers match the probe motion betwee
 test('the precomputed views (assets/views.json) match the computation',async()=>{
  const {VIEWS_VERSION}=await import('../views.mjs');const pre=JSON.parse(fs.readFileSync(new URL('../assets/views.json',import.meta.url)));
  assert.equal(pre.version,VIEWS_VERSION);assert.equal(pre.geometrySHA256,meta.geometrySHA256);
- assert.deepEqual(pre.fits['1'],JSON.parse(JSON.stringify(views)),'regenerate with: node tools/build-views.mjs');
- // one set per thorax fit of the patient presets; each is the computation on that patient's chest
- const ages=[...new Set(PATIENTS.map(p=>fitAgeFor(ageYears(p))))];assert.deepEqual(Object.keys(pre.fits).sort(),ages.map(String).sort());
- for(const age of ages){if(age===1)continue;setBodyFit(age);tissue.setFit(createFit(age));
-  assert.deepEqual(pre.fits[String(age)],JSON.parse(JSON.stringify(buildViews(lm,fanObstruction(tissue,LABEL.LUNG,LABEL.BONE)))),`fit ${age}: regenerate with: node tools/build-views.mjs`)}
- setBodyFit(1);tissue.setFit(createFit(1));
+ assert.deepEqual(pre.fits['1|0'],JSON.parse(JSON.stringify(views)),'regenerate with: node tools/build-views.mjs');
+ // one set per body of the patient presets (thorax fit | thymus); each is the computation on that patient's chest
+ const bodies=new Map(PATIENTS.map(p=>{const b=bodyFor(ageYears(p));return [b.key,b]}));assert.deepEqual(Object.keys(pre.fits).sort(),[...bodies.keys()].sort());
+ for(const b of bodies.values()){if(b.key==='1|0')continue;setBodyFit(b.fit);tissue.setFit(createFit(b.fit));tissue.setThymus(b.thymus);
+  const v=buildViews(lm,fanObstruction(tissue,LABEL.LUNG,LABEL.BONE));assert.deepEqual(pre.fits[b.key],JSON.parse(JSON.stringify(v)),`body ${b.key}: regenerate with: node tools/build-views.mjs`);
+  // every view of every body is its own nearest view
+  for(const id of Object.keys(VIEW_INFO))assert.equal(nearestView(v[id],v).id,id,`${b.key}: ${id}`)}
+ setBodyFit(1);tissue.setFit(createFit(1));tissue.setThymus(0);
 });

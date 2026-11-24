@@ -30,8 +30,8 @@ self.onmessage=async e=>{
   }
   // messages that arrive while the volume is still loading wait for it (never dropped)
   if(!tissue){if(!initDone)throw Error('Simulador sin inicializar');await initDone}
-  // the patient's thorax fit (thorax-fit.mjs): the same in the tissue lookups and in the skin the views are built on
-  if(m.type==='fit'){setBodyFit(m.age);tissue.setFit(m.age==null?null:createFit(m.age));normalP=null;self.postMessage({type:'fit',id:m.id});return}
+  // the patient's body by age (thorax-fit.bodyFor): thorax fit — the same in the tissue lookups and in the skin the views are built on — and thymus
+  if(m.type==='fit'){const b=m.body||{};setBodyFit(b.fit??null);tissue.setFit(b.fit==null?null:createFit(b.fit));tissue.setThymus(b.thymus||0);normalP=null;self.postMessage({type:'fit',id:m.id});return}
   if(m.type==='variant'){normalP=null;tissue.reset();variant=m.spec||{id:'normal'};const info=applyVariant(tissue,variant);setValveVariant(valves,tissue,valveVariant(variant));flow.jets=lesionJets(tissue,variant);flow.scale=variant.params?.hemo?.flowScale||null;info.jets=flow.jets.length;self.postMessage({type:'variant',id:m.id,info});return}
   if(m.type==='render'){
    setHeartRate(m.params.hr||null); // beat timing at the patient's heart rate (cycle.mjs)
