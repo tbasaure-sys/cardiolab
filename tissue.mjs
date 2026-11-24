@@ -137,7 +137,7 @@ export class Tissue{
  constructor(meta,fine,coarse){
   this.meta=meta;this.fine=fine;this.coarse=coarse;this.landmarks=meta.landmarks;this.edits=[];this.effusionMM=0;this._lesion=null;this._fit=null;this._warp=null;
   const [nx,ny,nz]=fine.dims;this.fnx=nx;this.fny=ny;this.fnz=nz;this.fo=fine.origin;this.fh=fine.spacing;this.fi=1/fine.spacing;
-  const [cx,cy,cz]=coarse.dims;this.cnx=cx;this.cny=cy;this.cnz=cz;this.co=coarse.origin;this.ci=1/coarse.spacing;
+  this._breath=null;const [cx,cy,cz]=coarse.dims;this.cnx=cx;this.cny=cy;this.cnz=cz;this.co=coarse.origin;this.ci=1/coarse.spacing;
   if(this.landmarks?.asdSecundum&&!meta.fossaThinned)this.fossa=thinFossa(this);
   if(!meta.liverDomeFilled)this.liverDome=fillLiverDome(this);
   if(this.landmarks?.pulmonaryValve&&!this.landmarks.svc)Object.assign(this.landmarks,deriveLandmarks(this));
@@ -166,8 +166,13 @@ export class Tissue{
  setThymus(s){this.thymus=Math.max(0,Math.min(1,s||0))}
  get fit(){return this._fit}
  setFit(f){this._fit=f||null;this._compose()}
- _compose(){const a=this._lesion,b=this._fit;
-  this._warp=!a?b:!b?a:{gains:a.gains,forward:(p,out=[0,0,0])=>b.forward(a.forward(p,out),out),inverse:(p,out=[0,0,0])=>a.inverse(b.inverse(p,out),out)}}
+ // breathing (breath.mjs): the outermost warp, whose depth of inspiration changes from frame to frame
+ setBreath(b){this._breath=b||null;this._compose()}
+ get breath(){return this._breath}
+ _compose(){const chain=[this._lesion,this._fit,this._breath].filter(Boolean);
+  this._warp=!chain.length?null:chain.length===1?chain[0]:{gains:this._lesion?.gains,
+   forward:(p,out=[0,0,0])=>{chain[0].forward(p,out);for(let i=1;i<chain.length;i++)chain[i].forward(out,out);return out},
+   inverse:(p,out=[0,0,0])=>{chain[chain.length-1].inverse(p,out);for(let i=chain.length-2;i>=0;i--)chain[i].inverse(out,out);return out}}}
  // label at a point of the fitted body without any lesion (windows, obstruction): the thorax as the probe finds it
  bodyAt(x,y,z){if(!this._fit)return this.tissueAt(x,y,z);const q=this._fit.inverse([x,y,z]);return this.tissueAt(q[0],q[1],q[2])}
  // Label at a world point after runtime layers (pericardium, effusion). Skin layers depend on the ray and are added by the renderer.

@@ -5,6 +5,7 @@ import {createBMode} from './bmode.mjs';
 import {buildValves,sliceValves,setValveVariant} from './valves.mjs';
 import {placeAtlasPositions,setBodyFit} from './geometry.mjs';
 import {createFit} from './thorax-fit.mjs';
+import {createBreath} from './breath.mjs';
 import {applyVariant,valveVariant} from './chd-data.mjs';
 import {buildFlow,lesionJets,outflowScale} from './flow.mjs';
 import {renderSpectrum,optimizeAim} from './spectral.mjs';
@@ -25,11 +26,13 @@ self.onmessage=async e=>{
  const m=e.data;
  try{
   if(m.type==='init'){
-   initDone=Promise.all([loadTissue('assets/'),loadAnatomy()]).then(([t,byName])=>{tissue=t;valves=buildValves(byName,t.landmarks);motion=new HeartMotion(t.landmarks);flow=buildFlow(t)});
+   initDone=Promise.all([loadTissue('assets/'),loadAnatomy()]).then(([t,byName])=>{tissue=t;tissue.setBreath(createBreath(tissue));valves=buildValves(byName,t.landmarks);motion=new HeartMotion(t.landmarks);flow=buildFlow(t)});
    await initDone;self.postMessage({type:'ready',landmarks:tissue.landmarks,labels:tissue.meta.labels});return;
   }
   // messages that arrive while the volume is still loading wait for it (never dropped)
   if(!tissue){if(!initDone)throw Error('Simulador sin inicializar');await initDone}
+  // breathing (breath.mjs) only moves the heart in the frames of the live image; everything else is computed in apnoea
+  tissue.breath.r=m.type==='render'&&!m.params.phantom?m.params.breath||0:0;
   // the patient's body by age (thorax-fit.bodyFor): thorax fit — the same in the tissue lookups and in the skin the views are built on — and thymus
   if(m.type==='fit'){const b=m.body||{};setBodyFit(b.fit??null);tissue.setFit(b.fit==null?null:createFit(b.fit));tissue.setThymus(b.thymus||0);normalP=null;self.postMessage({type:'fit',id:m.id});return}
   if(m.type==='variant'){normalP=null;tissue.reset();variant=m.spec||{id:'normal'};const info=applyVariant(tissue,variant);setValveVariant(valves,tissue,valveVariant(variant));flow.jets=lesionJets(tissue,variant);flow.scale=outflowScale(tissue,variant.params?.hemo?.flowScale||null);info.jets=flow.jets.length;self.postMessage({type:'variant',id:m.id,info});return}
